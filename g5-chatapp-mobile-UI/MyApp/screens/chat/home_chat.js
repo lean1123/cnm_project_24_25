@@ -1,18 +1,52 @@
-import React from 'react';
-import { SafeAreaView, View, FlatList, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import Header from '../../components/Header';
-import Footer from '../../components/Footer';
+import React from "react";
+import {
+  SafeAreaView,
+  View,
+  FlatList,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
+import { useNavigation } from "@react-navigation/native";
 
 const HomeScreen = () => {
+  const navigation = useNavigation(); // Hook điều hướng
+
   const friends = [
-    { id: '1', name: 'David De Gea', lastMessage: 'Thanks a bunch!', avatar: require('../../assets/chat/man.png') },
-    { id: '2', name: 'Edward Davidson', lastMessage: 'Great, thanks so much!', avatar: require('../../assets/chat/man2.png') },
-    { id: '3',name: 'David De Gea', lastMessage: 'Thanks a bunch!', avatar: require('../../assets/chat/man.png') },
-    { id: '4',name:'Edward Davidson', lastMessage: 'Great, thanks so much!', avatar: require('../../assets/chat/man2.png') },
+    {
+      id: "1",
+      name: "David De Gea",
+      lastMessage: "Thanks a bunch!",
+      avatar: require("../../assets/chat/man.png"),
+    },
+    {
+      id: "2",
+      name: "Edward Davidson",
+      lastMessage: "Great, thanks so much!",
+      avatar: require("../../assets/chat/man2.png"),
+    },
+    {
+      id: "3",
+      name: "David De Gea",
+      lastMessage: "Thanks a bunch!",
+      avatar: require("../../assets/chat/man.png"),
+    },
+    {
+      id: "4",
+      name: "Edward Davidson",
+      lastMessage: "Great, thanks so much!",
+      avatar: require("../../assets/chat/man2.png"),
+    },
   ];
 
   const renderFriend = ({ item }) => (
-    <TouchableOpacity style={styles.friendItem}>
+    <TouchableOpacity
+      style={styles.friendItem}
+      onPress={() => navigation.navigate("ChatDetail", { friend: item })}
+    >
       <Image source={item.avatar} style={styles.avatar} />
       <View>
         <Text style={styles.friendName}>{item.name}</Text>
@@ -24,7 +58,12 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Header />
-      <FlatList data={friends} renderItem={renderFriend} keyExtractor={(item) => item.id} style={styles.friendList} />
+      <FlatList
+        data={friends}
+        renderItem={renderFriend}
+        keyExtractor={(item) => item.id}
+        style={styles.friendList}
+      />
       <Footer />
     </SafeAreaView>
   );
@@ -33,17 +72,17 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   friendList: {
     flex: 1,
   },
   friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomColor: "#ccc",
   },
   avatar: {
     width: 50,
@@ -52,10 +91,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   friendName: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   lastMessage: {
-    color: 'gray',
+    color: "gray",
   },
 });
 
