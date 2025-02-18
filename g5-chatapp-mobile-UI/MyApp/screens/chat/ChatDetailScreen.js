@@ -19,7 +19,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing"; // mở tệp
 import * as Location from "expo-location";
-import TextMessageComponent from "../../components/TextMessageComponent";
+
 const ChatDetailScreen = ({ navigation, route }) => {
     const { friend } = route.params;
     const [showOptions, setShowOptions] = useState(false);
@@ -157,7 +157,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 sentByUser: true,
             };
             setMessages((prevMessages) => [...prevMessages, newFileMessage]);
-            setShowOptions(false); // Đóng modal
+            closeModal();
             return capturedFileUri; // Trả về tệp đã chọn
         } catch (error) {
             console.error("Lỗi chọn tệp:", error);
@@ -251,36 +251,63 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     </View>
                 );
             case "location":
-                return <Text>This is a location</Text>;
+                return (
+                    <TouchableOpacity
+                        style={[
+                            styles.messageContainer,
+                            item.sentByUser
+                                ? styles.userMessage
+                                : styles.friendMessage,
+                        ]}
+                        onPress={pickLocation}
+                    >
+                        <Image
+                            source={require("../../assets/chat/OIP.jpg")} // Thêm hình ảnh mặc định
+                            style={{
+                                width: 250,
+                                height: 200,
+                                borderRadius: 10,
+                            }}
+                            resizeMode="contain"
+                        />
+                        <Text
+                            style={{
+                                color: "#fff",
+                                fontWeight: "bold",
+                                fontSize: 20,
+                            }}
+                        >
+                            Vị trí của bạn 🗺️
+                        </Text>
+                    </TouchableOpacity>
+                );
             default:
-                return <Text>Auu naauu</Text>; // Thêm return ở đây cho trường hợp mặc định
+                return <Text>message chưa có định dạng</Text>; // Thêm return ở đây cho trường hợp mặc định
         }
+    };
+
+    const sentLocation = async () => {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+            alert("Permission to access location was denied");
+            console.log("Permission to access location was denied");
+            return;
+        }
+        const newImageMessage = {
+            id: Date.now().toString(),
+            type: "location",
+            uri: "../../assets/chat/OIP.jpg",
+            text: "📷 Image",
+            time: new Date().toLocaleTimeString().slice(0, 5),
+            sentByUser: true,
+        };
+        setMessages((prevMessages) => [...prevMessages, newImageMessage]);
+        closeModal();
     };
 
     // lưu file vừa upload vào cache
     const pickLocation = () => {
-        // alert("Chức năng đang phát triển");
-        // closeModal();
         navigation.navigate("LocationScreen");
-    };
-
-    // xin quyền truy cập vị trí
-    const requestLocationPermission = async () => {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-            alert("Permission to access location was denied");
-        }
-    };
-
-    // lấy vị trí hiện tại của người dùng
-    const getCurrentLocation = async () => {
-        try {
-            const location = await Location.getCurrentPositionAsync({});
-            console.log(location.coords.latitude, location.coords.longitude);
-            return location.coords;
-        } catch (error) {
-            console.log("Error getting location: ", error);
-        }
     };
 
     return (
@@ -386,7 +413,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.option}
-                                onPress={pickLocation}
+                                onPress={sentLocation}
                             >
                                 <Ionicons
                                     name="location-outline"
