@@ -18,6 +18,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing"; // mở tệp
+import * as Location from "expo-location";
+import TextMessageComponent from "../../components/TextMessageComponent";
 const ChatDetailScreen = ({ navigation, route }) => {
     const { friend } = route.params;
     const [showOptions, setShowOptions] = useState(false);
@@ -50,9 +52,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
         if (!result.canceled) {
             const capturedImageUri = result.assets[0].uri;
-
             const newImageMessage = {
                 id: Date.now().toString(),
+                type: "image",
                 uri: capturedImageUri,
                 text: "📷 Image",
                 time: new Date().toLocaleTimeString().slice(0, 5),
@@ -61,6 +63,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
             setMessages((prevMessages) => [...prevMessages, newImageMessage]);
         }
+        closeModal();
     };
 
     // ham truy cap vao thu vien anh
@@ -85,6 +88,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
             const newImageMessage = {
                 id: Date.now().toString(),
+                type: "image",
                 uri: selectedImageUri,
                 text: "📷 Image",
                 time: new Date().toLocaleTimeString().slice(0, 5),
@@ -93,17 +97,19 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
             setMessages((prevMessages) => [...prevMessages, newImageMessage]);
         }
+        closeModal();
     };
 
     //
     const [messages, setMessages] = useState([
         {
             id: "1",
+            type: "text",
             text: "This is your delivery driver from Speedy Chow. I'm just around the corner from your place. 😊",
             time: "10:10",
             sentByUser: false,
         },
-        { id: "2", text: "Hi!", time: "10:10", sentByUser: true },
+        { id: "2", type: "text", text: "Hi!", time: "10:10", sentByUser: true },
     ]);
 
     const sendMessage = () => {
@@ -111,6 +117,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
         const newMessageObject = {
             id: Date.now().toString(),
+            type: "text",
             text: newMessage,
             time: new Date().toLocaleTimeString([], {
                 hour: "2-digit",
@@ -123,61 +130,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
         setNewMessage(""); // Xóa nội dung sau khi gửi
         Keyboard.dismiss(); // Ẩn bàn phím
     };
-    const renderMessage = ({ item }) => (
-        <View
-            style={[
-                styles.messageContainer,
-                item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-        >
-            {item.uri ? (
-                <TouchableOpacity onPress={() => Linking.openURL(item.uri)}>
-                    <Image
-                        source={{ uri: item.uri }}
-                        style={{ width: 200, height: 200, borderRadius: 10 }}
-                    />
-                </TouchableOpacity>
-            ) : item.src ? ( // Sử dụng dấu ngoặc tròn cho phép điều kiện thứ hai
-                <TouchableOpacity onPress={() => openDocument(item.src)}>
-                    <Text>{item.src}</Text>
-                </TouchableOpacity>
-            ) : (
-                <Text>{item.text}</Text>
-            )}
-            <Text style={styles.messageTime}>{item.time}</Text>
-        </View>
-    );
-
-    // Hàm chọn tài liệu
-    // const openDocument = async () => {
-    //   try {
-    //     const result = await DocumentPicker.getDocumentAsync({
-    //       type: "*/*", // Chọn tất cả loại tệp
-    //       copyToCacheDirectory: true,
-    //     });
-
-    //     // Kiểm tra nếu người dùng hủy
-    //     if (result.type === "cancel") {
-    //       return;
-    //     }
-
-    //     if (result.uri) {
-    //       const newMessage = {
-    //         id: Date.now().toString(),
-    //         text: `📄 Document: ${result.name || "Untitled"}`,
-    //         uri: result.uri,
-    //         time: new Date().toLocaleTimeString().slice(0, 5),
-    //         sentByUser: true,
-    //       };
-
-    //       setMessages((prevMessages) => [...prevMessages, newMessage]);
-    //     } else {
-    //       alert("Không tìm thấy thông tin tài liệu.");
-    //     }
-    //   } catch (err) {
-    //     console.error("Error selecting document:", err);
-    //   }
-    // };
 
     // hàm chọn tài liệu mới
     const pickDocument = async () => {
@@ -198,6 +150,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
             const newFileMessage = {
                 id: Date.now().toString(),
+                type: "document",
                 src: capturedFileUri,
                 text: `${capturedFileUri}`,
                 time: new Date().toLocaleTimeString().slice(0, 5),
@@ -237,7 +190,98 @@ const ChatDetailScreen = ({ navigation, route }) => {
         }
     };
 
+    const renderMessage = ({ item }) => {
+        switch (item.type) {
+            case "text":
+                return (
+                    // Thêm return để trả về JSX
+                    <View
+                        style={[
+                            styles.messageContainer,
+                            item.sentByUser
+                                ? styles.userMessage
+                                : styles.friendMessage,
+                        ]}
+                    >
+                        <Text>{item.text}</Text>
+                        <Text style={styles.messageTime}>{item.time}</Text>
+                    </View>
+                );
+            case "image":
+                return (
+                    <View
+                        style={[
+                            styles.messageContainer,
+                            item.sentByUser
+                                ? styles.userMessage
+                                : styles.friendMessage,
+                        ]}
+                    >
+                        <TouchableOpacity
+                            onPress={() => Linking.openURL(item.uri)}
+                        >
+                            <Image
+                                source={{ uri: item.uri }}
+                                style={{
+                                    width: 200,
+                                    height: 200,
+                                    borderRadius: 10,
+                                }}
+                            />
+                        </TouchableOpacity>
+                        <Text style={styles.messageTime}>{item.time}</Text>
+                    </View>
+                );
+            case "document":
+                return (
+                    <View
+                        style={[
+                            styles.messageContainer,
+                            item.sentByUser
+                                ? styles.userMessage
+                                : styles.friendMessage,
+                        ]}
+                    >
+                        <TouchableOpacity
+                            onPress={() => openDocument(item.src)}
+                        >
+                            <Text>{item.src}</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.messageTime}>{item.time}</Text>
+                    </View>
+                );
+            case "location":
+                return <Text>This is a location</Text>;
+            default:
+                return <Text>Auu naauu</Text>; // Thêm return ở đây cho trường hợp mặc định
+        }
+    };
+
     // lưu file vừa upload vào cache
+    const pickLocation = () => {
+        // alert("Chức năng đang phát triển");
+        // closeModal();
+        navigation.navigate("LocationScreen");
+    };
+
+    // xin quyền truy cập vị trí
+    const requestLocationPermission = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+            alert("Permission to access location was denied");
+        }
+    };
+
+    // lấy vị trí hiện tại của người dùng
+    const getCurrentLocation = async () => {
+        try {
+            const location = await Location.getCurrentPositionAsync({});
+            console.log(location.coords.latitude, location.coords.longitude);
+            return location.coords;
+        } catch (error) {
+            console.log("Error getting location: ", error);
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -340,7 +384,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
                                 />
                                 <Text style={styles.optionText}>Gallery</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.option}>
+                            <TouchableOpacity
+                                style={styles.option}
+                                onPress={pickLocation}
+                            >
                                 <Ionicons
                                     name="location-outline"
                                     size={32}
