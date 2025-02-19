@@ -1,15 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 const Footer = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
   const [selectedTab, setSelectedTab] = useState('Chats');
 
+  useEffect(() => {
+    setSelectedTab(route.name);
+  }, [route.name]);
+
+  const handlePress = (tabName, screen) => {
+    setSelectedTab(tabName);
+    navigation.navigate(screen);
+  };
+
   const tabs = [
-    { name: 'Chats', icon: 'message-text' },
-    { name: 'Guest', icon: 'account-box' },
-    { name: 'Profile', icon: 'account-circle' },
-    { name: 'More', icon: 'dots-horizontal-circle' }
+    { name: 'Chats', icon: 'message-text', screen: 'Home_Chat' },
+    { name: 'Guest', icon: 'account-box', screen: 'FriendsListScreen' },
+    { name: 'Profile', icon: 'account-circle', screen: 'ProfileScreen' },
+    { name: 'More', icon: 'dots-horizontal-circle', screen: 'MoreScreen' }
   ];
 
   return (
@@ -18,14 +30,14 @@ const Footer = () => {
         <TouchableOpacity
           key={tab.name}
           style={styles.footerButton}
-          onPress={() => setSelectedTab(tab.name)}
+          onPress={() => handlePress(tab.name, tab.screen)}
         >
           <Icon
             name={tab.icon}
             size={24}
-            color={selectedTab === tab.name ? '#135CAF' : '#000'}
+            color={selectedTab === tab.screen ? '#135CAF' : '#000'}
           />
-          <Text style={[styles.footerText, selectedTab === tab.name && styles.selectedText]}>
+          <Text style={[styles.footerText, selectedTab === tab.screen && styles.selectedText]}>
             {tab.name}
           </Text>
         </TouchableOpacity>
