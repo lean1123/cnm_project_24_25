@@ -14,6 +14,7 @@ import RegisterScreen from "./screens/account/registerAccount";
 import chatDetailScreen from "./screens/chat/ChatDetailScreen";
 import ProfileScreen from "./screens/chat/ProfileScreen"; 
 import  FriendsListScreen from "./screens/chat/FriendsListScreen";
+import LocationScreen from "./screens/location";
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -75,6 +76,11 @@ const App = () => {
           component={chatDetailScreen}
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+                    name="LocationScreen"
+                    component={LocationScreen}
+                    options={{ headerShown: false }}
+                />
         <Stack.Screen
           name="ProfileScreen"
           component={ProfileScreen}
