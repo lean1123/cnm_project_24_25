@@ -12,71 +12,77 @@ import GroupCallScreen from "./screens/chat/callGroup";
 import LoginScreen from "./screens/account/loginAccount";
 import RegisterScreen from "./screens/account/registerAccount";
 import chatDetailScreen from "./screens/chat/ChatDetailScreen";
+import LocationScreen from "./screens/location";
 
 const Stack = createStackNavigator();
 
 const App = () => {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Loading_start">
-        <Stack.Screen
-          name="Loading_start"
-          component={Loading_start}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Loading_Middle"
-          component={Loading_Middle}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Loading_done"
-          component={Loading_done}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Introduce"
-          component={Introduce}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Home_Chat"
-          component={Home_Chat}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AddFriend"
-          component={AddFriendScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AddGroupScreen"
-          component={AddGroupScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="GroupCallScreen"
-          component={GroupCallScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="LoginScreen"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="RegisterScreen"
-          component={RegisterScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ChatDetail"
-          component={chatDetailScreen}
-          options={{ headerShown: false }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+    return (
+        <NavigationContainer>
+            <Stack.Navigator initialRouteName="Loading_start">
+                <Stack.Screen
+                    name="Loading_start"
+                    component={Loading_start}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="Loading_Middle"
+                    component={Loading_Middle}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="Loading_done"
+                    component={Loading_done}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="Introduce"
+                    component={Introduce}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="Home_Chat"
+                    component={Home_Chat}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="AddFriend"
+                    component={AddFriendScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="AddGroupScreen"
+                    component={AddGroupScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="GroupCallScreen"
+                    component={GroupCallScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="LoginScreen"
+                    component={LoginScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="RegisterScreen"
+                    component={RegisterScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="ChatDetail"
+                    component={chatDetailScreen}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="LocationScreen"
+                    component={LocationScreen}
+                    options={{ headerShown: false }}
+                />
+            </Stack.Navigator>
+        </NavigationContainer>
+    );
 };
 
 export default App;
