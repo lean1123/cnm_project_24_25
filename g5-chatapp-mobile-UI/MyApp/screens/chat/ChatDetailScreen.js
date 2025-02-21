@@ -19,7 +19,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing"; // mở tệp
 import * as Location from "expo-location";
-
+import AntDesign from "@expo/vector-icons/AntDesign";
 const ChatDetailScreen = ({ navigation, route }) => {
     const { friend } = route.params;
     const [showOptions, setShowOptions] = useState(false);
@@ -313,30 +313,38 @@ const ChatDetailScreen = ({ navigation, route }) => {
     return (
         <View style={styles.container}>
             {/* Header */}
-            {/* Header */}
+
             <View style={styles.header}>
+                {/* arrow back */}
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back" size={24} color="black" />
                 </TouchableOpacity>
+                {/* avt */}
                 <Image source={friend.avatar} style={styles.avatar} />
-                <View>
+                {/* name + phoneNumber */}
+                <View style={{ flex: 1 }}>
                     <Text style={styles.friendName}>{friend.name}</Text>
                     <Text style={styles.phoneNumber}>+44 50 9285 3022</Text>
                 </View>
+                {/* icon call + 3dot */}
                 <View style={styles.actionIcons}>
                     <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="call-outline" size={20} color="black" />
+                        <AntDesign name="videocamera" size={24} color="black" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.iconButton}>
+                        <Ionicons name="call-outline" size={24} color="black" />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.iconButton}>
                         <Feather
                             name="more-horizontal"
-                            size={20}
+                            size={24}
                             color="black"
                         />
                     </TouchableOpacity>
                 </View>
             </View>
-
+            {/* Header */}
             {/* Message List */}
             <FlatList
                 data={messages}
@@ -459,6 +467,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "space-between",
         paddingVertical: 1, // Giảm chiều cao phần đầu
         paddingHorizontal: 10,
         backgroundColor: "white",
@@ -478,8 +487,13 @@ const styles = StyleSheet.create({
         color: "gray",
         fontSize: 11,
     },
+    actionIcons: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
     iconButton: {
-        marginHorizontal: 3,
+        padding: 10,
     },
     messageList: { flex: 1, paddingHorizontal: 10 },
     messageContainer: {
