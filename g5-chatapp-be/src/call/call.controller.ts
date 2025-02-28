@@ -1,4 +1,6 @@
 import { Controller } from '@nestjs/common';
 
 @Controller('call')
-export class CallController {}
+export class CallController {
+  constructor() {}
+}
