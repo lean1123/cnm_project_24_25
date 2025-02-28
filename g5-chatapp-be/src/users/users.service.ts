@@ -18,4 +18,8 @@ export class UsersService {
     const res = await this.userModel.create(user);
     return res;
   }
+
+  async findById(id: string): Promise<User> {
+    return await this.userModel.findById(id);
+  }
 }

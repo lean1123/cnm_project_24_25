@@ -17,8 +17,8 @@ import { CallModule } from './call/call.module';
   imports: [
     ThrottlerModule.forRoot([
       {
-        ttl: 5000,
-        limit: 3,
+        ttl: 10000,
+        limit: 20,
       },
     ]),
     ConfigModule.forRoot({

@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ConvensationService } from './convensation.service';
-import { ConvensationController } from './convensation.controller';
-import { MongooseModule } from '@nestjs/mongoose';
-import { ConvensationSchema } from './schema/convensation.schema';
-import { AuthModule } from 'src/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { AuthModule } from 'src/auth/auth.module';
+import { User, UserSchema } from 'src/users/schema/user.schema';
+import { ConvensationController } from './convensation.controller';
+import { ConvensationService } from './convensation.service';
+import { ConvensationSchema } from './schema/convensation.schema';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
       { name: 'Convensation', schema: ConvensationSchema },
     ]),
     AuthModule,
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   providers: [
     ConvensationService,
