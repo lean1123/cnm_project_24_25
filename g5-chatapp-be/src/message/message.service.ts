@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Message } from './schema/messege.chema';
 import { User } from 'src/users/schema/user.schema';
+import { MessageRequest } from './dtos/requests/message.request';
 
 @Injectable()
 export class MessageService {
@@ -11,13 +12,31 @@ export class MessageService {
     @InjectModel(User.name) private userModel: Model<User>,
   ) {}
 
-  async createMessage(senderId: string, receiverId: string, message: string) {
-    const newMessage = await this.messageModel.create({
-      senderId,
-      receiverId,
-      message,
-    });
+  async createMessage(
+    convensationId: string,
+    message: MessageRequest,
+  ): Promise<Message> {
+    return await this.messageModel.create(message);
+  }
 
-    return newMessage;
+  async getMessagesByConvensation(conversationId: string): Promise<Message[]> {
+    return await this.messageModel.find({ conversation: conversationId });
+  }
+
+  async getMessageById(messageId: string): Promise<Message> {
+    return await this.messageModel.findById(messageId);
+  }
+
+  async updateMessage(
+    messageId: string,
+    message: MessageRequest,
+  ): Promise<Message> {
+    return await this.messageModel.findByIdAndUpdate(messageId, message, {
+      new: true,
+    });
+  }
+
+  async deleteMessage(messageId: string): Promise<Message> {
+    return await this.messageModel.findByIdAndDelete(messageId);
   }
 }

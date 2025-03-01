@@ -33,7 +33,7 @@ import { CallModule } from './call/call.module';
     ContactModule,
     CallModule,
   ],
-  controllers: [AppController, MessageController],
-  providers: [AppService, MessageService],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

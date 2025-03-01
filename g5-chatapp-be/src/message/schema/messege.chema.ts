@@ -1,18 +1,23 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { User } from 'src/users/schema/user.schema';
+import { Emotion } from './emotion.enum';
 
 @Schema({
   timestamps: true,
 })
 export class Message extends Document {
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
-  senderId: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
-  receiverId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Convensation' })
+  conversation: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  sender: Types.ObjectId;
   @Prop({ required: true })
-  message: string;
+  content: string;
+  @Prop()
+  media: string;
+  @Prop()
+  voice: string;
+  @Prop({ type: [{ type: String, enum: Emotion }] })
+  emotion: Emotion[];
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);
