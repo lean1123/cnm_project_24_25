@@ -38,7 +38,7 @@ function ConversationPage({ params }: Props) {
   const [leaveGroupDialogOpen, setLeaveGroupDialogOpen] = useState(false);
   const [callType, setCallType] = useState<"audio" | "video" | null>(null);
 
-  const [isOpenRightBar, setIsOpenRightBar] = useState(true);
+  const [isOpenRightBar, setIsOpenRightBar] = useState(false);
 
   return conversationId === undefined ? (
     <div className="w-full h-full flex items-center justify-center">
