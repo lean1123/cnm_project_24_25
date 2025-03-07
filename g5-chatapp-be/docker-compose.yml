@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: ./api
+      target: development
+
+    volumes:
+      - ./api:/lean1123/src/app
+      - ./lean1123/src/app/node_modules
+
+    command: npm run start:dev
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    ports:
+      - 3000:3000
+      - 9229:9229
