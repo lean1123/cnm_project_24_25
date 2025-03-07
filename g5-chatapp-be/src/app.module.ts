@@ -12,6 +12,7 @@ import { MessageService } from './message/message.service';
 import { MessageModule } from './message/message.module';
 import { ContactModule } from './contact/contact.module';
 import { CallModule } from './call/call.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CallModule } from './call/call.module';
     MessageModule,
     ContactModule,
     CallModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

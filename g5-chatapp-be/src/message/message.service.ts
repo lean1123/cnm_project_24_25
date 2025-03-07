@@ -1,26 +1,62 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Message } from './schema/messege.chema';
-import { User } from 'src/users/schema/user.schema';
+import { Model, Types } from 'mongoose';
+import { ConvensationService } from 'src/convensation/convensation.service';
+import { UsersService } from 'src/users/users.service';
 import { MessageRequest } from './dtos/requests/message.request';
+import { Message } from './schema/messege.chema';
+import { UploadService } from 'src/upload/upload.service';
 
 @Injectable()
 export class MessageService {
   constructor(
     @InjectModel(Message.name) private messageModel: Model<Message>,
-    @InjectModel(User.name) private userModel: Model<User>,
+    private readonly userService: UsersService,
+    private readonly convensationService: ConvensationService,
+    private readonly uploadFileService: UploadService,
   ) {}
 
   async createMessage(
     convensationId: string,
-    message: MessageRequest,
+    dto: MessageRequest,
+    files: Express.Multer.File[],
   ): Promise<Message> {
-    return await this.messageModel.create(message);
+    const conversation =
+      await this.convensationService.getConvensationById(convensationId);
+
+    // Nếu chưa có, tạo cuộc trò chuyện mới
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    const fileUrls = [];
+    if (files.length > 0) {
+      // Xử lý file
+      for (const file of files) {
+        await this.uploadFileService.uploadFile(file.originalname, file.buffer);
+        fileUrls.push({
+          fileName: file.originalname,
+          url: await this.uploadFileService.getSignedFileUrl(file.originalname),
+        });
+      }
+    }
+
+    const messageSchema = {
+      conversation: new Types.ObjectId(convensationId),
+      sender: new Types.ObjectId(dto.sender_id),
+      content: dto.content,
+      emotion: dto.emotion || [],
+      files: fileUrls || [],
+    };
+
+    const messageSaved = await this.messageModel.create(messageSchema);
+    return messageSaved;
   }
 
   async getMessagesByConvensation(conversationId: string): Promise<Message[]> {
-    return await this.messageModel.find({ conversation: conversationId });
+    return await this.messageModel.find({
+      conversation: new Types.ObjectId(conversationId),
+    });
   }
 
   async getMessageById(messageId: string): Promise<Message> {

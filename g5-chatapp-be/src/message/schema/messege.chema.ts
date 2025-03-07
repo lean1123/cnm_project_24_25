@@ -12,10 +12,8 @@ export class Message extends Document {
   sender: Types.ObjectId;
   @Prop({ required: true })
   content: string;
-  @Prop()
-  media: string;
-  @Prop()
-  voice: string;
+  @Prop({ type: [{ fileName: String, url: String }], required: false })
+  files: [{ fileName: string; url: string }];
   @Prop({ type: [{ type: String, enum: Emotion }] })
   emotion: Emotion[];
 }

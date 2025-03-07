@@ -1,16 +1,12 @@
 import { Optional } from '@nestjs/common';
-import { Emotion } from 'src/message/schema/emotion.enum';
 
 export class MessageRequest {
   @Optional()
-  _id: string;
-  conversation: string;
-  sender: string;
+  conversation_id?: string; // Nếu chưa có, hệ thống sẽ kiểm tra hoặc tạo mới
+
+  sender_id: string;
   content: string;
+
   @Optional()
-  media: string;
-  @Optional()
-  voice: string;
-  @Optional()
-  emotion: Emotion[];
+  emotion?: string[];
 }

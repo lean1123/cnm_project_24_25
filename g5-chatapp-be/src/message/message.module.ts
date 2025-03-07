@@ -7,12 +7,16 @@ import { MessageController } from './message.controller';
 import { MessageService } from './message.service';
 import { Message, MessageSchema } from './schema/messege.chema';
 import { UsersModule } from 'src/users/users.module';
+import { ConvensationModule } from 'src/convensation/convensation.module';
+import { UploadModule } from 'src/upload/upload.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Message.name, schema: MessageSchema }]),
     AuthModule,
     UsersModule,
+    ConvensationModule,
+    UploadModule,
   ],
   providers: [
     MessageService,
