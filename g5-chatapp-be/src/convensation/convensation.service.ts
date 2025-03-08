@@ -47,4 +47,10 @@ export class ConvensationService {
       { new: true },
     );
   }
+
+  async updateLastMessageField(conversationId: string, messageId: string) {
+    await this.convenstationModel.findByIdAndUpdate(conversationId, {
+      lastMessage: new Types.ObjectId(messageId),
+    });
+  }
 }

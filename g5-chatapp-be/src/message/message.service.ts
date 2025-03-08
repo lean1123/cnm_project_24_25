@@ -30,7 +30,7 @@ export class MessageService {
     }
 
     const fileUrls = [];
-    if (files.length > 0) {
+    if (files && files.length > 0) {
       // Xử lý file
       for (const file of files) {
         await this.uploadFileService.uploadFile(file.originalname, file.buffer);
@@ -50,6 +50,10 @@ export class MessageService {
     };
 
     const messageSaved = await this.messageModel.create(messageSchema);
+    await this.convensationService.updateLastMessageField(
+      convensationId,
+      messageSaved._id as string,
+    );
     return messageSaved;
   }
 
