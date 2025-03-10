@@ -16,19 +16,35 @@ const LoginScreen = ({ navigation }) => {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(45);
 
+
+  {/* is check phone number
+    - 10 digits
+    - 0-9
+  */}
+  const isPhoneNumber = (number) => {
+    const phoneRe = /^[0-9]{9}$/;
+    return phoneRe.test(number);
+  };
+
+  {/* handle send otp */}
   const handleSendOtp = () => {
-    if (phoneNumber) {
+    if (isPhoneNumber(phoneNumber)) {
       setIsOtpSent(true);
       setCountdown(60); // Reset timer
     }
+    else{
+      alert('Phone number is invalid!');
+    }
   };
 
+  {/* handle otp change*/}
   const handleOtpChange = (value, index) => {
     const newOtp = [...otpCode];
     newOtp[index] = value;
     setOtpCode(newOtp);
   };
 
+  {/*  */}
   useEffect(() => {
     let timer;
     if (isOtpSent && countdown > 0) {
@@ -38,6 +54,16 @@ const LoginScreen = ({ navigation }) => {
     }
     return () => clearInterval(timer);
   }, [isOtpSent, countdown]);
+
+  {/* Handle login */}
+  const handleLogin = () => {
+    if (otpCode.join('')==='1234') {
+      console.log('OTP:', otpCode.join(''))
+      navigation.navigate('Home_Chat');
+    } else {
+      alert('Please enter a valid OTP');
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,7 +107,7 @@ const LoginScreen = ({ navigation }) => {
               ))}
             </View>
 
-            <TouchableOpacity style={styles.submitButton} onPress={() => console.log('OTP:', otpCode.join(''))}>
+            <TouchableOpacity style={styles.submitButton} onPress={() => handleLogin()}>
               <Icon name="arrow-right" size={30} color="#fff" />
             </TouchableOpacity>
           </>
@@ -89,7 +115,7 @@ const LoginScreen = ({ navigation }) => {
           <>
             {/* Logo */}
             <Image
-              source={{ uri: 'https://example.com/logo.png' }} // Thay link logo bằng URL cụ thể
+              source={{ uri: 'https://img.freepik.com/premium-vector/secure-login-form-page-with-password-computer-padlock-3d-vector-icon-cartoon-minimal-style_365941-1119.jpg' }} // Thay link logo bằng URL cụ thể
               style={styles.logo}
             />
             

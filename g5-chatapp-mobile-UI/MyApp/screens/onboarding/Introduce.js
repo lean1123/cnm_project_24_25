@@ -75,7 +75,7 @@ const Introduce = ({navigation}) => {
               }
             }}
           >
-            <Text style={styles.buttonText} onPress={() => {navigation.navigate('Home_Chat')}}>
+            <Text style={styles.buttonText} onPress={() => {navigation.navigate('LoginScreen')}}>
               {currentScreen < screenData.length - 1 ? 'Next' : 'Get Started'}
             </Text>
           </TouchableOpacity>

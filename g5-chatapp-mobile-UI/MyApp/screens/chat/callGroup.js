@@ -1,14 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Alert,
+  SafeAreaView,
+} from "react-native";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 const friendsList = [
-  { id: '1', name: 'Alice' },
-  { id: '2', name: 'Bob' },
-  { id: '3', name: 'Charlie' },
-  { id: '4', name: 'David' },
-  { id: '5', name: 'Emma' },
-  { id: '6', name: 'Frank' },
+  { id: "1", name: "Alice" },
+  { id: "2", name: "Bob" },
+  { id: "3", name: "Charlie" },
+  { id: "4", name: "David" },
+  { id: "5", name: "Emma" },
+  { id: "6", name: "Frank" },
 ];
 
 const GroupCallScreen = ({ navigation }) => {
@@ -20,7 +28,10 @@ const GroupCallScreen = ({ navigation }) => {
       setSelectedFriends(selectedFriends.filter((fid) => fid !== id));
     } else {
       if (selectedFriends.length >= maxSelection) {
-        Alert.alert('Limit Reached', `You can select up to ${maxSelection} members.`);
+        Alert.alert(
+          "Limit Reached",
+          `You can select up to ${maxSelection} members.`
+        );
       } else {
         setSelectedFriends([...selectedFriends, id]);
       }
@@ -29,18 +40,20 @@ const GroupCallScreen = ({ navigation }) => {
 
   const handleStartCall = () => {
     if (selectedFriends.length === 0) {
-      Alert.alert('No Members Selected', 'Please select at least one member to start a call.');
+      Alert.alert(
+        "No Members Selected",
+        "Please select at least one member to start a call."
+      );
       return;
     }
-    console.log('Starting call with:', selectedFriends);
-    // Implement call functionality here
+    console.log("Starting call with:", selectedFriends);
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="chevron-left" size={30} color="#000" />
+          <Icon name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Start Group Call</Text>
       </View>
@@ -55,7 +68,11 @@ const GroupCallScreen = ({ navigation }) => {
           >
             <Text style={styles.friendName}>{item.name}</Text>
             <Icon
-              name={selectedFriends.includes(item.id) ? 'checkbox-marked' : 'checkbox-blank-outline'}
+              name={
+                selectedFriends.includes(item.id)
+                  ? "checkbox-marked"
+                  : "checkbox-blank-outline"
+              }
               size={24}
               color="#135CAF"
             />
@@ -66,52 +83,57 @@ const GroupCallScreen = ({ navigation }) => {
       <TouchableOpacity style={styles.callButton} onPress={handleStartCall}>
         <Text style={styles.buttonText}>Start Call</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: 20,
+    backgroundColor: "#fff",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    marginHorizontal: 10,
+    flexDirection: "row",
+    backgroundColor: "#135CAF",
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    alignItems: "center",
+  },
+  backButton: {
+    marginRight: 10,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 10,
+    fontWeight: "bold",
+    color: "#fff",
+    flex: 1,
+    textAlign: "center",
+    marginRight: 30,
   },
   friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
     marginHorizontal: 20,
   },
   friendName: {
     fontSize: 16,
-    color: '#000',
+    color: "#000",
   },
   callButton: {
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 30,
     marginBottom: 20,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
 

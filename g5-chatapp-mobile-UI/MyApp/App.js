@@ -12,9 +12,13 @@ import GroupCallScreen from "./screens/chat/callGroup";
 import LoginScreen from "./screens/account/loginAccount";
 import RegisterScreen from "./screens/account/registerAccount";
 import chatDetailScreen from "./screens/chat/ChatDetailScreen";
-import ProfileScreen from "./screens/chat/ProfileScreen"; 
-import  FriendsListScreen from "./screens/chat/FriendsListScreen";
+import ProfileScreen from "./screens/chat/ProfileScreen";
+import FriendsListScreen from "./screens/chat/FriendsListScreen";
 import LocationScreen from "./screens/location";
+import SettingsScreen from "./screens/othersScreen/more";
+
+
+
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -77,10 +81,10 @@ const App = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
-                    name="LocationScreen"
-                    component={LocationScreen}
-                    options={{ headerShown: false }}
-                />
+          name="LocationScreen"
+          component={LocationScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen
           name="ProfileScreen"
           component={ProfileScreen}
@@ -89,6 +93,11 @@ const App = () => {
         <Stack.Screen
           name="FriendsListScreen"
           component={FriendsListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SettingsScreen"
+          component={SettingsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
