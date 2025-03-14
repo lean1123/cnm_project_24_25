@@ -9,8 +9,10 @@ import {
 export class SignUpDto {
   @IsNotEmpty()
   @IsString()
-  name: string;
-
+  firstName: string;
+  @IsNotEmpty()
+  @IsString()
+  lastName: string;
   @IsNotEmpty()
   @IsEmail({}, { message: 'Invalid email' })
   email: string;

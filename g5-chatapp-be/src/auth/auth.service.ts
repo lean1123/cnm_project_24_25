@@ -16,7 +16,7 @@ export class AuthService {
   ) {}
 
   async signUp(signUpDto: SignUpDto): Promise<AuthResponseDto> {
-    const { name, email, password, role, gender } = signUpDto;
+    const { firstName, lastName, email, password, role, gender } = signUpDto;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -26,7 +26,8 @@ export class AuthService {
       user = await this.userModel.create({
         email,
         password: hashedPassword,
-        name,
+        firstName,
+        lastName,
         role,
         status: 'active',
         gender,

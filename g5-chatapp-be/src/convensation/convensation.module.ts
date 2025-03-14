@@ -7,6 +7,8 @@ import { User, UserSchema } from 'src/users/schema/user.schema';
 import { ConvensationController } from './convensation.controller';
 import { ConvensationService } from './convensation.service';
 import { ConvensationSchema } from './schema/convensation.schema';
+import { UsersService } from 'src/users/users.service';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
@@ -14,7 +16,7 @@ import { ConvensationSchema } from './schema/convensation.schema';
       { name: 'Convensation', schema: ConvensationSchema },
     ]),
     AuthModule,
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    UsersModule,
   ],
   providers: [
     ConvensationService,

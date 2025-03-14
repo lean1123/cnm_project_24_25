@@ -13,6 +13,7 @@ import { MessageModule } from './message/message.module';
 import { ContactModule } from './contact/contact.module';
 import { CallModule } from './call/call.module';
 import { UploadModule } from './upload/upload.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { UploadModule } from './upload/upload.module';
     ContactModule,
     CallModule,
     UploadModule,
+    CloudinaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
