@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import Footer from "../../components/Footer";
 import Header from "../../components/Header";
 const friends = [
@@ -11,7 +11,7 @@ const friends = [
 
 const FriendsListScreen = ({ navigation }) => {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
     <Header />
       <Text style={styles.title}>Danh sách bạn bè</Text>
       <FlatList
@@ -28,7 +28,7 @@ const FriendsListScreen = ({ navigation }) => {
         )}
       />
       <Footer />
-    </View>
+    </SafeAreaView>
   );
 };
 

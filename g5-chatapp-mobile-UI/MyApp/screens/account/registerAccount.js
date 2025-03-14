@@ -19,31 +19,59 @@ const RegisterScreen = ({ navigation }) => {
   const [name, setName] = useState(""); // New state to handle name input
   const [selectedAvatar, setSelectedAvatar] = useState(null); // State for avatar selection
 
+  {
+    /* is check phone number
+    - 10 digits
+    - 0-9
+  */
+  }
+  const isPhoneNumber = (number) => {
+    const phoneRe = /^[0-9]{9}$/;
+    return phoneRe.test(number);
+  };
+
+  {
+    /* handle send otp */
+  }
   const handleSendOtp = () => {
-    if (phoneNumber) {
+    if (isPhoneNumber(phoneNumber)) {
       setIsOtpSent(true);
       setCountdown(60); // Reset timer
+    } else {
+      alert("Phone number is invalid!");
     }
   };
 
+  {
+    /*  */
+  }
   const handleOtpChange = (value, index) => {
     const newOtp = [...otpCode];
     newOtp[index] = value;
     setOtpCode(newOtp);
   };
 
+  {
+    /*  */
+  }
   const handleVerifyOtp = () => {
-    if (otpCode.join("").length === 4) {
+    if (otpCode.join("").length === 4 && otpCode.join("") === "1234") {
       setIsOtpVerified(true);
     } else {
       alert("Please enter a valid OTP");
     }
   };
 
+  {
+    /*  */
+  }
   const handleAvatarSelection = (avatar) => {
     setSelectedAvatar(avatar);
   };
 
+  {
+    /*  */
+  }
   useEffect(() => {
     let timer;
     if (isOtpSent && countdown > 0) {
@@ -53,6 +81,18 @@ const RegisterScreen = ({ navigation }) => {
     }
     return () => clearInterval(timer);
   }, [isOtpSent, countdown]);
+
+  {
+    /*  */
+  }
+  const handleRegisterSubmit = () => {
+    if (!name) {
+      alert("Please enter your name");
+      return;
+    }
+    console.log("Name:", name, "Avatar:", selectedAvatar);
+    navigation.navigate("Home_Chat");
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,35 +121,43 @@ const RegisterScreen = ({ navigation }) => {
         {isOtpVerified ? (
           <>
             {/* Avatar and Name Section */}
-<TextInput
-style={styles.input}
-placeholder="Enter your name"
-value={name}
-onChangeText={setName}
-/>
-<Text style={styles.infoText}>Select your avatar</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your name"
+              value={name}
+              onChangeText={setName}
+            />
+            <Text style={styles.infoText}>Select your avatar</Text>
 
-{/* Avatar Section */}
-<View style={styles.avatarWrapper}>
-<TouchableOpacity onPress={handleAvatarSelection} style={styles.avatarContainer}>
-  {selectedAvatar ? (
-    <Image source={{ uri: selectedAvatar }} style={styles.avatarImage} />
-  ) : (
-    <Icon name="account-circle" size={60} color="#ddd" />
-  )}
-  <Icon name="pencil" size={20} color="#135CAF" style={styles.avatarEditIcon} />
-</TouchableOpacity>
-</View>
+            {/* Avatar Section */}
+            <View style={styles.avatarWrapper}>
+              <TouchableOpacity
+                onPress={handleAvatarSelection}
+                style={styles.avatarContainer}
+              >
+                {selectedAvatar ? (
+                  <Image
+                    source={{ uri: selectedAvatar }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Icon name="account-circle" size={60} color="#ddd" />
+                )}
+                <Icon
+                  name="pencil"
+                  size={20}
+                  color="#135CAF"
+                  style={styles.avatarEditIcon}
+                />
+              </TouchableOpacity>
+            </View>
 
-<TouchableOpacity
-style={styles.submitButton}
-onPress={() =>
-  console.log("Name:", name, "Avatar:", selectedAvatar)
-}
->
-<Icon name="check" size={30} color="#fff" />
-</TouchableOpacity>
-
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={() => handleRegisterSubmit()}
+            >
+              <Icon name="check" size={30} color="#fff" />
+            </TouchableOpacity>
           </>
         ) : isOtpSent ? (
           <>

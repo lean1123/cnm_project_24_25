@@ -21,7 +21,7 @@ const Footer = () => {
     { name: 'Chats', icon: 'message-text', screen: 'Home_Chat' },
     { name: 'Guest', icon: 'account-box', screen: 'FriendsListScreen' },
     { name: 'Profile', icon: 'account-circle', screen: 'ProfileScreen' },
-    { name: 'More', icon: 'dots-horizontal-circle', screen: 'MoreScreen' }
+    { name: 'More', icon: 'dots-horizontal-circle', screen: 'SettingsScreen' }
   ];
 
   return (
