@@ -3,9 +3,11 @@ import {
   Controller,
   Get,
   HttpException,
+  HttpStatus,
   Param,
   Post,
   Put,
+  Response,
 } from '@nestjs/common';
 import { ConvensationService } from './convensation.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
@@ -19,7 +21,7 @@ export class ConvensationController {
     try {
       return await this.convensationService.createConvensation(convensationReq);
     } catch (error) {
-      throw new HttpException(error.message as String, 400);
+      throw new HttpException(error.message as String, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -28,10 +30,14 @@ export class ConvensationController {
     @Param('id') id: string,
     @Body() convensationReq: ConvensationRequest,
   ) {
-    return await this.convensationService.updateConvensation(
-      id,
-      convensationReq,
-    );
+    try {
+      return await this.convensationService.updateConvensation(
+        id,
+        convensationReq,
+      );
+    } catch (error) {
+      throw new HttpException(error.message as String, HttpStatus.BAD_REQUEST);
+    }
   }
 
   @Get(':id')
