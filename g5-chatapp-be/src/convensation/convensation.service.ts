@@ -56,6 +56,7 @@ export class ConvensationService {
     conversation.profilePicture = null;
 
     const res = await this.convenstationModel.create(conversation);
+
     return res;
   }
 

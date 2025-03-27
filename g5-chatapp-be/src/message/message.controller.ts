@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -34,8 +35,28 @@ export class MessageController {
   @Get(':conversationId')
   async getMessagesByConvensation(
     @Param('conversationId') conversationId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<{
+    data: Message[];
+    total: number;
+    totalPages: number;
+    currentPage: number;
+  }> {
+    return await this.messageService.getMessagesByConvensation(
+      conversationId,
+      page,
+      limit,
+    );
+  }
+
+  @Get('newest/:conversationId')
+  async getNewestMessagesByConvensation(
+    @Param('conversationId') conversationId: string,
   ): Promise<Message[]> {
-    return await this.messageService.getMessagesByConvensation(conversationId);
+    return await this.messageService.getNewestMessageByConversation(
+      conversationId,
+    );
   }
 
   @Put(':messageId')

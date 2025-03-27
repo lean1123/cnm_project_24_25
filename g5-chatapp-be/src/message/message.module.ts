@@ -10,6 +10,7 @@ import { UsersModule } from 'src/users/users.module';
 import { ConvensationModule } from 'src/convensation/convensation.module';
 import { UploadModule } from 'src/upload/upload.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
+import { ChatGateway } from 'src/gateway/chat.gateway';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    ChatGateway,
   ],
   controllers: [MessageController],
   exports: [MessageService, MongooseModule],
