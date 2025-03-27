@@ -1,18 +1,15 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule } from '@nestjs/config';
-import { UsersModule } from './users/users.module';
-import { AuthModule } from './auth/auth.module';
+import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ConvensationModule } from './convensation/convensation.module';
-import { MessageController } from './message/message.controller';
-import { MessageService } from './message/message.service';
-import { MessageModule } from './message/message.module';
-import { ContactModule } from './contact/contact.module';
+import { AuthModule } from './auth/auth.module';
 import { CallModule } from './call/call.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { ContactModule } from './contact/contact.module';
+import { ConvensationModule } from './convensation/convensation.module';
+import { MessageModule } from './message/message.module';
 import { UploadModule } from './upload/upload.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -34,8 +31,9 @@ import { UploadModule } from './upload/upload.module';
     ContactModule,
     CallModule,
     UploadModule,
+    CloudinaryModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

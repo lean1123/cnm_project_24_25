@@ -2,10 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConvensationService } from 'src/convensation/convensation.service';
+// import { UploadService } from 'src/upload/upload.service';
 import { UsersService } from 'src/users/users.service';
 import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
-import { UploadService } from 'src/upload/upload.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class MessageService {
@@ -13,7 +14,8 @@ export class MessageService {
     @InjectModel(Message.name) private messageModel: Model<Message>,
     private readonly userService: UsersService,
     private readonly convensationService: ConvensationService,
-    private readonly uploadFileService: UploadService,
+    // private readonly uploadFileService: UploadService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createMessage(
@@ -29,17 +31,12 @@ export class MessageService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const fileUrls = [];
-    if (files.length > 0) {
-      // Xử lý file
-      for (const file of files) {
-        await this.uploadFileService.uploadFile(file.originalname, file.buffer);
-        fileUrls.push({
-          fileName: file.originalname,
-          url: await this.uploadFileService.getSignedFileUrl(file.originalname),
-        });
-      }
-    }
+    const fileUrls = await Promise.all(
+      files.map(async (file) => {
+        const { fileName, url } = await this.cloudinaryService.uploadFile(file);
+        return { fileName, url };
+      }),
+    );
 
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
@@ -50,6 +47,10 @@ export class MessageService {
     };
 
     const messageSaved = await this.messageModel.create(messageSchema);
+    await this.convensationService.updateLastMessageField(
+      convensationId,
+      messageSaved._id as string,
+    );
     return messageSaved;
   }
 
