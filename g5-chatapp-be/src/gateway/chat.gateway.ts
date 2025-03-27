@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -22,16 +23,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  private logger: Logger = new Logger(ChatGateway.name);
+
   constructor(private readonly chatService: MessageService) {}
 
   private activeUsers = new Map<string, string>();
 
   handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
+    this.logger.log(`Client connected: ${client.id}`);
   }
 
   async handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
+    this.logger.log(`Client disconnected: ${client.id}`);
 
     this.activeUsers.forEach((value, key) => {
       if (value === client.id) {
@@ -58,7 +61,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     await client.join(conversationId);
     this.activeUsers.set(userId, client.id);
-    console.log(`User ${userId} connected with socket ${client.id}`);
+    this.logger.log(`User ${userId} connected with socket ${client.id}`);
   }
 
   @SubscribeMessage('sendMessage')
