@@ -3,10 +3,10 @@ import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, SafeAreaView
 import Footer from "../../components/Footer";
 import Header from "../../components/Header";
 const friends = [
-  { id: '1', name: 'Alice Johnson', avatar: 'https://randomuser.me/api/portraits/women/1.jpg', online: true },
-  { id: '2', name: 'Bob Smith', avatar: 'https://randomuser.me/api/portraits/men/2.jpg', online: false },
-  { id: '3', name: 'Charlie Brown', avatar: 'https://randomuser.me/api/portraits/men/3.jpg', online: true },
-  { id: '4', name: 'Diana Prince', avatar: 'https://randomuser.me/api/portraits/women/4.jpg', online: false },
+  { id: '1', name: 'Alice Johnson', avatar: require("../../../assets/chat/man2.png"), online: true },
+  { id: '2', name: 'Bob Smith', avatar: require("../../../assets/chat/man2.png"), online: false },
+  { id: '3', name: 'Charlie Brown', avatar: require("../../../assets/chat/man2.png"), online: true },
+  { id: '4', name: 'Diana Prince', avatar: require("../../../assets/chat/man2.png"), online: false },
 ];
 
 const FriendsListScreen = ({ navigation }) => {
@@ -18,8 +18,8 @@ const FriendsListScreen = ({ navigation }) => {
         data={friends}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.friendItem} onPress={() => navigation.navigate('FriendDetail', { friend: item })}>
-            <Image source={{ uri: item.avatar }} style={styles.avatar} />
+          <TouchableOpacity style={styles.friendItem} onPress={() => navigation.navigate("ChatDetail", { friend: item })}>
+            <Image source={ item.avatar} style={styles.avatar} />
             <View style={styles.info}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={item.online ? styles.online : styles.offline}>{item.online ? 'Online' : 'Offline'}</Text>
@@ -35,14 +35,17 @@ const FriendsListScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff'
     
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 15,
     textAlign: 'center',
+    paddingVertical: 15,
+    color: "#135CAF",
+    backgroundColor: "rgba(221, 236, 247, 0.5)",
+    paddingBottom: 10,
   },
   friendItem: {
     flexDirection: 'row',
