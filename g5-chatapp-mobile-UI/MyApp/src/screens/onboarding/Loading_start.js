@@ -7,7 +7,7 @@ const Loading_start = ({ navigation }) => {
       {/* Ảnh có thể nhấn vào */}
       <TouchableOpacity onPress={() => navigation.navigate('Loading_Middle')}>
         <Image
-          source={require('../../assets/onboadrding/logo-chat-1.png')}
+          source={require('../../../assets/onboadrding/logo-chat-1.png')}
           style={styles.image}
         />
       </TouchableOpacity>

@@ -20,25 +20,25 @@ const HomeScreen = () => {
       id: "1",
       name: "David De Gea",
       lastMessage: "Thanks a bunch!",
-      avatar: require("../../assets/chat/man.png"),
+      avatar: require("../../../assets/chat/man.png"),
     },
     {
       id: "2",
       name: "Edward Davidson",
       lastMessage: "Great, thanks so much!",
-      avatar: require("../../assets/chat/man2.png"),
+      avatar: require("../../../assets/chat/man2.png"),
     },
     {
       id: "3",
       name: "David De Gea",
       lastMessage: "Thanks a bunch!",
-      avatar: require("../../assets/chat/man.png"),
+      avatar: require("../../../assets/chat/man.png"),
     },
     {
       id: "4",
       name: "Edward Davidson",
       lastMessage: "Great, thanks so much!",
-      avatar: require("../../assets/chat/man2.png"),
+      avatar: require("../../../assets/chat/man2.png"),
     },
   ];
 
