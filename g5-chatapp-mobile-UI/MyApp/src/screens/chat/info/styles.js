@@ -1,0 +1,166 @@
+import { StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F9FA',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#007AFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#0056b3',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  backButton: {
+    fontSize: 24,
+    color: '#fff',
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+    color: '#fff',
+  },
+  avatarSection: {
+    alignItems: 'center',
+    paddingVertical: 25,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  avatarLarge: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  phone: {
+    fontSize: 16,
+    color: '#888',
+  },
+  actionIcons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 15,
+  },
+  iconButton: {
+    alignItems: 'center',
+    marginHorizontal: 15,
+  },
+  iconLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 5,
+  },
+  optionsSection: {
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    marginTop: 10,
+    borderRadius: 10,
+    marginHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    
+  },
+  optionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  section: {
+    marginTop: 15,
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    marginHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  mediaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mediaThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  viewAllButton: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  linkTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  linkUrl: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginBottom: 10,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quickActions:{
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  quickActionButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 5,
+    width: 90,
+  },
+  textAction: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 5,
+    textAlign: 'center',
+  },
+});
+
+export default styles;
+
