@@ -262,7 +262,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                         onPress={pickLocation}
                     >
                         <Image
-                            source={require("../../assets/chat/OIP.jpg")} // Thêm hình ảnh mặc định
+                            source={require("../../../assets/chat/OIP.jpg")} // Thêm hình ảnh mặc định
                             style={{
                                 width: 250,
                                 height: 200,

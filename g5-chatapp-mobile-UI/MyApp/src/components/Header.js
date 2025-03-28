@@ -39,7 +39,7 @@ const Header = () => {
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
             <Image
-              source={require("../assets/chat/logochat.png")}
+              source={require("../../assets/chat/logochat.png")}
               style={styles.logo}
             />
             <Text style={styles.text_header}>E-Chat</Text>
