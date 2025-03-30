@@ -13,10 +13,12 @@ export class Convensation {
   profilePicture: string;
   @Prop({ required: true })
   isGroup: boolean;
-  @Prop({ ref: User.name, schema: User, type: Types.ObjectId, required: true })
+  @Prop({ ref: User.name, schema: User, type: Types.ObjectId })
   admin: Types.ObjectId;
   @Prop({ type: [{ type: Types.ObjectId, ref: User.name }], required: true })
   members: Types.ObjectId[];
+  @Prop({ type: Types.ObjectId, ref: 'Message' })
+  lastMessage: Types.ObjectId;
 }
 
 export const ConvensationSchema = SchemaFactory.createForClass(Convensation);

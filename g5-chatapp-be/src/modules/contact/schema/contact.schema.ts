@@ -1,16 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Status } from '../enum/status.enum';
 import { User } from 'src/modules/users/schema/user.schema';
 
 @Schema({
   timestamps: true,
 })
-export class Contact {
+export class Contact extends Document {
   @Prop({ type: Types.ObjectId, required: true, ref: User.name, schema: User })
   userId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, required: true, ref: User.name, schema: User })
+  contactId: Types.ObjectId;
   @Prop({ type: String, enum: Status, default: Status.ACTIVE })
-  Status: Status;
+  status: Status;
 }
 
 export const ContactSchema = SchemaFactory.createForClass(Contact);

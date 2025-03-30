@@ -18,27 +18,27 @@ const HomeScreen = () => {
   const friends = [
     {
       id: "1",
-      name: "David De Gea",
-      lastMessage: "Thanks a bunch!",
-      avatar: require("../../assets/chat/man.png"),
+      name: "Steve Jobs",
+      lastMessage: "Good job, bro!",
+      avatar: require("../../../assets/chat/man.png"),
     },
     {
       id: "2",
-      name: "Edward Davidson",
+      name: "Elon Musk",
       lastMessage: "Great, thanks so much!",
-      avatar: require("../../assets/chat/man2.png"),
+      avatar: require("../../../assets/chat/man2.png"),
     },
     {
       id: "3",
-      name: "David De Gea",
+      name: "Bill Gates",
       lastMessage: "Thanks a bunch!",
-      avatar: require("../../assets/chat/man.png"),
+      avatar: require("../../../assets/chat/man.png"),
     },
     {
       id: "4",
-      name: "Edward Davidson",
-      lastMessage: "Great, thanks so much!",
-      avatar: require("../../assets/chat/man2.png"),
+      name: "Mark Zuckerberg",
+      lastMessage: "I'm sorry, I can't help you!",
+      avatar: require("../../../assets/chat/man2.png"),
     },
   ];
 

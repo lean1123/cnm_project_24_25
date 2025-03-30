@@ -1,7 +1,6 @@
 {
   "/(root)/page": "app/(root)/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
   "/(root)/conversations/page": "app/(root)/conversations/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/(root)/conversations/[conversationId]/page": "app/(root)/conversations/[conversationId]/page.js"
+  "/(root)/conversations/[conversationId]/page": "app/(root)/conversations/[conversationId]/page.js",
+  "/_not-found/page": "app/_not-found/page.js"
 }

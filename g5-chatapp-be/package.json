@@ -31,10 +31,10 @@
     "@nestjs/mongoose": "^11.0.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.11",
-    "@nestjs/platform-socket.io": "^11.0.10",
+    "@nestjs/platform-socket.io": "^11.0.12",
     "@nestjs/swagger": "^11.0.6",
     "@nestjs/throttler": "^6.4.0",
-    "@nestjs/websockets": "^11.0.10",
+    "@nestjs/websockets": "^11.0.12",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
@@ -43,12 +43,17 @@
     "helmet": "^8.0.0",
     "mongoose": "^8.10.1",
     "multer": "^1.4.5-lts.1",
+<<<<<<< HEAD
     "nodemailer": "^6.10.0",
+=======
+    "multer-storage-cloudinary": "^4.0.0",
+>>>>>>> f923f0924b0d2a5e09debdfd3517d52621174a8d
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "streamifier": "^0.1.1",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
@@ -67,7 +72,11 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^22.13.10",
     "@types/passport-jwt": "^4.0.1",
+<<<<<<< HEAD
     "@types/passport-local": "^1.0.38",
+=======
+    "@types/socket.io": "^3.0.2",
+>>>>>>> f923f0924b0d2a5e09debdfd3517d52621174a8d
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

@@ -1,10 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+// import { UploadService } from 'src/upload/upload.service';
+
 import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
-import { UploadService } from 'src/upload/upload.service';
 import { ConvensationService } from '../convensation/convensation.service';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+
 
 @Injectable()
 export class MessageService {
@@ -12,7 +15,8 @@ export class MessageService {
     @InjectModel(Message.name) private messageModel: Model<Message>,
     // private readonly userService: UsersService,
     private readonly convensationService: ConvensationService,
-    private readonly uploadFileService: UploadService,
+    // private readonly uploadFileService: UploadService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createMessage(
@@ -28,16 +32,24 @@ export class MessageService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const fileUrls = [];
-    if (files.length > 0) {
-      // Xử lý file
-      for (const file of files) {
-        await this.uploadFileService.uploadFile(file.originalname, file.buffer);
-        fileUrls.push({
-          fileName: file.originalname,
-          url: await this.uploadFileService.getSignedFileUrl(file.originalname),
-        });
-      }
+    // Kiểm tra người gửi có tồn tại trong participant không
+    const isParticipant = conversation.members.includes(
+      new Types.ObjectId(dto.sender_id),
+    );
+    if (!isParticipant) {
+      throw new NotFoundException('User not in conversation');
+    }
+
+    let fileUrls = [];
+
+    if (files) {
+      fileUrls = await Promise.all(
+        files.map(async (file) => {
+          const { fileName, url } =
+            await this.cloudinaryService.uploadFile(file);
+          return { fileName, url };
+        }),
+      );
     }
 
     const messageSchema = {
@@ -49,13 +61,50 @@ export class MessageService {
     };
 
     const messageSaved = await this.messageModel.create(messageSchema);
+    await this.convensationService.updateLastMessageField(
+      convensationId,
+      messageSaved._id as string,
+    );
     return messageSaved;
   }
 
-  async getMessagesByConvensation(conversationId: string): Promise<Message[]> {
-    return await this.messageModel.find({
-      conversation: new Types.ObjectId(conversationId),
-    });
+  async getMessagesByConvensation(
+    conversationId: string,
+    page: number,
+    limit: number = 20,
+  ): Promise<{
+    data: Message[];
+    total: number;
+    totalPages: number;
+    currentPage: number;
+  }> {
+    const [data, total] = await Promise.all([
+      this.messageModel
+        .find({ conversation: new Types.ObjectId(conversationId) })
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      this.messageModel.countDocuments({
+        conversation: new Types.ObjectId(conversationId),
+      }),
+    ]);
+
+    return {
+      data,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+    };
+  }
+
+  async getNewestMessageByConversation(
+    conversationId: string,
+  ): Promise<Message[]> {
+    return await this.messageModel
+      .find({ conversation: new Types.ObjectId(conversationId) })
+      .sort({ createdAt: 1 }) // Sắp xếp mới nhất trước
+      .limit(20) // Giới hạn 20 tin nhắn
+      .exec();
   }
 
   async getMessageById(messageId: string): Promise<Message> {

@@ -12,4 +12,6 @@ export class ConvensationRequest {
   @Optional()
   admin: string;
   members: string[];
+  @Optional()
+  lastMessage: string;
 }

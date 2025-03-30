@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   SafeAreaView,
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Image,
+  StyleSheet,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
@@ -16,98 +16,85 @@ const RegisterScreen = ({ navigation }) => {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isOtpVerified, setIsOtpVerified] = useState(false);
   const [countdown, setCountdown] = useState(45);
-  const [name, setName] = useState(""); // New state to handle name input
-  const [selectedAvatar, setSelectedAvatar] = useState(null); // State for avatar selection
+  const [name, setName] = useState("");
+  const [selectedAvatar, setSelectedAvatar] = useState(null);
 
-  {
-    /* is check phone number
-    - 10 digits
-    - 0-9
-  */
-  }
-  const isPhoneNumber = (number) => {
-    const phoneRe = /^[0-9]{9}$/;
-    return phoneRe.test(number);
-  };
+  const otpInputs = useRef([]);
 
-  {
-    /* handle send otp */
-  }
+  // Kiểm tra số điện thoại hợp lệ
+  const isPhoneNumber = (number) => /^[0-9]{9}$/.test(number);
+
+  // Gửi OTP
   const handleSendOtp = () => {
     if (isPhoneNumber(phoneNumber)) {
       setIsOtpSent(true);
-      setCountdown(60); // Reset timer
+      setCountdown(60);
     } else {
       alert("Phone number is invalid!");
     }
   };
 
-  {
-    /*  */
-  }
+  // Xử lý nhập OTP với tự động focus
   const handleOtpChange = (value, index) => {
+    if (isNaN(value)) return;
+
     const newOtp = [...otpCode];
     newOtp[index] = value;
     setOtpCode(newOtp);
-  };
 
-  {
-    /*  */
-  }
-  const handleVerifyOtp = () => {
-    if (otpCode.join("").length === 4 && otpCode.join("") === "1234") {
-      setIsOtpVerified(true);
-    } else {
-      alert("Please enter a valid OTP");
+    if (value !== "" && index < otpInputs.current.length - 1) {
+      otpInputs.current[index + 1].focus();
     }
   };
 
-  {
-    /*  */
-  }
-  const handleAvatarSelection = (avatar) => {
-    setSelectedAvatar(avatar);
+  // Xóa khi bấm Backspace
+  const handleOtpKeyPress = (e, index) => {
+    if (e.nativeEvent.key === "Backspace" && otpCode[index] === "") {
+      if (index > 0) {
+        otpInputs.current[index - 1].focus();
+      }
+    }
   };
 
-  {
-    /*  */
-  }
+  // Xác minh OTP
+  const handleVerifyOtp = () => {
+    if (otpCode.join("") === "1234") {
+      setIsOtpVerified(true);
+    } else {
+      alert("Invalid OTP!");
+    }
+  };
+
+  // Đếm ngược gửi lại mã OTP
   useEffect(() => {
     let timer;
     if (isOtpSent && countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
+      timer = setInterval(() => setCountdown((prev) => prev - 1), 1000);
     }
     return () => clearInterval(timer);
   }, [isOtpSent, countdown]);
 
-  {
-    /*  */
-  }
+  // Xử lý đăng ký
   const handleRegisterSubmit = () => {
     if (!name) {
       alert("Please enter your name");
       return;
     }
-    console.log("Name:", name, "Avatar:", selectedAvatar);
     navigation.navigate("Home_Chat");
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header Section */}
+      {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Register</Text>
-          <Text style={styles.headerTitle2}>
-            {isOtpVerified
-              ? "Successfully registered!"
-              : isOtpSent
-              ? `Enter OTP Code`
-              : "Enter your phone number"}
-          </Text>
-        </View>
+        <Text style={styles.headerTitle}>Register</Text>
+        <Text style={styles.headerTitle2}>
+          {isOtpVerified
+            ? "Successfully registered!"
+            : isOtpSent
+            ? "Enter OTP Code"
+            : "Enter your phone number"}
+        </Text>
         <TouchableOpacity
           style={styles.registerButton}
           onPress={() => navigation.navigate("LoginScreen")}
@@ -120,7 +107,7 @@ const RegisterScreen = ({ navigation }) => {
       <View style={styles.container_2}>
         {isOtpVerified ? (
           <>
-            {/* Avatar and Name Section */}
+            {/* Nhập tên */}
             <TextInput
               style={styles.input}
               placeholder="Enter your name"
@@ -129,10 +116,10 @@ const RegisterScreen = ({ navigation }) => {
             />
             <Text style={styles.infoText}>Select your avatar</Text>
 
-            {/* Avatar Section */}
+            {/* Chọn avatar */}
             <View style={styles.avatarWrapper}>
               <TouchableOpacity
-                onPress={handleAvatarSelection}
+                onPress={() => console.log("Select Avatar")}
                 style={styles.avatarContainer}
               >
                 {selectedAvatar ? (
@@ -154,7 +141,7 @@ const RegisterScreen = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.submitButton}
-              onPress={() => handleRegisterSubmit()}
+              onPress={handleRegisterSubmit}
             >
               <Icon name="check" size={30} color="#fff" />
             </TouchableOpacity>
@@ -172,11 +159,13 @@ const RegisterScreen = ({ navigation }) => {
               {otpCode.map((digit, index) => (
                 <TextInput
                   key={index}
+                  ref={(el) => (otpInputs.current[index] = el)}
                   style={styles.otpInput}
                   keyboardType="number-pad"
                   maxLength={1}
                   value={digit}
                   onChangeText={(value) => handleOtpChange(value, index)}
+                  onKeyPress={(e) => handleOtpKeyPress(e, index)}
                 />
               ))}
             </View>
@@ -190,10 +179,9 @@ const RegisterScreen = ({ navigation }) => {
           </>
         ) : (
           <>
-            {/* Subtitle */}
-            <Text style={styles.infoText}>You will get a code via sms.</Text>
+            <Text style={styles.infoText}>You will get a code via SMS.</Text>
 
-            {/* Phone Number Section */}
+            {/* Nhập số điện thoại */}
             <View style={styles.inputContainer}>
               <View style={styles.flagContainer}>
                 <Image
@@ -225,6 +213,7 @@ const RegisterScreen = ({ navigation }) => {
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -236,7 +225,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     backgroundColor: "#4484CD",
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 20,
     height: "30%",
     borderBottomLeftRadius: "30%",
     borderBottomRightRadius: "40%",
@@ -248,11 +237,14 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   headerTitle2: {
-    marginTop: "10%",
-    marginLeft: "40%",
+    marginTop: "30%",
+    marginRight: "8%",
     fontSize: 25,
     fontWeight: "bold",
     color: "#FFF",
+    border: 1,
+    borderColor: "#000",
+    position: "absolute",
   },
   registerButton: {
     backgroundColor: "#fff",

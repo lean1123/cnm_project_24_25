@@ -7,7 +7,7 @@ const Loading_done = ({ navigation }) => {
       {/* header */}
       <View style={styles.header}>
          <Image
-          source={require('../../assets/onboadrding/logo-mini.png')}
+          source={require('../../../assets/onboadrding/logo-mini.png')}
           style={styles.image_logo}
          />
         <Text style={styles.text_logo}>E-Chat</Text>
@@ -16,7 +16,7 @@ const Loading_done = ({ navigation }) => {
       {/* body */}
       <TouchableOpacity onPress={() => navigation.navigate('Introduce')}>
         <Image
-          source={require('../../assets/onboadrding/Vector.png')}
+          source={require('../../../assets/onboadrding/Vector.png')}
           style={styles.image}
         />
         <View style={styles.container_text_body}>

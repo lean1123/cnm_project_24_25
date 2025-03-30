@@ -11,6 +11,8 @@ import { UploadModule } from 'src/upload/upload.module';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../users/user.module';
 import { ConvensationModule } from '../convensation/convensation.module';
+import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
+import { ChatGateway } from 'src/gateway/chat.gateway';
 
 @Module({
   imports: [
@@ -19,6 +21,7 @@ import { ConvensationModule } from '../convensation/convensation.module';
     UserModule,
     ConvensationModule,
     UploadModule,
+    CloudinaryModule,
   ],
   providers: [
     MessageService,
@@ -26,6 +29,7 @@ import { ConvensationModule } from '../convensation/convensation.module';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    ChatGateway,
   ],
   controllers: [MessageController],
   exports: [MessageService, MongooseModule],
