@@ -1,4 +1,3 @@
 export class AuthResponseDto {
-  token: string;
-  user: { id: string; email: string };
+  access_token: string;
 }
