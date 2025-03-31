@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConvensationService } from 'src/convensation/convensation.service';
 // import { UploadService } from 'src/upload/upload.service';
-import { UsersService } from 'src/users/users.service';
+import { UserService } from 'src/users/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -12,7 +12,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 export class MessageService {
   constructor(
     @InjectModel(Message.name) private messageModel: Model<Message>,
-    private readonly userService: UsersService,
+    private readonly userService: UserService,
     private readonly convensationService: ConvensationService,
     // private readonly uploadFileService: UploadService,
     private readonly cloudinaryService: CloudinaryService,

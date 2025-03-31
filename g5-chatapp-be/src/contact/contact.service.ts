@@ -2,14 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConvensationService } from 'src/convensation/convensation.service';
-import { UsersService } from 'src/users/users.service';
+import { UserService } from 'src/users/user.service';
 import { Status } from './enum/status.enum';
 import { Contact } from './schema/contact.schema';
 
 @Injectable()
 export class ContactService {
   constructor(
-    private readonly userService: UsersService,
+    private readonly userService: UserService,
     private readonly convensationService: ConvensationService,
     @InjectModel(Contact.name) private contactModel: Model<Contact>,
   ) {}

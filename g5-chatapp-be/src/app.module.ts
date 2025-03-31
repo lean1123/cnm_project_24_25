@@ -1,16 +1,19 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+
 import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { UploadModule } from './upload/upload.module';
+import { UserModule } from './users/user.module';
 import { AuthModule } from './auth/auth.module';
-import { CallModule } from './call/call.module';
-import { CloudinaryModule } from './cloudinary/cloudinary.module';
-import { ContactModule } from './contact/contact.module';
 import { ConvensationModule } from './convensation/convensation.module';
 import { MessageModule } from './message/message.module';
-import { UploadModule } from './upload/upload.module';
-import { UsersModule } from './users/users.module';
-
+import { ContactModule } from './contact/contact.module';
+import { CallModule } from './call/call.module';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { CacheModule } from '@nestjs/cache-manager';
+import { MailModule } from './mail/mail.module';
+import { TransformInterceptor } from './core/transform.interceptor';
 @Module({
   imports: [
     ThrottlerModule.forRoot([
@@ -23,17 +26,32 @@ import { UsersModule } from './users/users.module';
       envFilePath: '.env',
       isGlobal: true,
     }),
-    MongooseModule.forRoot(process.env.MONGO_URI!),
-    UsersModule,
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
+      inject: [ConfigService],
+    }),
+    UserModule,
     AuthModule,
     ConvensationModule,
     MessageModule,
     ContactModule,
     CallModule,
     UploadModule,
-    CloudinaryModule,
+    CacheModule.register({ isGlobal: true }),
+    MailModule,
   ],
-  controllers: [],
-  providers: [],
+  providers: [
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: JwtAuthGuard,
+    // },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
+    },
+  ],
 })
 export class AppModule {}

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Types } from 'mongoose';
-import { UsersService } from 'src/users/users.service';
+import { UserService } from 'src/users/user.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
 import { Convensation } from './schema/convensation.schema';
 
@@ -10,7 +10,7 @@ export class ConvensationService {
   constructor(
     @InjectModel(Convensation.name)
     private convenstationModel: mongoose.Model<Convensation>,
-    private readonly userService: UsersService,
+    private readonly userService: UserService,
   ) {}
 
   async createConvensation(

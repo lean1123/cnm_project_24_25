@@ -3,12 +3,10 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from 'src/auth/auth.module';
-import { User, UserSchema } from 'src/users/schema/user.schema';
 import { ConvensationController } from './convensation.controller';
 import { ConvensationService } from './convensation.service';
 import { ConvensationSchema } from './schema/convensation.schema';
-import { UsersService } from 'src/users/users.service';
-import { UsersModule } from 'src/users/users.module';
+import { UserModule } from 'src/users/user.module';
 
 @Module({
   imports: [
@@ -16,7 +14,7 @@ import { UsersModule } from 'src/users/users.module';
       { name: 'Convensation', schema: ConvensationSchema },
     ]),
     AuthModule,
-    UsersModule,
+    UserModule,
   ],
   providers: [
     ConvensationService,
