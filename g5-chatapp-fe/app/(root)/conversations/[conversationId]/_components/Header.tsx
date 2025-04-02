@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 //   DropdownMenuItem,
 //   DropdownMenuTrigger,
 // } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { CircleArrowLeft, Settings, User } from "lucide-react";
 import Link from "next/link";
 import React from "react";
@@ -31,7 +31,7 @@ const Header = ({ imageUrl, name, options }: Props) => {
         </Link>
         <Avatar className="h-8 w-8">
           <AvatarImage src={imageUrl} alt={name} />
-          <AvatarFallback>{name.substring(0, 1)}</AvatarFallback>
+          <AvatarFallback>{getInitials(name)}</AvatarFallback>
         </Avatar>
         <h2 className="font-semibold">{name}</h2>
       </div>

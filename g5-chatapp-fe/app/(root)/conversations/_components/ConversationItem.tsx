@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { getInitials } from "@/lib/utils";
 import { User } from "lucide-react";
 import Link from "next/link";
 import React from "react";
@@ -25,9 +26,7 @@ const ConversationItem = ({
         <div className="flex flex-row items-center gap-4 truncate">
           <Avatar>
             <AvatarImage src={imageUrl} alt={username} />
-            <AvatarFallback>
-              <User />
-            </AvatarFallback>
+            <AvatarFallback>{getInitials(username)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col truncate">
             <h4 className="truncate">{username}</h4>
