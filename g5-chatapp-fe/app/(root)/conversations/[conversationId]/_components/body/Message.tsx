@@ -1,5 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { timeStamp } from "console";
 import React from "react";
 
@@ -66,7 +66,7 @@ const Message = ({
         })}
       >
         <AvatarImage src={senderImage} alt={senderName} />
-        <AvatarFallback>{senderName.substring(0, 1)}</AvatarFallback>
+        <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
       </Avatar>
     </div>
   );
