@@ -299,8 +299,21 @@ const ChatDetailScreen = ({ navigation, route }) => {
     navigation.navigate("LocationScreen");
   };
 
+  {/* Handle when click button 3dot */}
   const hanldeMoreOption = () => {
     navigation.navigate("UserInfoScreen", {
+      friend: friend,
+    });
+  }
+  {/* Handle when click button call */}
+  const handleCall = () => {
+    navigation.navigate("callScreen", {
+      friend: friend,
+    });
+  }
+  {/* Handle when click button call video */}
+  const handleCallVideo = () => {
+    navigation.navigate("callScreen", {
       friend: friend,
     });
   }
@@ -326,11 +339,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
         {/* icon call + 3dot */}
         <View style={styles.actionIcons}>
           <TouchableOpacity style={styles.iconButton}>
-            <AntDesign name="videocamera" size={24} color="white" />
+            <AntDesign name="videocamera" size={24} color="white" onPress={handleCallVideo}/>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="call-outline" size={24} color="white" />
+            <Ionicons name="call-outline" size={24} color="white" onPress={handleCall}/>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
             <Feather

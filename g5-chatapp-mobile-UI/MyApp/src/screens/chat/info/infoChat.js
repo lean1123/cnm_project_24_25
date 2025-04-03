@@ -12,7 +12,7 @@ import {
 import Icon from "react-native-vector-icons/FontAwesome5";
 import styles from "./styles";
 
-const UserInfoScreen = ({navigation, route}) => {
+const UserInfoScreen = ({ navigation, route }) => {
   const [muted, setMuted] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -58,18 +58,15 @@ const UserInfoScreen = ({navigation, route}) => {
     Alert.alert("Tắt thông báo", "Chức năng này chưa được triển khai.");
   };
 
-  
-
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Icon name="chevron-left" size={20} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Tùy chọn</Text>
+      </View>
       <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="chevron-left" size={24} color="white" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Tùy chọn</Text>
-        </View>
-
         <View style={styles.avatarSection}>
           <Image source={mockUser.avatar} style={styles.avatarLarge} />
           <Text style={styles.name}>{mockUser.name}</Text>
