@@ -1,43 +1,51 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
-  ScrollView,
-  Switch,
   SafeAreaView,
-  Alert,
   StyleSheet,
+  PanResponder,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome5";
 
-const callingScreen = ({ navigation }) => {
+const CallingScreen = ({ navigation }) => {
   const userData = {
     id: 1,
     name: "Nguyen Duc Nhat",
     phone: "(+84) 123 456 789",
-    avata: "",
   };
 
-  //   time calling run
-  // set time calling increse 1s
   const [time, setTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [isCameraMuted, setIsCameraMuted] = useState(false);
+  const [isCallFullScreen, setIsCallFullScreen] = useState(false);
+  const [dragPosition, setDragPosition] = useState({ x: 50, y: 50 });
+
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    startTimer();
+    return () => stopTimer();
+  }, []);
+
   const startTimer = () => {
-    setIsRunning(true);
-    setInterval(() => {
+    stopTimer();
+    timerRef.current = setInterval(() => {
       setTime((prevTime) => prevTime + 1);
     }, 1000);
   };
+
   const stopTimer = () => {
-    setIsRunning(false);
-    clearInterval();
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
   };
-  const resetTimer = () => {
-    setIsRunning(false);
-    setTime(0);
-  };
+
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
     const seconds = time % 60;
@@ -47,102 +55,127 @@ const callingScreen = ({ navigation }) => {
     )}`;
   };
 
-  // handel click cancel call
   const handleCancelCall = () => {
     stopTimer();
     Alert.alert("Cancel Call", "Are you sure you want to cancel this call?", [
-      {
-        text: "Cancel",
-        onPress: () => console.log("Cancel Pressed"),
-        style: "cancel",
-      },
-      {
-        text: "OK",
-        onPress: () => console.log("OK Pressed"),
-      },
+      { text: "Cancel", style: "cancel" },
+      { text: "OK", onPress: () => navigation.navigate("Home_Chat") },
     ]);
   };
 
-  // handle press and move image to any position in screen
-  const handlePress = () => {
-    Alert.alert("Image Pressed", "You pressed the image!");
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (e, gestureState) => {
+        setDragPosition({
+          x: gestureState.moveX,
+          y: gestureState.moveY,
+        });
+      },
+    })
+  ).current;
+
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    Alert.alert("Microphone", `Microphone is now ${isMuted ? "unmuted" : "muted"}`);
+  };
+
+  const toggleAudioMute = () => {
+    setIsAudioMuted(!isAudioMuted);
+    Alert.alert("Audio", `Audio is now ${isAudioMuted ? "unmuted" : "muted"}`);
+  };
+
+  const toggleCameraMute = () => {
+    setIsCameraMuted(!isCameraMuted);
+    Alert.alert("Camera", `Camera is now ${isCameraMuted ? "unmuted" : "muted"}`);
+  };
+
+  const toggleFullScreen = () => {
+    setIsCallFullScreen(!isCallFullScreen);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="chevron-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.text_header}>Calling ...</Text>
+        <View style={styles.text_header}>
+          <Text style={styles.name}>{userData.name}</Text>
+          <Text style={styles.phone}>{userData.phone}</Text>
+        </View>
       </View>
 
-      {/* Avatar Section */}
       <View style={styles.avatarSection}>
-        <Image
-          source={{ uri: "https://i.pravatar.cc/150?img=5" }}
-          style={styles.avatarLarge}
-        />
-        <Text style={styles.name}>{userData.name}</Text>
-        <Text style={styles.phone}>{userData.phone}</Text>
-
-        {/* image call of user  */}
-        <TouchableOpacity
-          style={{ position: "absolute", top: "42%", left: "67%" }}
-          onPress={handlePress}
-        >
+        <View style={styles.mainVideoContainer}>
           <Image
-            source={{ uri: "https://i.imgur.com/v6T9FGz.jpeg" }}
-            style={{
-              width: 120,
-              height: 150,
-              position: "absolute",
-              resizeMode: "cover",
-              borderWidth: 3,
-              borderColor: "#ccc",
-            }}
+            source={{ uri: "https://i.imgur.com/hxdrcDj.jpeg" }}
+            style={styles.mainVideo}
           />
-        </TouchableOpacity>
 
-        {/*time calling*/}
-        <View style={styles.timeCallingContainer}>
-          <Text style={styles.timeCallingText}>{formatTime(time)}</Text>
+          <View style={styles.timeCallingContainer}>
+            <Text style={styles.timeCallingText}>{formatTime(time)}</Text>
+          </View>
         </View>
 
-        {/* Call Options */}
+        {!isCallFullScreen && (
+          <View
+            style={[
+              styles.smallVideoContainer,
+              { left: dragPosition.x, top: dragPosition.y },
+            ]}
+            {...panResponder.panHandlers}
+          >
+            <Image
+              source={{ uri: "https://i.imgur.com/K9yxphq.jpeg" }}
+              style={styles.smallVideo}
+            />
+          </View>
+        )}
+
         <View style={styles.callOptions}>
-          {/* micophone icon */}
+          <TouchableOpacity onPress={toggleMute} style={styles.callCancel}>
+            <Icon
+              name={isMuted ? "microphone-slash" : "microphone"}
+              size={30}
+              color="black"
+              style={styles.icon}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={toggleAudioMute} style={styles.callCancel}>
+            <Icon
+              name={isAudioMuted ? "volume-mute" : "volume-up"}
+              size={30}
+              color="black"
+              style={styles.icon}
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => Alert.alert("Muted microphone")}
+            onPress={toggleCameraMute}
             style={styles.callCancel}
           >
-            <View style={styles.btnContainer}>
-              <Icon name="microphone" size={30} color="black" />
-            </View>
+            <Icon
+              name={isCameraMuted ? "video-slash" : "video"}
+              size={30}
+              color="black"
+              style={styles.icon}
+            />
           </TouchableOpacity>
-          {/* volume icon */}
-
           <TouchableOpacity
-            onPress={() => Alert.alert("Volume muted")}
+            onPress={toggleFullScreen}
             style={styles.callCancel}
           >
-            <View style={styles.btnVolumeContainer}>
-              <Icon name="volume-off" size={30} color="black" />
-            </View>
+            <Icon
+              name={isCallFullScreen ? "compress" : "expand"}
+              size={30}
+              color="black"
+              style={styles.icon}
+            />
           </TouchableOpacity>
-          {/* video icon */}
 
-          <TouchableOpacity
-            onPress={() => Alert.alert("Video muted")}
-            style={styles.callCancel}
-          >
-            <View style={styles.btnVideoContainer}>
-              <Icon name="video" size={30} color="black" />
-            </View>
-          </TouchableOpacity>
-          {/* cancel icon */}
           <TouchableOpacity
             onPress={handleCancelCall}
             style={styles.callCancel}
@@ -173,88 +206,55 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 10,
+    position: "absolute",
+    top: 0,
+    zIndex: 100,
   },
   text_header: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 24,
-    marginRight: "37%",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: "25%",
   },
   avatarSection: {
     alignItems: "center",
     height: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: "#000",
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
+    position: "absolute",
+    top: 60,
+    width: "100%",
   },
-  avatarLarge: {
-    width: 150,
-    height: 150,
-    borderRadius: "100%",
-    marginTop: 10,
+  mainVideoContainer: {
+    position: "relative",
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mainVideo: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "black",
+  },
+  smallVideoContainer: {
+    position: "absolute",
+    width: 140,
+    height: 100,
+    borderRadius: 10,
+    backgroundColor: "gray",
     borderWidth: 2,
-    borderColor: "#007AFF",
-    marginTop: "15%",
+    borderColor: "white",
+    bottom: 10,
+    left: 10,
+    zIndex: 200,
   },
-  name: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 10,
-  },
-  phone: {
-    fontSize: 16,
-    color: "#888",
-    marginTop: 3,
-  },
-  callOptions: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 20,
-    paddingHorizontal: 20,
-    height: 85,
-    width: "75%",
-    marginTop: "5%",
-  },
-  callCancel: {
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 10,
-  },
-  iconCallCancel: {
-    width: 50,
-    height: 50,
-  },
-  btnContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: "100%",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderWidth: 1,
-  },
-  btnVideoContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: "100%",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    borderWidth: 1,
-  },
-  btnVolumeContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: "100%",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderWidth: 1,
+  smallVideo: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 10,
+    objectFit: "cover",
   },
   timeCallingContainer: {
     flexDirection: "row",
@@ -265,14 +265,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 15,
     paddingVertical: 7,
-    marginTop: "50%",
-    maxHeight: 40,
-    width: "25%",
+    position: "absolute",
+    top: "0%",
+    left: "57%",
+    transform: [{ translateX: -75 }],
+    zIndex: 300,
   },
   timeCallingText: {
     fontSize: 20,
     color: "#000",
     fontWeight: "bold",
   },
+  name: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  phone: {
+    fontSize: 16,
+    color: "#888",
+  },
+  callOptions: {
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    position: "absolute",
+    bottom: "10%",
+    left: 0,
+    right: 0,
+    zIndex: 400,
+    backgroundColor: "#fff",
+  },
+  callCancel: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 10,
+  },
+  iconCallCancel: {
+    width: 40,
+    height: 40,
+  },
+  icon: {
+    width: 34,
+    height: 30,
+    resizeMode: "contain",
+    alignSelf: "center",
+  },
 });
-export default callingScreen;
+
+export default CallingScreen;

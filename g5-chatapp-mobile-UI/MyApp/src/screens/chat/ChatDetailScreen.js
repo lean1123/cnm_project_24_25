@@ -307,13 +307,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
   }
   {/* Handle when click button call */}
   const handleCall = () => {
-    navigation.navigate("callScreen", {
+    navigation.navigate("CallScreen", {
       friend: friend,
     });
   }
   {/* Handle when click button call video */}
   const handleCallVideo = () => {
-    navigation.navigate("callScreen", {
+    navigation.navigate("CallScreen", {
       friend: friend,
     });
   }
