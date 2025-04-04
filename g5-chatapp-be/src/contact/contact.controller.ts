@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Param, Post } from '@nestjs/common';
 import { ContactService } from './contact.service';
 
 @Controller('contact')
@@ -15,13 +15,8 @@ export class ContactController {
     );
   }
 
-  @Post('accept')
-  async acceptContact(
-    @Body() contactDto: { userId: string; contactId: string },
-  ) {
-    return await this.contactService.acceptContact(
-      contactDto.userId,
-      contactDto.contactId,
-    );
+  @Post('/accept/:contactId')
+  async acceptContact(@Param('contactId') contactId: string) {
+    return await this.contactService.acceptContact(contactId);
   }
 }

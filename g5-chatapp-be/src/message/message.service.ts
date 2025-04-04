@@ -26,15 +26,21 @@ export class MessageService {
     const conversation =
       await this.convensationService.getConvensationById(convensationId);
 
-    // Nếu chưa có, tạo cuộc trò chuyện mới
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
     }
 
+    const sender = await this.userService.findById(dto.sender_id.userId);
+
+    if (!sender) {
+      throw new NotFoundException('Sender not found in create new message');
+    }
+
     // Kiểm tra người gửi có tồn tại trong participant không
-    const isParticipant = conversation.members.includes(
-      new Types.ObjectId(dto.sender_id),
+    const isParticipant = conversation.members.some(
+      (member) => member.userId.toString() === dto.sender_id.userId,
     );
+
     if (!isParticipant) {
       throw new NotFoundException('User not in conversation');
     }
@@ -53,7 +59,10 @@ export class MessageService {
 
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
-      sender: new Types.ObjectId(dto.sender_id),
+      sender: {
+        userId: dto.sender_id.userId,
+        fullName: `${sender.firstName} ${sender.lastName}`,
+      },
       content: dto.content,
       emotion: dto.emotion || [],
       files: fileUrls || [],
