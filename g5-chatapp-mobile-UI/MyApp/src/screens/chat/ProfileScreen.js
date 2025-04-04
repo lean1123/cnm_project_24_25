@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-    View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, ScrollView 
+    View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, ScrollView, SafeAreaView
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from "../../components/Header";
@@ -24,7 +24,7 @@ const ProfileScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <Header />
             <ScrollView contentContainerStyle={styles.scrollView}>
                 {/* Profile Info */}
@@ -111,7 +111,7 @@ const ProfileScreen = () => {
                     </View>
                 </View>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 };
 

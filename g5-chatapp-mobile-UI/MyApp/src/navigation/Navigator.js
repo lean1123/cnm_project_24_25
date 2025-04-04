@@ -18,12 +18,14 @@ import FriendsListScreen from "../screens/chat/FriendsListScreen";
 import LocationScreen from "../screens/location";
 import SettingsScreen from "../screens/othersScreen/more";
 import UserInfoScreen from "../screens/chat/info/infoChat";
-
+// call
+import CallScreen from "../screens/chat/call/call";
+import CallingScreen from "../screens/chat/call/calling";
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="Home_Chat">
+    <Stack.Navigator initialRouteName="LoginScreen">
       <Stack.Screen
         name="Loading_start"
         component={Loading_start}
@@ -102,6 +104,16 @@ const MainNavigator = () => {
       <Stack.Screen
         name="UserInfoScreen"
         component={UserInfoScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CallScreen"
+        component={CallScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CallingScreen"
+        component={CallingScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
