@@ -6,7 +6,9 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { User } from 'src/users/schema/user.schema';
 
 interface JwtPayload {
-  id: string;
+  sub: string;
+  username: string;
+  exp: string;
 }
 
 @Injectable()
@@ -19,11 +21,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    const { id } = payload;
-    const user = await this.userModel.findById(id);
+    const { sub, exp } = payload;
+    const user = await this.userModel.findById(sub);
 
     if (!user) {
       throw new UnauthorizedException('User not found');
+    }
+
+    const currentTimeStamp = Math.floor(Date.now() / 1000);
+
+    if (currentTimeStamp > parseInt(exp)) {
+      throw new UnauthorizedException('Token expired');
     }
 
     return user;

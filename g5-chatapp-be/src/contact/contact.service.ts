@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { ConvensationService } from 'src/convensation/convensation.service';
 import { UsersService } from 'src/users/users.service';
 import { Status } from './enum/status.enum';
@@ -45,14 +45,11 @@ export class ContactService {
     return savedContact;
   }
 
-  async acceptContact(userId: string, contactId: string) {
-    const contact = await this.contactModel.findOne({
-      userId: new Types.ObjectId(userId),
-      contactId: new Types.ObjectId(contactId),
-    });
+  async acceptContact(contactId: string): Promise<Contact> {
+    const contact = await this.contactModel.findById(contactId).exec();
 
     if (!contact || contact.status === Status.ACTIVE) {
-      throw new Error("Can't accept this contact");
+      throw new Error("Can't accept this contact or contact already accepted");
     }
 
     // Cập nhật trạng thái liên hệ
@@ -66,19 +63,55 @@ export class ContactService {
       throw new Error('Failed to update contact');
     }
 
-    try {
-      // Tạo cuộc trò chuyện nếu chưa có
-      await this.convensationService.createConvensation({
-        isGroup: false,
-        members: [userId, contactId],
-        lastMessage: null,
-        _id: null,
-        name: null,
-        profilePicture: null,
-        admin: null,
-      });
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
+    // Tìm thông tin người dùng
+    const user = await this.userService.findById(contact.userId.toString());
+    const contactUser = await this.userService.findById(
+      contact.contactId.toString(),
+    );
+
+    if (!user || !contactUser) {
+      throw new NotFoundException(
+        'User not found to add new conversation for contact',
+      );
+    }
+
+    // Kiểm tra xem cuộc trò chuyện đã tồn tại chưa
+    const existingConversation =
+      await this.convensationService.getConvensationByMemberForChatDirect([
+        {
+          userId: user._id as string,
+          fullName: `${user.firstName} ${user.lastName}`,
+        },
+        {
+          userId: contactUser._id as string,
+          fullName: `${contactUser.firstName} ${contactUser.lastName}`,
+        },
+      ]);
+
+    // Nếu chưa có cuộc trò chuyện, tạo mới
+    if (!existingConversation) {
+      try {
+        await this.convensationService.createConvensation({
+          isGroup: false,
+          members: [
+            {
+              userId: user._id as string,
+              fullName: `${user.firstName} ${user.lastName}`,
+            },
+            {
+              userId: contactUser._id as string,
+              fullName: `${contactUser.firstName} ${contactUser.lastName}`,
+            },
+          ],
+          lastMessage: null,
+          _id: null,
+          name: null,
+          profilePicture: null,
+          admin: null,
+        });
+      } catch (error) {
+        console.error('Failed to create conversation:', error);
+      }
     }
 
     return updatedContact;
