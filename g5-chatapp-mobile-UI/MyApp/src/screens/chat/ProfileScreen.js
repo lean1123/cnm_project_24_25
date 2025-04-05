@@ -1,27 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-    View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, ScrollView, SafeAreaView
+    View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, ScrollView, SafeAreaView 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 
 const ProfileScreen = () => {
     const [modalVisible, setModalVisible] = useState(false);
-    const [profile, setProfile] = useState({
-        name: 'John Lennon',
-        phone: '(+44) 20 1234 5689',
-        gender: 'Male',
-        birthday: '12/01/1997',
-        email: 'john.lennon@mail.com'
-    });
+    const [profile, setProfile] = useState(null);
+    const [editedProfile, setEditedProfile] = useState(null);
+    const [userId, setUserId] = useState(null);
 
-    const [editedProfile, setEditedProfile] = useState({ ...profile });
+    useEffect(() => {
+        // Lấy ID người dùng từ AsyncStorage khi màn hình được hiển thị
+        const fetchUserProfile = async () => {
+            try {
+                const user = await AsyncStorage.getItem('user');
+                if (user) {
+                    const parsedUser = JSON.parse(user);
+                    setUserId(parsedUser.id);  // Lưu ID người dùng
+                    setEditedProfile(parsedUser);  // Cập nhật state editedProfile cho modal
+                    fetchUserData(parsedUser.id); // Gọi API lấy thông tin người dùng
+                }
+            } catch (error) {
+                console.error("Failed to fetch user data:", error);
+            }
+        };
+        
+        fetchUserProfile();
+    }, []);
 
-    const handleSave = () => {
-        setProfile(editedProfile);
-        setModalVisible(false);
+    // Gọi API để lấy thông tin người dùng từ cơ sở dữ liệu
+    const fetchUserData = async (id) => {
+        try {
+            const response = await fetch(`http://192.168.1.3:3000/users/${id}`); // Thay đổi URL thành endpoint API của bạn
+            const data = await response.json();
+
+            if (response.ok) {
+                setProfile(data.user); // Cập nhật thông tin người dùng
+            } else {
+                alert("Error fetching user data.");
+            }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            alert("An error occurred while fetching user data.");
+        }
     };
+
+    const handleSave = async () => {
+        if (editedProfile) {
+            try {
+                if (editedProfile.name && editedProfile.phone && editedProfile.email) {
+                    // Kiểm tra nếu editedProfile không phải là null/undefined và có đầy đủ dữ liệu
+                    await AsyncStorage.setItem('user', JSON.stringify(editedProfile));
+                    setProfile(editedProfile); // Cập nhật lại profile state
+                    setModalVisible(false);  // Đóng modal
+                } else {
+                    alert("Please fill in all required fields.");
+                }
+            } catch (error) {
+                console.error("Failed to save user profile:", error);
+                alert("An error occurred while saving your profile.");
+            }
+        }
+    };
+
+    // If you want to remove the 'user' data:
+    const removeUserData = async () => {
+        try {
+            await AsyncStorage.removeItem('user');
+            console.log("User data removed");
+        } catch (error) {
+            console.error("Failed to remove user data:", error);
+        }
+    };
+
+    if (!profile) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <Text>Loading...</Text>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -124,6 +186,7 @@ const InfoRow = ({ label, value }) => (
 );
 
 export default ProfileScreen;
+
 
 const styles = StyleSheet.create({
     container: {
@@ -258,4 +321,3 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
 });
-
