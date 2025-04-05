@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type Props = {};
 
@@ -44,18 +45,29 @@ function Login({}: Props) {
     },
   });
 
+  const { login, isLoading }  = useAuthStore()
+
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       // Assuming an async login function
       console.log(values);
+      await login(values);
       toast(
         <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
           <code className="text-white">{JSON.stringify(values, null, 2)}</code>
         </pre>
       );
+      toast.success("Login successful!");
+      // Redirect to the dashboard or home page after successful login
+      window.location.href = "/conversations";
     } catch (error) {
       console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
+      toast(
+        <pre className="mt-2 w-[340px] rounded-md bg-red-950 p-4">
+          <code className="text-white">Login failed</code>
+        </pre>
+      )
     }
   }
   return (
@@ -117,7 +129,7 @@ function Login({}: Props) {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="`w-full" disabled={isLoading}>
                   Login
                 </Button>
                 <Button variant="outline" className="w-full">

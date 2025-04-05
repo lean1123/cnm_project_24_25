@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const formSchema = z
   .object({
@@ -54,9 +55,12 @@ function Register() {
     },
   });
 
+  const { register, isLoading } = useAuthStore()
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       // Assuming an async registration function
+      // await register(values);
       console.log(values);
       toast(
         <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
