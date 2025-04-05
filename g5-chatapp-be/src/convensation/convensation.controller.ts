@@ -7,7 +7,6 @@ import {
   Param,
   Post,
   Put,
-  Response,
 } from '@nestjs/common';
 import { ConvensationService } from './convensation.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
@@ -48,5 +47,10 @@ export class ConvensationController {
   @Get()
   async getAllConvensation() {
     return await this.convensationService.getAllConvensation();
+  }
+
+  @Get('/my-conversation/:userId')
+  async getMyConversationBy(@Param('userId') userId: string) {
+    return await this.convensationService.getMyConversation(userId);
   }
 }

@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Types } from 'mongoose';
 import { UsersService } from 'src/users/users.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
+import { MemberRequest } from './dto/requests/member.request';
 import { Convensation } from './schema/convensation.schema';
+import { MessageService } from 'src/message/message.service';
 
 @Injectable()
 export class ConvensationService {
@@ -11,6 +13,8 @@ export class ConvensationService {
     @InjectModel(Convensation.name)
     private convenstationModel: mongoose.Model<Convensation>,
     private readonly userService: UsersService,
+    @Inject(forwardRef(() => MessageService))
+    private readonly messageService: MessageService,
   ) {}
 
   async createConvensation(
@@ -28,7 +32,7 @@ export class ConvensationService {
 
     if (isGroup === false) {
       const existedConversation = await this.convenstationModel.findOne({
-        members: { $all: members },
+        'members.useId': { $all: members.map((m) => m.userId) },
         isGroup: false,
       });
 
@@ -66,15 +70,39 @@ export class ConvensationService {
     });
   }
 
-  async getConvensationByMember(members: string[]): Promise<Convensation> {
+  async getConvensationByMemberForChatDirect(
+    members: MemberRequest[],
+  ): Promise<Convensation> {
     return await this.convenstationModel.findOne({
       members: { $all: members },
       is_group: false,
     });
   }
 
+  async getConvensationByMemberForChatGroup(
+    members: MemberRequest[],
+  ): Promise<Convensation> {
+    return await this.convenstationModel.findOne({
+      members: { $all: members },
+      is_group: true,
+    });
+  }
+
   async getAllConvensation(): Promise<Convensation[]> {
-    return await this.convenstationModel.find();
+    return await this.convenstationModel.find().exec();
+  }
+
+  async getMyConversation(userId: string): Promise<Convensation[]> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const conversations = await this.convenstationModel
+      .find({
+        'members.userId': new Types.ObjectId(userId),
+      })
+      .exec();
+    return conversations || [];
   }
 
   async updateConvensation(
@@ -89,8 +117,28 @@ export class ConvensationService {
   }
 
   async updateLastMessageField(conversationId: string, messageId: string) {
+    const message = await this.messageService.getMessageById(messageId);
+    const sender = await this.userService.findById(
+      message.sender.userId.toString(),
+    );
+    if (!sender) {
+      throw new Error('Sender not found in updateLastMessageField');
+    }
+
+    if (!message) {
+      throw new Error('Message not found in updateLastMessageField');
+    }
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found in updateLastMessageField');
+    }
+
     await this.convenstationModel.findByIdAndUpdate(conversationId, {
-      lastMessage: new Types.ObjectId(messageId),
+      lastMessage: {
+        sender: `${sender.firstName} ${sender.lastName}`,
+        message: message.content,
+        createdAt: new Date(),
+      },
     });
   }
 }

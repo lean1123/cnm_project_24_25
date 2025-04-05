@@ -21,6 +21,7 @@ import { JwtStrategy } from './jwt.strategy';
           },
         };
       },
+      global: true,
     }),
     MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
   ],
