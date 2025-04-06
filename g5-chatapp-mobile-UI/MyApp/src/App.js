@@ -1,12 +1,15 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import MainNavigator from "./navigation/Navigator";
+import { Provider as PaperProvider } from "react-native-paper"; // Import PaperProvider
+import MainNavigator from "./navigation/Navigator"; // Import MainNavigator
 
 const App = () => {
   return (
-    <NavigationContainer>
-      <MainNavigator />
-    </NavigationContainer>
+    <PaperProvider> 
+      <NavigationContainer>
+        <MainNavigator />
+      </NavigationContainer>
+    </PaperProvider>
   );
 };
 
