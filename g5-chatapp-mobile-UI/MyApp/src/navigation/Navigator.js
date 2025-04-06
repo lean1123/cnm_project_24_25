@@ -21,16 +21,16 @@ import UserInfoScreen from "../screens/chat/info/infoChat";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
-// test API
-import SignUpScreen from "../screens/testAPI/register";
-import SignInScreen from "../screens/testAPI/login";
+// Login/Register without API
+import SignUpScreen from "../screens/account/register";
+import SignInScreen from "../screens/account/login";
 
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="SignUpScreen">
-      {/* test API */}
+    <Stack.Navigator initialRouteName="Loading_start">
+      {/* Login/Register without API */}
       <Stack.Screen
         name="SignUpScreen"
         component={SignUpScreen}
