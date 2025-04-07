@@ -21,7 +21,7 @@ export class ConvensationService {
     conversation: ConvensationRequest,
   ): Promise<Convensation> {
     const members = conversation.members;
-    let isGroup;
+    let isGroup: boolean;
     let groupName;
 
     if (members.length <= 2 && members.length > 0) {

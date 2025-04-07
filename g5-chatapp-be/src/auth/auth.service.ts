@@ -1,12 +1,20 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
+import Redis from 'ioredis';
 import { Model, ObjectId } from 'mongoose';
+import { OtpService } from 'src/mail/otpGenerator/otp.service';
 import { User } from 'src/users/schema/user.schema';
 import { LoginDto } from './dtos/request/login.dto';
 import type { SignUpDto } from './dtos/request/signUp.dto';
 import type { AuthResponseDto } from './dtos/response/auth.response.dto';
+import { TempUser } from './dtos/response/tempUser.response';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
 
 @Injectable()
@@ -16,45 +24,107 @@ export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private jwtService: JwtService,
+    private readonly otpService: OtpService,
+    @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
 
-  async signUp(signUpDto: SignUpDto): Promise<AuthResponseDto> {
+  async signUp(signUpDto: SignUpDto): Promise<TempUser> {
     const { firstName, lastName, email, password, role, gender } = signUpDto;
+
+    // Check if email already exists
+    const existedUser = await this.userModel.findOne({ email });
+    if (existedUser) {
+      throw new UnauthorizedException('Email already exists');
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    let user = null;
+    const userId = Math.floor(Math.random() * 1000000).toString();
+    this.logger.log(`Generated userId: ${userId}`);
+
+    const user = {
+      userId,
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      role,
+      status: 'inactive',
+      gender,
+    };
 
     try {
-      user = await this.userModel.create({
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        role,
-        status: 'active',
-        gender,
-      });
+      await this.redis.set(`user:${userId}`, JSON.stringify(user), 'EX', 300);
+      const fullName = `${firstName} ${lastName}`;
+
+      await this.otpService.sendOTP(email, fullName);
     } catch (error) {
       throw new UnauthorizedException(error);
     }
 
-    const payload = { sub: user._id, username: user.email };
+    return user;
+  }
 
-    const token = await this.jwtService.signAsync(payload);
+  async verifyOtp(userId: string, otp: string): Promise<AuthResponseDto> {
+    const user = await this.redis.get(`user:${userId}`);
 
-    // update refresh token
-    await this.generateAndUpdateRefreshToken(
-      user._id as unknown as ObjectId,
-      user.email as string,
-    );
+    if (!user) {
+      throw new UnauthorizedException('User not found in the create user');
+    }
 
+    const parsedUser = JSON.parse(user) as TempUser;
+
+    const isValidOtp = await this.otpService.verifyOTP(parsedUser.email, otp);
+
+    if (!isValidOtp) {
+      throw new UnauthorizedException('Invalid OTP');
+    }
+
+    parsedUser.status = 'active';
+    let savedUser: User;
+    try {
+      delete parsedUser.userId;
+      savedUser = await this.userModel.create(parsedUser);
+      await this.redis.del(`user:${userId}`);
+
+      await this.generateAndUpdateRefreshToken(
+        savedUser._id as ObjectId,
+        savedUser.email,
+      );
+    } catch (error) {
+      throw new UnauthorizedException(
+        'Error while creating new user: ' + error,
+      );
+    }
+
+    const token = this.jwtService.sign({ id: savedUser._id });
     return {
       token,
       user: {
-        id: user._id as unknown as string,
-        email: user.email,
+        id: savedUser._id as string,
+        email: savedUser.email,
       },
+    };
+  }
+
+  async provideOtp(
+    userId: string,
+  ): Promise<{ message: string; userId: string }> {
+    const user = await this.redis.get(`user:${userId}`);
+    if (!user) {
+      throw new UnauthorizedException('User not found in the temp users');
+    }
+
+    const parsedUser = JSON.parse(user) as TempUser;
+
+    const fullName = `${parsedUser.firstName} ${parsedUser.lastName}`;
+
+    await this.otpService.sendOTP(parsedUser.email, fullName);
+    this.logger.log(`OTP resent to ${parsedUser.email}`);
+
+    return {
+      message: 'OTP resent successfully',
+      userId: parsedUser.userId,
     };
   }
 
@@ -76,15 +146,12 @@ export class AuthService {
     const token = this.jwtService.sign({ id: user._id });
 
     // update refresh token
-    await this.generateAndUpdateRefreshToken(
-      user._id as unknown as ObjectId,
-      user.email,
-    );
+    await this.generateAndUpdateRefreshToken(user._id as ObjectId, user.email);
 
     return {
       token,
       user: {
-        id: user._id as unknown as string,
+        id: user._id as string,
         email: user.email,
       },
     };
@@ -105,14 +172,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    let verified = null;
+    let verified: JwtPayload;
 
     try {
       verified = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
       });
     } catch (error) {
-      console.error('Token không hợp lệ hoặc hết hạn:', error.message);
+      const err = error as Error;
+      console.error('Token không hợp lệ hoặc hết hạn:', err.message);
     }
 
     if (!verified) {
@@ -129,14 +197,11 @@ export class AuthService {
       username: user.email,
     });
 
-    await this.generateAndUpdateRefreshToken(
-      user._id as unknown as ObjectId,
-      user.email,
-    );
+    await this.generateAndUpdateRefreshToken(user._id as ObjectId, user.email);
 
     return {
       token: newAccessToken,
-      user: { id: user._id as unknown as string, email: user.email },
+      user: { id: user._id as string, email: user.email },
     };
   }
 
