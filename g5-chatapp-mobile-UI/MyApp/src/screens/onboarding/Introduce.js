@@ -71,7 +71,7 @@ const Introduce = ({ navigation }) => {
           {/* Nút Skip */}
           <TouchableOpacity
             style={styles.skipButton}
-            onPress={() => navigation.navigate("LoginScreen")}
+            onPress={() => navigation.navigate("SignUpScreen")}
           >
             <Text style={styles.skipButtonText}>Skip</Text>
           </TouchableOpacity>
@@ -83,7 +83,7 @@ const Introduce = ({ navigation }) => {
               if (currentScreen < screenData.length - 1) {
                 setCurrentScreen((prev) => prev + 1);
               } else {
-                navigation.navigate("LoginScreen");
+                navigation.navigate("SignUpScreen");
               }
             }}
           >
