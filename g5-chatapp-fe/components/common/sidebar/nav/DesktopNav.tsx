@@ -28,9 +28,18 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import AccountInformationDialog from "../../dialog/AccountInformationDialog";
+import Cookies from "js-cookie";
 
 const DesktopNav = () => {
   const paths = useNavigation();
+
+  const handleLogout = () => {
+    // Handle logout logic here, e.g., clear tokens, redirect to login page, etc.
+    console.log("Logout clicked");
+    Cookies.remove("accessToken");
+    Cookies.remove("refreshToken");
+    window.location.href = "/login"; // Redirect to login page
+  };
 
   return (
     <Card className="hidden lg:flex lg:flex-col lg:justify-between lg:items-center lg:h-full lg:w-16 lg:px-2 lg:py-4">
@@ -79,7 +88,7 @@ const DesktopNav = () => {
         <Popover>
           <PopoverTrigger asChild>
             <Avatar className="cursor-pointer">
-              <AvatarImage alt="User" src="/avatar.jpg" />
+              {/* <AvatarImage alt="User" src="/avatar.jpg" /> */}
               <AvatarFallback>{getInitials("John Doe")}</AvatarFallback>
             </Avatar>
           </PopoverTrigger>
@@ -91,7 +100,9 @@ const DesktopNav = () => {
                 <h4 className="font-medium text-sm leading-none">Settings</h4>
               </div>
               <Separator />
-              <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer">
+              <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer" onClick={() => {
+                handleLogout();
+              }}>
                 <h4 className="font-medium text-sm leading-none text-red-500">
                   Log out
                 </h4>

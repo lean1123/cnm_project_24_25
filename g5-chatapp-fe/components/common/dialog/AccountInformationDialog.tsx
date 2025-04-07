@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -31,19 +31,18 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import { useAuthStore } from "@/store/useAuthStore";
 type Props = {};
 
-const user = {
-  name: "John Doe",
-  avatar: "",
-  gender: "Male",
-  birthday: "1990-01-01",
-  email: "johndoe99@gmail.com",
-};
 
 function AccountInformationDialog({}: Props) {
   const [isEdit, setIsEdit] = useState(false);
-  const [date, setDate] = useState<Date>(new Date(user.birthday));
+  const [date, setDate] = useState<Date>(new Date());
+  const {user, getMyProfile} = useAuthStore();
+  useEffect(() => {
+    getMyProfile()
+  }
+  , [])
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -75,9 +74,9 @@ function AccountInformationDialog({}: Props) {
               <div className="flex flex-col items-center justify-center gap-4">
                 <div className="relative">
                   <Avatar className="size-28">
-                    <AvatarImage src={user.avatar} alt="User" />
+                    {/* <AvatarImage src={user?.id} alt="User" /> */}
                     <AvatarFallback className="text-4xl">
-                      {getInitials(user.name)}
+                      {getInitials(user?.firstName + " " + user?.lastName)}
                     </AvatarFallback>
                   </Avatar>
                   <Button
@@ -88,22 +87,22 @@ function AccountInformationDialog({}: Props) {
                   </Button>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <span className="font-semibold text-2xl">{user.name}</span>
+                  <span className="font-semibold text-2xl">{user?.firstName +" "+ user?.lastName}</span>
                 </div>
               </div>
               <Separator />
               <div className="flex flex-col gap-4">
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Gender</span>
-                  <span className="font-normal">{user.gender}</span>
+                  <span className="font-normal">{user?.gender}</span>
                 </div>
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Birthday</span>
-                  <span className="font-normal">{user.birthday}</span>
+                  <span className="font-normal">{date.toLocaleString()}</span>
                 </div>
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Email</span>
-                  <span className="font-normal">{user.email}</span>
+                  <span className="font-normal">{user?.email}</span>
                 </div>
               </div>
             </div>
@@ -120,7 +119,7 @@ function AccountInformationDialog({}: Props) {
             <div className="flex flex-col gap-4 py-4">
               <div className="flex flex-col gap-2">
                 <Label>Display name</Label>
-                <Input placeholder="" defaultValue={user.name} />
+                <Input placeholder="" defaultValue={user?.firstName} />
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Gender</Label>

@@ -639,6 +639,10 @@ body {
   height: 1px;
 }
 
+.h-14 {
+  height: 3.5rem;
+}
+
 .max-h-96 {
   max-height: 24rem;
 }
@@ -653,6 +657,10 @@ body {
 
 .min-h-full {
   min-height: 100%;
+}
+
+.min-h-screen {
+  min-height: 100vh;
 }
 
 .w-10 {
@@ -737,6 +745,10 @@ body {
 
 .w-full {
   width: 100%;
+}
+
+.w-14 {
+  width: 3.5rem;
 }
 
 .min-w-\[8rem\] {
@@ -931,6 +943,12 @@ body {
   margin-bottom: calc(2rem * var(--tw-space-y-reverse));
 }
 
+.space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));
+}
+
 .overflow-hidden {
   overflow: hidden;
 }
@@ -1061,6 +1079,11 @@ body {
   background-color: hsl(var(--primary) / .1);
 }
 
+.bg-red-950 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(69 10 10 / var(--tw-bg-opacity, 1));
+}
+
 .bg-secondary {
   background-color: hsl(var(--secondary));
 }
@@ -1074,9 +1097,14 @@ body {
   background-color: #0000;
 }
 
-.bg-red-950 {
+.bg-gray-100 {
   --tw-bg-opacity: 1;
-  background-color: rgb(69 10 10 / var(--tw-bg-opacity, 1));
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
+}
+
+.bg-white {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
 }
 
 .fill-current {
@@ -1113,6 +1141,10 @@ body {
 
 .p-6 {
   padding: 1.5rem;
+}
+
+.p-8 {
+  padding: 2rem;
 }
 
 .px-2 {
@@ -1244,6 +1276,11 @@ body {
   line-height: 1rem;
 }
 
+.text-3xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
 .font-bold {
   font-weight: 700;
 }
@@ -1350,6 +1387,11 @@ body {
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
+.text-gray-600 {
+  --tw-text-opacity: 1;
+  color: rgb(75 85 99 / var(--tw-text-opacity, 1));
 }
 
 .underline {
@@ -1577,6 +1619,10 @@ body {
 .hover\:text-white:hover {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-primary\/80:hover {
+  color: hsl(var(--primary) / .8);
 }
 
 .hover\:underline:hover {
@@ -1909,6 +1955,10 @@ body {
     padding-top: 1rem;
     padding-bottom: 1rem;
   }
+}
+
+.\[\&\:\:-webkit-inner-spin-button\]\:appearance-none::-webkit-inner-spin-button {
+  appearance: none;
 }
 
 .\[\&\:has\(\[aria-selected\]\)\]\:bg-accent:has([aria-selected]) {

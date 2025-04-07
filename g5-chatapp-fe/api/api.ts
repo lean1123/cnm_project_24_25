@@ -11,13 +11,26 @@ const getAccessToken = () => {
   return token ? `Bearer ${token}` : "";
 };
 
-api.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  if (token) {
-    config.headers.Authorization = token;
+api.interceptors.request.use(
+  async (config) => {
+    const publicEndpoints = ["/auth/sign-in", "/auth/sign-up", "/auth/refresh-token"];
+    const isPublicEndpoint = publicEndpoints.some((endpoint) =>
+      config.url?.includes(endpoint)
+    );
+    const token = getAccessToken();
+    if (isPublicEndpoint) {
+      delete config.headers.Authorization;
+      return config;
+    }
+    if (token) {
+      config.headers.Authorization = token;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
 api.interceptors.response.use(
   (response) => {
@@ -26,12 +39,18 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response.status === 401) {
       try {
+        const store = localStorage.getItem("auth-storage");
+        const userId = store ? JSON.parse(store).stats.user._id : null;
         const { data } = await axios.post(
-          "/auth/refresh",
+          "/auth/refresh-token/"+userId,
           {},
           { withCredentials: true }
         );
-        Cookies.set("accessToken", data.accessToken, { expires: 1,secure: true , sameSite: "Strict" });
+        Cookies.set("accessToken", data.accessToken, {
+          expires: 1,
+          secure: true,
+          sameSite: "Strict",
+        });
         error.config.headers.Authorization = `Bearer ${data.accessToken}`;
         return axios.request(error.config);
       } catch (error) {

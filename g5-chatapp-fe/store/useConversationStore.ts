@@ -1,4 +1,4 @@
-import { getMyConversations } from "@/api/conversation";
+import { getMyConversations } from "@/api/conversationApi";
 import { Conversation } from "@/types";
 import { create } from "zustand";
 
