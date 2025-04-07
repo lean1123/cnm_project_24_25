@@ -10,6 +10,9 @@ import { ConvensationModule } from './convensation/convensation.module';
 import { MessageModule } from './message/message.module';
 import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
+import { MailModule } from './mail/mail.module';
+import { RedisModule } from './redis/redis.module';
+import { OtpModule } from './mail/otpGenerator/otp.module';
 
 @Module({
   imports: [
@@ -32,6 +35,9 @@ import { UsersModule } from './users/users.module';
     CallModule,
     UploadModule,
     CloudinaryModule,
+    MailModule,
+    RedisModule,
+    OtpModule,
   ],
   controllers: [],
   providers: [],

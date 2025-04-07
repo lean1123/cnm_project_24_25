@@ -1,12 +1,14 @@
-import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UserSchema } from 'src/users/schema/user.schema';
-import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { MongooseModule } from '@nestjs/mongoose';
+import { PassportModule } from '@nestjs/passport';
+import { UserSchema } from 'src/users/schema/user.schema';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { OtpModule } from 'src/mail/otpGenerator/otp.module';
+import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { JwtStrategy } from './jwt.strategy';
       global: true,
     }),
     MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
+    forwardRef(() => OtpModule), // OtpModule được sử dụng trong AuthService
+    forwardRef(() => RedisModule),
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
