@@ -6,6 +6,7 @@ import { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
 import { OtpVerificationDto } from './dtos/request/otpVerification.dto';
 import { ForgotPassword } from './dtos/request/forgotPassword.dto';
+import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -42,5 +43,14 @@ export class AuthController {
   @Post('forgot-password')
   forgetPassword(@Body() forgotPassword: ForgotPassword) {
     return this.authService.forgotPassword(forgotPassword);
+  }
+
+  @Post('forgot-password-verification')
+  verifyForgotPassword(
+    @Body() forgotPasswordVerificationDto: ForgotPasswordVerificationDto,
+  ) {
+    return this.authService.verifyForgotPasswordOtp(
+      forgotPasswordVerificationDto,
+    );
   }
 }
