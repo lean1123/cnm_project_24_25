@@ -29,9 +29,12 @@ import Image from "next/image";
 import Link from "next/link";
 import AccountInformationDialog from "../../dialog/AccountInformationDialog";
 import Cookies from "js-cookie";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const DesktopNav = () => {
   const paths = useNavigation();
+
+  const {user} = useAuthStore()
 
   const handleLogout = () => {
     // Handle logout logic here, e.g., clear tokens, redirect to login page, etc.
@@ -89,7 +92,7 @@ const DesktopNav = () => {
           <PopoverTrigger asChild>
             <Avatar className="cursor-pointer">
               {/* <AvatarImage alt="User" src="/avatar.jpg" /> */}
-              <AvatarFallback>{getInitials("John Doe")}</AvatarFallback>
+              <AvatarFallback>{getInitials(user?.firstName+ " " + user?.lastName)}</AvatarFallback>
             </Avatar>
           </PopoverTrigger>
           <PopoverContent className="w-52 ml-6 p-0">
