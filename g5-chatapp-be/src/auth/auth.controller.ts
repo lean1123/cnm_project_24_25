@@ -1,6 +1,19 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dtos/request/changePassword.dto';
+import { ForgotPassword } from './dtos/request/forgotPassword.dto';
+import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';
 import { LoginDto } from './dtos/request/login.dto';
+import { OtpVerificationDto } from './dtos/request/otpVerification.dto';
 import { SignUpDto } from './dtos/request/signUp.dto';
 import { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
@@ -17,7 +30,7 @@ export class AuthController {
   @Post('/verify-otp/:userId')
   async verifyOtp(
     @Param('userId') userId: string,
-    @Body() body: { otp: string },
+    @Body() body: OtpVerificationDto,
   ): Promise<AuthResponseDto> {
     return this.authService.verifyOtp(userId, body.otp);
   }
@@ -35,5 +48,34 @@ export class AuthController {
   @Post('refresh-token/:id')
   refreshToken(@Param('id') id: string): Promise<AuthResponseDto> {
     return this.authService.refreshToken(id);
+  }
+
+  @Post('forgot-password')
+  forgetPassword(@Body() forgotPassword: ForgotPassword) {
+    return this.authService.forgotPassword(forgotPassword);
+  }
+
+  @Post('forgot-password-verification')
+  verifyForgotPassword(
+    @Body() forgotPasswordVerificationDto: ForgotPasswordVerificationDto,
+  ) {
+    return this.authService.verifyForgotPasswordOtp(
+      forgotPasswordVerificationDto,
+    );
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('change-password/:id')
+  async changePassword(
+    @Param('id') id: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return await this.authService.changePassword(id, changePasswordDto);
+  }
+
+  @Get('get-my-profile')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyProfile(@Request() req) {
+    return await this.authService.getMyProfile(req);
   }
 }

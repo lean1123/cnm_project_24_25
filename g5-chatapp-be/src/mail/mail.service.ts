@@ -44,12 +44,8 @@ export class MailService {
 </center>
 
 <h2 style="text-align:center;">
-  {{params.fullName}}, Thank's for registered Coconut Chatting App!
+  {{params.fullName}}, Your OTP To Verify Coconut Chatting App!
 </h2>
-
-<center>
-  <img src="https://res.cloudinary.com/lean1123/image/upload/v1743915918/email-avarta_flly7g.jpg" width="400" alt="Coconut Chatting App" />
-</center>
 
 <div style="background-color:#f1f1f1; padding:20px; text-align:center; margin: 30px 0;">
   <p>Your OTP Here!</p>
