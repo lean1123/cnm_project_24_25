@@ -1,86 +1,207 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    View, Text, Image, TouchableOpacity, StyleSheet, Modal, TextInput, ScrollView, SafeAreaView 
+    View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView,
+    ActivityIndicator, TextInput, Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
+import { getUserProfile, updateUserProfile } from '../../services/user/userService';
+import NotificationModal from '../../components/CustomModal';
+import EditProfileModal from '../../components/EditProfileModal';
+import { API_URL } from '../../config/constants';
+import { changePassword } from '../../services/auth/authService';
 
-const ProfileScreen = () => {
-    const [modalVisible, setModalVisible] = useState(false);
-    const [profile, setProfile] = useState(null);
-    const [editedProfile, setEditedProfile] = useState(null);
-    const [userId, setUserId] = useState(null);
+const ProfileScreen = ({ navigation }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+    const [notificationMessage, setNotificationMessage] = useState("");
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
-        // Lấy ID người dùng từ AsyncStorage khi màn hình được hiển thị
-        const fetchUserProfile = async () => {
-            try {
-                const user = await AsyncStorage.getItem('user');
-                if (user) {
-                    const parsedUser = JSON.parse(user);
-                    setUserId(parsedUser.id);  // Lưu ID người dùng
-                    setEditedProfile(parsedUser);  // Cập nhật state editedProfile cho modal
-                    fetchUserData(parsedUser.id); // Gọi API lấy thông tin người dùng
-                }
-            } catch (error) {
-                console.error("Failed to fetch user data:", error);
-            }
-        };
-        
         fetchUserProfile();
     }, []);
 
-    // Gọi API để lấy thông tin người dùng từ cơ sở dữ liệu
-    const fetchUserData = async (id) => {
+    const fetchUserProfile = async () => {
         try {
-            const response = await fetch(`http://192.168.1.3:3000/users/${id}`); // Thay đổi URL thành endpoint API của bạn
-            const data = await response.json();
-
-            if (response.ok) {
-                setProfile(data.user); // Cập nhật thông tin người dùng
-            } else {
-                alert("Error fetching user data.");
+            setLoading(true);
+            
+            // Lấy token từ AsyncStorage
+            const token = await AsyncStorage.getItem("userToken");
+            if (!token) {
+                // console.error("No token found");
+                showNotification("Please login again");
+                navigation.navigate("SignInScreen");
+                return;
             }
-        } catch (error) {
-            console.error("Error fetching user data:", error);
-            alert("An error occurred while fetching user data.");
-        }
-    };
 
-    const handleSave = async () => {
-        if (editedProfile) {
-            try {
-                if (editedProfile.name && editedProfile.phone && editedProfile.email) {
-                    // Kiểm tra nếu editedProfile không phải là null/undefined và có đầy đủ dữ liệu
-                    await AsyncStorage.setItem('user', JSON.stringify(editedProfile));
-                    setProfile(editedProfile); // Cập nhật lại profile state
-                    setModalVisible(false);  // Đóng modal
-                } else {
-                    alert("Please fill in all required fields.");
+            // Lấy userId từ AsyncStorage
+            const userId = await AsyncStorage.getItem("userId");
+            if (!userId) {
+                // console.error("No userId found");
+                showNotification("Please login again");
+                navigation.navigate("SignInScreen");
+                return;
+            }
+
+            // console.log("Token:", token);
+            // console.log("UserId:", userId);
+
+            // Lấy thông tin user từ API
+            const response = await fetch(`${API_URL}/users/${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 }
-            } catch (error) {
-                console.error("Failed to save user profile:", error);
-                alert("An error occurred while saving your profile.");
+            });
+
+            const result = await response.json();
+            // console.log("User profile API response:", result);
+
+            if (!response.ok) {
+                throw new Error(result.message || "Failed to fetch user profile");
             }
-        }
-    };
 
-    // If you want to remove the 'user' data:
-    const removeUserData = async () => {
-        try {
-            await AsyncStorage.removeItem('user');
-            console.log("User data removed");
+            // Cập nhật state với dữ liệu mới
+            if (result.data) {
+                const userData = result.data;
+                // console.log("User data to set:", {
+                //     firstName: userData.firstName || "",
+                //     lastName: userData.lastName || "",
+                //     email: userData.email || "",
+                //     gender: userData.gender || "Not set",
+                //     role: Array.isArray(userData.role) ? userData.role : [userData.role].filter(Boolean),
+                //     avatar: userData.avatar || null
+                // });
+                
+                setUser({
+                    firstName: userData.firstName || "",
+                    lastName: userData.lastName || "",
+                    email: userData.email || "",
+                    gender: userData.gender || "Not set",
+                    role: Array.isArray(userData.role) ? userData.role : [userData.role].filter(Boolean),
+                    avatar: userData.avatar || null
+                });
+            }
+            
         } catch (error) {
-            console.error("Failed to remove user data:", error);
+            console.error("Profile fetch error:", error);
+            showNotification(error.message || "An error occurred while loading profile");
+        } finally {
+            setLoading(false);
         }
     };
 
-    if (!profile) {
+    const handleLogout = async () => {
+        try {
+            await AsyncStorage.removeItem("userToken");
+            await AsyncStorage.removeItem("user");
+            await AsyncStorage.removeItem("userId");
+            navigation.reset({
+                index: 0,
+                routes: [{ name: "SignInScreen" }],
+            });
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
+    };
+
+    const handleSave = async (updatedProfile) => {
+        try {
+            const result = await updateUserProfile(updatedProfile);
+            if (result.ok) {
+                setUser(result.data);
+                setEditModalVisible(false);
+                showNotification("Profile updated successfully");
+            } else {
+                showNotification(result.message || "Failed to update profile");
+            }
+        } catch (error) {
+            console.error("Update profile error:", error);
+            showNotification("An error occurred while updating profile");
+        }
+    };
+
+    const showNotification = (message) => {
+        setNotificationMessage(message);
+        setNotificationModalVisible(true);
+        setTimeout(() => {
+            setNotificationModalVisible(false);
+        }, 2000);
+    };
+
+    const validatePassword = (password) => {
+        const minLength = 6;
+        if (password.length < minLength) {
+            return 'Password must be at least 6 characters long';
+        }
+        return null;
+    };
+
+    const handleChangePassword = async () => {
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            showNotification('Please fill in all fields');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showNotification('New passwords do not match');
+            return;
+        }
+
+        const passwordError = validatePassword(newPassword);
+        if (passwordError) {
+            showNotification(passwordError);
+            return;
+        }
+
+        try {
+            const userId = await AsyncStorage.getItem("userId");
+            const token = await AsyncStorage.getItem("userToken");
+            
+            if (!token) {
+                showNotification('Authentication token not found. Please login again.');
+                return;
+            }
+
+            const response = await changePassword(userId, oldPassword, newPassword, token);
+            if (response.ok) {
+                showNotification('Password changed successfully');
+                setShowChangePassword(false);
+                setOldPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                showNotification(response.message || 'Failed to change password');
+            }
+        } catch (error) {
+            console.error('Change password error details:', error);
+            showNotification('An error occurred. Please try again later.');
+        }
+    };
+
+    if (loading) {
         return (
             <SafeAreaView style={styles.container}>
-                <Text>Loading...</Text>
+                <ActivityIndicator size="large" color="#135CAF" />
+            </SafeAreaView>
+        );
+    }
+
+    if (!user) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <Text>No profile data available</Text>
             </SafeAreaView>
         );
     }
@@ -89,34 +210,115 @@ const ProfileScreen = () => {
         <SafeAreaView style={styles.container}>
             <Header />
             <ScrollView contentContainerStyle={styles.scrollView}>
-                {/* Profile Info */}
                 <View style={styles.profileSection}>
                     <View style={styles.avatarContainer}>
                         <Image
-                            source={{ uri: 'https://i.pravatar.cc/150?img=5' }}
+                            source={{ uri: user.avatar || 'https://i.pravatar.cc/150?img=5' }}
                             style={styles.avatar}
                         />
                         <TouchableOpacity style={styles.editAvatar}>
                             <Icon name="pencil" size={18} color="#fff" />
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.name}>{profile.name}</Text>
+                    <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
 
-                    {/* Thông tin cá nhân */}
                     <View style={styles.infoContainer}>
-                        <InfoRow label="Phone" value={profile.phone} />
-                        <InfoRow label="Gender" value={profile.gender} />
-                        <InfoRow label="Birthday" value={profile.birthday} />
-                        <InfoRow label="Email" value={profile.email} />
+                        <InfoRow label="Email" value={user.email} />
+                        <InfoRow label="Gender" value={user.gender} />
+                        <InfoRow label="Role" value={user.role?.join(', ')} />
                     </View>
 
-                    {/* Buttons */}
-                    <TouchableOpacity style={styles.editButton} onPress={() => setModalVisible(true)}>
+                    <TouchableOpacity style={styles.editButton} onPress={() => setEditModalVisible(true)}>
                         <Icon name="pencil" size={18} color="#fff" />
                         <Text style={styles.editText}>Edit Profile</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.logoutButton}>
+                    <TouchableOpacity 
+                        style={styles.changePasswordButton} 
+                        onPress={() => setShowChangePassword(!showChangePassword)}
+                    >
+                        <Icon name="lock" size={18} color="#fff" />
+                        <Text style={styles.changePasswordText}>
+                            {showChangePassword ? 'Hide Change Password' : 'Change Password'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {showChangePassword && (
+                        <View style={styles.passwordForm}>
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Current Password"
+                                    value={oldPassword}
+                                    onChangeText={setOldPassword}
+                                    secureTextEntry={!showOldPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowOldPassword(!showOldPassword)}
+                                >
+                                    <Icon
+                                        name={showOldPassword ? 'eye-off' : 'eye'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="New Password"
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    secureTextEntry={!showNewPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowNewPassword(!showNewPassword)}
+                                >
+                                    <Icon
+                                        name={showNewPassword ? 'eye-off' : 'eye'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Confirm New Password"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry={!showConfirmPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                >
+                                    <Icon
+                                        name={showConfirmPassword ? 'eye-off' : 'eye'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.passwordRequirements}>
+                                Password must be at least 6 characters long
+                            </Text>
+
+                            <TouchableOpacity
+                                style={styles.submitButton}
+                                onPress={handleChangePassword}
+                            >
+                                <Text style={styles.submitButtonText}>Update Password</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Icon name="logout" size={18} color="#E74C3C" />
                         <Text style={styles.logoutText}>Logout</Text>
                     </TouchableOpacity>
@@ -125,73 +327,39 @@ const ProfileScreen = () => {
 
             <Footer />
 
-            {/* Modal chỉnh sửa */}
-            <Modal visible={modalVisible} animationType="slide" transparent={true}>
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Edit Profile</Text>
+            <EditProfileModal
+                visible={editModalVisible}
+                user={user}
+                onClose={() => setEditModalVisible(false)}
+                onSave={handleSave}
+            />
 
-                        <TextInput
-                            style={styles.input}
-                            value={editedProfile.name}
-                            onChangeText={(text) => setEditedProfile({ ...editedProfile, name: text })}
-                            placeholder="Full Name"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            value={editedProfile.phone}
-                            onChangeText={(text) => setEditedProfile({ ...editedProfile, phone: text })}
-                            placeholder="Phone Number"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            value={editedProfile.gender}
-                            onChangeText={(text) => setEditedProfile({ ...editedProfile, gender: text })}
-                            placeholder="Gender"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            value={editedProfile.birthday}
-                            onChangeText={(text) => setEditedProfile({ ...editedProfile, birthday: text })}
-                            placeholder="Birthday"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            value={editedProfile.email}
-                            onChangeText={(text) => setEditedProfile({ ...editedProfile, email: text })}
-                            placeholder="Email"
-                        />
-
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                                <Text style={styles.saveText}>Save</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-                                <Text style={styles.cancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+            <NotificationModal
+                visible={notificationModalVisible}
+                message={notificationMessage}
+                onDismiss={() => setNotificationModalVisible(false)}
+            />
         </SafeAreaView>
     );
 };
 
-const InfoRow = ({ label, value }) => (
-    <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>{label} :</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-        <Icon name="content-copy" size={16} color="#999" />
-    </View>
-);
+const InfoRow = ({ label, value }) => {
+    // Xử lý giá trị trước khi hiển thị
+    const displayValue = Array.isArray(value) ? value.join(', ') : value;
+    return (
+        <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{label}:</Text>
+            <Text style={styles.infoValue}>{displayValue || "Not set"}</Text>
+        </View>
+    );
+};
 
 export default ProfileScreen;
-
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#f0f2f5',
     },
     scrollView: {
         alignItems: 'center',
@@ -199,19 +367,24 @@ const styles = StyleSheet.create({
     },
     profileSection: {
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: '#ffffff',
         width: '90%',
         borderRadius: 15,
         padding: 20,
         elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     avatarContainer: {
         position: 'relative',
+        marginBottom: 15,
     },
     avatar: {
-        width: 110,
-        height: 110,
-        borderRadius: 55,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
         borderWidth: 3,
         borderColor: '#135CAF',
     },
@@ -220,104 +393,148 @@ const styles = StyleSheet.create({
         bottom: 0,
         right: 0,
         backgroundColor: '#135CAF',
-        borderRadius: 15,
-        padding: 6,
+        borderRadius: 20,
+        padding: 8,
+        elevation: 3,
     },
     name: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: 'bold',
+        color: '#1a1a1a',
         marginTop: 10,
+        marginBottom: 5,
     },
     infoContainer: {
-        marginTop: 15,
+        marginTop: 20,
         width: '100%',
+        backgroundColor: '#f8f9fa',
+        borderRadius: 12,
+        padding: 15,
     },
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#fff',
-        padding: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        backgroundColor: '#ffffff',
         borderRadius: 8,
         marginBottom: 10,
         elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
     },
     infoLabel: {
-        fontWeight: 'bold',
-        color: '#555',
+        fontWeight: '600',
+        color: '#666666',
+        fontSize: 16,
     },
     infoValue: {
-        color: '#333',
+        color: '#135CAF',
+        fontSize: 16,
+        fontWeight: '500',
+        backgroundColor: '#f8f9fa',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 5,
     },
     editButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#3498db',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
+        justifyContent: 'center',
+        backgroundColor: '#135CAF',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
         borderRadius: 8,
-        marginTop: 15,
+        marginTop: 20,
+        width: '100%',
+        elevation: 3,
     },
     editText: {
-        color: '#fff',
+        color: '#ffffff',
         marginLeft: 10,
         fontWeight: 'bold',
+        fontSize: 16,
+    },
+    changePasswordButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#4CAF50',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 8,
+        marginTop: 15,
+        width: '100%',
+        elevation: 3,
+    },
+    changePasswordText: {
+        color: '#ffffff',
+        marginLeft: 10,
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     logoutButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FCE4E4',
-        paddingVertical: 10,
-        paddingHorizontal: 35,
+        justifyContent: 'center',
+        backgroundColor: '#ffffff',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
         borderRadius: 8,
-        marginTop: 10,
+        marginTop: 15,
+        width: '100%',
+        borderWidth: 1,
+        borderColor: '#E74C3C',
+        elevation: 2,
     },
     logoutText: {
         color: '#E74C3C',
         marginLeft: 10,
         fontWeight: 'bold',
+        fontSize: 16,
     },
-    modalContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'center',
+    passwordForm: {
+        width: '100%',
+        marginTop: 15,
+        padding: 15,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8,
+    },
+    inputContainer: {
+        flexDirection: 'row',
         alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 10,
-        width: '85%',
-        elevation: 5,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 15,
-        textAlign: 'center',
-    },
-    input: {
         borderWidth: 1,
         borderColor: '#ddd',
         borderRadius: 8,
-        padding: 10,
-        marginVertical: 5,
+        marginBottom: 10,
+        backgroundColor: '#fff',
     },
-    modalButtons: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 15,
+    input: {
+        flex: 1,
+        padding: 12,
+        fontSize: 16,
     },
-    saveButton: {
-        backgroundColor: '#3498db',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
+    eyeIcon: {
+        padding: 12,
+    },
+    passwordRequirements: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 15,
+        lineHeight: 18,
+    },
+    submitButton: {
+        backgroundColor: '#135CAF',
+        padding: 12,
         borderRadius: 8,
+        alignItems: 'center',
     },
-    cancelButton: {
-        backgroundColor: '#FCE4E4',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8,
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

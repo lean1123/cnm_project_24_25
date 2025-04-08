@@ -15,7 +15,7 @@ const LoginScreen = ({ navigation }) => {
   const [otpCode, setOtpCode] = useState(["", "", "", ""]);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(45);
-  const otpInputs = useRef([]); // Dùng để tham chiếu tới từng ô nhập OTP
+  const otpInputs = useRef([]); 
 
   const isPhoneNumber = (number) => {
     const phoneRe = /^[0-9]{9}$/;
@@ -32,7 +32,7 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const handleOtpChange = (value, index) => {
-    if (!/^\d?$/.test(value)) return; // Chặn nhập ký tự không phải số
+    if (!/^\d?$/.test(value)) return; 
 
     const newOtp = [...otpCode];
     newOtp[index] = value;
@@ -46,7 +46,6 @@ const LoginScreen = ({ navigation }) => {
 
   const handleOtpKeyPress = (e, index) => {
     if (e.nativeEvent.key === "Backspace" && otpCode[index] === "") {
-      // Nếu ô hiện tại trống và bấm xóa, chuyển về ô trước đó
       if (index > 0) {
         otpInputs.current[index - 1].focus();
       }
@@ -102,13 +101,13 @@ const LoginScreen = ({ navigation }) => {
               {otpCode.map((digit, index) => (
                 <TextInput
                   key={index}
-                  ref={(ref) => (otpInputs.current[index] = ref)} // Gán ref cho từng ô input
+                  ref={(ref) => (otpInputs.current[index] = ref)} 
                   style={styles.otpInput}
                   keyboardType="number-pad"
                   maxLength={1}
                   value={digit}
                   onChangeText={(value) => handleOtpChange(value, index)}
-                  onKeyPress={(e) => handleOtpKeyPress(e, index)} // Xử lý backspace
+                  onKeyPress={(e) => handleOtpKeyPress(e, index)} 
                 />
               ))}
             </View>
