@@ -4,6 +4,7 @@ import { LoginDto } from './dtos/request/login.dto';
 import { SignUpDto } from './dtos/request/signUp.dto';
 import { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
+import { OtpVerificationDto } from './dtos/request/otpVerification.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -17,7 +18,7 @@ export class AuthController {
   @Post('/verify-otp/:userId')
   async verifyOtp(
     @Param('userId') userId: string,
-    @Body() body: { otp: string },
+    @Body() body: OtpVerificationDto,
   ): Promise<AuthResponseDto> {
     return this.authService.verifyOtp(userId, body.otp);
   }
