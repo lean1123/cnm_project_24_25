@@ -1,11 +1,13 @@
 import { DataLogin, DataRegister, User } from "@/types";
 import { create } from "zustand";
 import {
+  forgotPassword,
   login,
   logout,
   myProfile,
   provideOtp,
   register,
+  verifyForgotPassword,
   verifyOtp,
 } from "@/api/authApi";
 import { toast } from "sonner";
@@ -17,12 +19,15 @@ interface iAuthStore {
   isLoading: boolean;
   error: string | null;
   userRegistrationId: string | null;
+  emailForgotPassword: string | null;
   login: (dataLogin: DataLogin) => Promise<void>;
   register: (dataRegister: DataRegister) => Promise<void>;
   logout: () => void;
   getMyProfile: () => Promise<void>;
   verifyOtp: (userId: string, otp: string) => Promise<void>;
   provideOtp: (userId: string) => Promise<void>;
+  forgotPassword: (email: string, newPassword: string) => Promise<void>;
+  verifyForgotPassword: (email: string, otp: string) => Promise<void>;
 }
 
 export const useAuthStore = create<iAuthStore>()(
@@ -33,9 +38,10 @@ export const useAuthStore = create<iAuthStore>()(
       isLoading: false,
       error: null,
       userRegistrationId: null,
+      emailForgotPassword: null,
 
       login: async (dataLogin: DataLogin) => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, emailForgotPassword: null });
         try {
           const data = await login(dataLogin);
           set({ user: data.user, isAuthenticated: true });
@@ -50,7 +56,7 @@ export const useAuthStore = create<iAuthStore>()(
         }
       },
       register: async (dataRegister: DataRegister) => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, emailForgotPassword: null });
         try {
           const data = await register(dataRegister);
           set({ userRegistrationId: data });
@@ -67,7 +73,7 @@ export const useAuthStore = create<iAuthStore>()(
         await logout();
         useAuthStore.persist.clearStorage(); // Clear the persisted state
         useAuthStore.persist.rehydrate(); // Rehydrate the store to its initial state
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, emailForgotPassword: null });
       },
       getMyProfile: async () => {
         set({ isLoading: true, error: null });
@@ -76,7 +82,7 @@ export const useAuthStore = create<iAuthStore>()(
           const data = await myProfile(id!);
           // fix after backend response
           const userid = data._id;
-          set({ user: {...data, id: userid } });
+          set({ user: { ...data, id: userid } });
         } catch (error) {
           set({ error: "Failed to fetch profile" });
         } finally {
@@ -110,6 +116,37 @@ export const useAuthStore = create<iAuthStore>()(
           set({ isLoading: false });
         }
       },
+      forgotPassword: async (email: string, newPassword: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const data = await forgotPassword(email, newPassword);
+          set({ emailForgotPassword: email });
+          setTimeout(() => {
+            window.location.href = `/verify-otp`;
+          }, 500);
+        } catch (error) {
+          set({ error: "Failed to reset password" });
+          toast.error("Failed to reset password. Please try again.");
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+      verifyForgotPassword: async (email: string, otp: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const data = await verifyForgotPassword(email, otp);
+          set({ emailForgotPassword: email });
+          toast.success("OTP verified successfully!");
+          setTimeout(() => {
+            window.location.href = "/auth/login";
+          }, 1000);
+        } catch (error) {
+          set({ error: "OTP verification failed" });
+          toast.error("OTP verification failed. Please try again.");
+        } finally {
+          set({ isLoading: false });
+        }
+      }
     }),
     {
       name: "auth-storage", // name of the item in the storage (must be unique);

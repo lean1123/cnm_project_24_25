@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/useAuthStore";
 
 
 const FormSchema = z.object({
@@ -48,22 +49,13 @@ const ForgotPasswordPage = (props: Props) => {
       });
 
       const router = useRouter();
+      const { forgotPassword, emailForgotPassword } = useAuthStore();
     
       async function onSubmit(data: z.infer<typeof FormSchema>) {
         try {
-          const response = await fetch("/api/forgot-password", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(data),
-          });
-    
-          if (!response.ok) {
-            throw new Error("Gửi yêu cầu thất bại");
-          }
-    
-          toast.info("Đã gửi liên kết đặt lại mật khẩu đến email của bạn");
+          await forgotPassword(data.email, data.newPassword);
+          // toast.success("Password reset successfully!");
+          router.push("/auth/verify-opt");
         } catch (error) {
           toast.error("Gửi yêu cầu thất bại. Vui lòng thử lại sau.");
         }
@@ -112,7 +104,7 @@ const ForgotPasswordPage = (props: Props) => {
                           id="newPassword"
                           placeholder="******"
                           type="password"
-                          autoComplete=""
+                          // autoComplete=""
                           {...field}
                         />
                       </FormControl>
@@ -133,7 +125,7 @@ const ForgotPasswordPage = (props: Props) => {
                           type="password"
                           id="confirmPassword"
                           placeholder="******"
-                          autoComplete="new-password"
+                          // autoComplete="new-password"
                           {...field}
                         />
                       </FormControl>

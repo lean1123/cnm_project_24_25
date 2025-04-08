@@ -13,7 +13,7 @@ const getAccessToken = () => {
 
 api.interceptors.request.use(
   async (config) => {
-    const publicEndpoints = ["/auth/sign-in", "/auth/sign-up", "/auth/refresh-token"];
+    const publicEndpoints = ["/auth/sign-in", "/auth/sign-up", "/auth/refresh-token", "/auth/forgot-password", "/auth/forgot-password-verification"];
     const isPublicEndpoint = publicEndpoints.some((endpoint) =>
       config.url?.includes(endpoint)
     );

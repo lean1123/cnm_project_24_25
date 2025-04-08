@@ -78,3 +78,29 @@ export const provideOtp = async (userId: string) => {
     throw error;
   }
 }
+
+export const forgotPassword = async (email: string, newPassword: string) => {
+  try {
+    const { data } = await api.post("/auth/forgot-password", {
+      email,
+      newPassword,
+    });
+    return data.data;
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    throw error;
+  }
+}
+
+export const verifyForgotPassword = async (email: string, otp: string) => {
+  try {
+    const { data } = await api.post("/auth/forgot-password-verification", {
+      email,
+      otp,
+    });
+    return data.data;
+  } catch (error) {
+    console.error("Verify forgot password error:", error);
+    throw error;
+  }
+}

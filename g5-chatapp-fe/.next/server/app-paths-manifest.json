@@ -1,7 +1,5 @@
 {
   "/(auth)/login/page": "app/(auth)/login/page.js",
   "/(auth)/forgot-password/page": "app/(auth)/forgot-password/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/(auth)/register/page": "app/(auth)/register/page.js"
+  "/favicon.ico/route": "app/favicon.ico/route.js"
 }

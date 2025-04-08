@@ -14,7 +14,7 @@ const OtpVerifyPage = (props: Props) => {
   const [countdown, setCountdown] = useState(90);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
-  const {verifyOtp, provideOtp, userRegistrationId} = useAuthStore()
+  const {verifyOtp, provideOtp, userRegistrationId, emailForgotPassword, verifyForgotPassword} = useAuthStore()
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -62,12 +62,22 @@ const OtpVerifyPage = (props: Props) => {
     e.preventDefault();
     const enteredOtp = otp.join("");
     // Add your OTP verification logic here
+    if (emailForgotPassword === null) {
     console.log("OTP submitted:", enteredOtp);
     if (enteredOtp.length === 6 && !otp.some((digit) => digit === "") && userRegistrationId) {
       await verifyOtp(userRegistrationId, enteredOtp);
     } else {
       console.error("Invalid OTP length");
       toast.error("Invalid OTP length");
+    } } else {
+      console.log("OTP submitted:", enteredOtp);
+      if (enteredOtp.length === 6 && !otp.some((digit) => digit === "")) {
+        await verifyForgotPassword(emailForgotPassword, enteredOtp);
+        
+      } else {
+        console.error("Invalid OTP length");
+        toast.error("Invalid OTP length");
+      }
     }
   };
 
