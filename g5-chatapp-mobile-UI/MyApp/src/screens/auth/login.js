@@ -13,7 +13,7 @@ import InputField from "../../components/InputField";
 import PasswordField from "../../components/PasswordInput";
 import NotificationModal from "../../components/CustomModal";
 import { signIn } from "../../services/auth/authService";
-import { validateEmail, validatePassword } from "../../utils/validators";
+import { validateSignIn } from "../../utils/validators";
 import { CommonActions } from "@react-navigation/native";
 
 const SignInScreen = ({ navigation }) => {
@@ -23,6 +23,14 @@ const SignInScreen = ({ navigation }) => {
   const [modalMessage, setModalMessage] = useState("");
 
   const handleSignIn = async () => {
+    // Validate form
+    const validationError = validateSignIn({ email, password });
+    if (validationError) {
+      setModalMessage(validationError);
+      setModalVisible(true);
+      return;
+    }
+
     try {
       const result = await signIn(email, password);
       // console.log("Sign in result:", result);
