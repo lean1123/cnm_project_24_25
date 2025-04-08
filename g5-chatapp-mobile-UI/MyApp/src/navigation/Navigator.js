@@ -25,12 +25,13 @@ import CallingScreen from "../screens/chat/call/calling";
 import SignUpScreen from "../screens/auth/register";
 import SignInScreen from "../screens/auth/login";
 import VerifyOTPScreen from "../screens/auth/verifyOTP";
+import ForgotPasswordScreen from "../screens/account/forgotPassword";
 
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="SignUpScreen">
+    <Stack.Navigator initialRouteName="Loading_start">
       {/* Login/Register without API */}
       <Stack.Screen
         name="SignUpScreen"
@@ -45,6 +46,11 @@ const MainNavigator = () => {
       <Stack.Screen
         name="VerifyOTPScreen"
         component={VerifyOTPScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ForgotPasswordScreen"
+        component={ForgotPasswordScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

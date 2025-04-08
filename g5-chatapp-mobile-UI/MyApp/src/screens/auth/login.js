@@ -90,9 +90,18 @@ const SignInScreen = ({ navigation }) => {
             onChangeText={setPassword}
           />
 
+          <TouchableOpacity 
+            style={styles.forgotPasswordButton}
+            onPress={() => navigation.navigate("ForgotPasswordScreen")}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
             <Text style={styles.buttonText}>Login</Text>
           </TouchableOpacity>
+
+          
 
           <TouchableOpacity onPress={() => navigation.navigate("SignUpScreen")} >
             <Text style={styles.footerText}>
@@ -168,6 +177,17 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     color: "#4484CD",
+  },
+  forgotPasswordButton: {
+    marginTop: -5,
+    marginBottom: 15,
+    alignSelf: "flex-end",
+    padding: 5,
+  },
+  forgotPasswordText: {
+    color: "#135CAF",
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
 
