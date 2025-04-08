@@ -32,6 +32,8 @@ export class UsersController {
   }
 
   @Get(':id')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.ADMIN, Role.USER)
   async findById(@Param('id') id: string): Promise<User> {
     return await this.UsersService.findById(id);
   }
