@@ -31,8 +31,8 @@ const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="Loading_start">
-      {/* Login/Register without API */}
+    <Stack.Navigator initialRouteName="SignInScreen">
+      {/* Auth Screens */}
       <Stack.Screen
         name="SignUpScreen"
         component={SignUpScreen}
@@ -53,6 +53,8 @@ const MainNavigator = () => {
         component={ForgotPasswordScreen}
         options={{ headerShown: false }}
       />
+
+      {/* Onboarding Screens */}
       <Stack.Screen
         name="Loading_start"
         component={Loading_start}
@@ -73,6 +75,8 @@ const MainNavigator = () => {
         component={Introduce}
         options={{ headerShown: false }}
       />
+
+      {/* Main App Screens */}
       <Stack.Screen
         name="Home_Chat"
         component={Home_Chat}

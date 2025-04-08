@@ -138,6 +138,7 @@ export const signIn = async (email, password) => {
   }
 };
 
+{/* Get OTP */}
 export const provideOtp = async (userId) => {
   try {
     const response = await axios.post(`${API_URL}/auth/provide-otp/${userId}`);
@@ -145,4 +146,117 @@ export const provideOtp = async (userId) => {
   } catch (error) {
     return { ok: false, message: error.response?.data?.message || "Failed to resend OTP" };
   }
+};
+
+{/* Forgot Pasword */}
+
+export const forgotPassword = async (email, newPassword) => {
+  try {
+    console.log("Sending forgot password request:", { email, newPassword });
+    const response = await axios.post(`${API_URL}/auth/forgot-password`, {
+      email,
+      newPassword
+    });
+    
+    // Kiểm tra response format
+    if (!response.data) {
+      throw new Error("Invalid response from server");
+    }
+
+    // console.log("Forgot password response:", response.data);
+    const { data, message, success } = response.data;
+    
+    if (!success) {
+      return { 
+        ok: false, 
+        message: message || "Failed to send OTP" 
+      };
+    }
+
+    return { 
+      ok: true, 
+      message: message || "OTP sent successfully"
+    };
+  } catch (error) {
+    console.error("Forgot password error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    return { 
+      ok: false, 
+      message: error.response?.data?.message || "An error occurred. Please try again later." 
+    };
+  }
+};
+
+export const verifyForgotPasswordOtp = async (email, otp) => {
+  try {
+    // console.log("Sending verify OTP request:", { email, otp });
+    const response = await axios.post(`${API_URL}/auth/forgot-password-verification`, {
+      email,
+      otp
+    });
+
+    // Kiểm tra response format
+    if (!response.data) {
+      throw new Error("Invalid response from server");
+    }
+
+    console.log("Verify OTP response:", response.data);
+    const { data, message, success } = response.data;
+    
+    if (!success) {
+      return { 
+        ok: false, 
+        message: message || "Failed to verify OTP" 
+      };
+    }
+
+    return { 
+      ok: true, 
+      message: message || "OTP verified successfully"
+    };
+  } catch (error) {
+    console.error("Verify OTP error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    return { 
+      ok: false, 
+      message: error.response?.data?.message || "An error occurred. Please try again later." 
+    };
+  }
+};
+
+export const changePassword = async (userId, oldPassword, newPassword, token) => {
+    try {
+        console.log('Changing password for user:', userId);
+        const response = await axios.post(
+            `${API_URL}/auth/change-password/${userId}`,
+            {
+                oldPassword,
+                newPassword
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log('Change password response:', response.data);
+        return {
+            ok: true,
+            message: 'Password changed successfully'
+        };
+    } catch (error) {
+        console.error('Change password error:', error);
+        return {
+            ok: false,
+            message: error.response?.data?.message || 'Failed to change password'
+        };
+    }
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
     View, Text, Image, TouchableOpacity, StyleSheet, ScrollView, SafeAreaView,
-    ActivityIndicator
+    ActivityIndicator, TextInput, Alert
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,7 @@ import { getUserProfile, updateUserProfile } from '../../services/user/userServi
 import NotificationModal from '../../components/CustomModal';
 import EditProfileModal from '../../components/EditProfileModal';
 import { API_URL } from '../../config/constants';
+import { changePassword } from '../../services/auth/authService';
 
 const ProfileScreen = ({ navigation }) => {
     const [user, setUser] = useState(null);
@@ -18,6 +19,13 @@ const ProfileScreen = ({ navigation }) => {
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [notificationModalVisible, setNotificationModalVisible] = useState(false);
     const [notificationMessage, setNotificationMessage] = useState("");
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const [oldPassword, setOldPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
         fetchUserProfile();
@@ -132,6 +140,56 @@ const ProfileScreen = ({ navigation }) => {
         }, 2000);
     };
 
+    const validatePassword = (password) => {
+        const minLength = 6;
+        if (password.length < minLength) {
+            return 'Password must be at least 6 characters long';
+        }
+        return null;
+    };
+
+    const handleChangePassword = async () => {
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            showNotification('Please fill in all fields');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showNotification('New passwords do not match');
+            return;
+        }
+
+        const passwordError = validatePassword(newPassword);
+        if (passwordError) {
+            showNotification(passwordError);
+            return;
+        }
+
+        try {
+            const userId = await AsyncStorage.getItem("userId");
+            const token = await AsyncStorage.getItem("userToken");
+            
+            if (!token) {
+                showNotification('Authentication token not found. Please login again.');
+                return;
+            }
+
+            const response = await changePassword(userId, oldPassword, newPassword, token);
+            if (response.ok) {
+                showNotification('Password changed successfully');
+                setShowChangePassword(false);
+                setOldPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                showNotification(response.message || 'Failed to change password');
+            }
+        } catch (error) {
+            console.error('Change password error details:', error);
+            showNotification('An error occurred. Please try again later.');
+        }
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
@@ -174,6 +232,91 @@ const ProfileScreen = ({ navigation }) => {
                         <Icon name="pencil" size={18} color="#fff" />
                         <Text style={styles.editText}>Edit Profile</Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        style={styles.changePasswordButton} 
+                        onPress={() => setShowChangePassword(!showChangePassword)}
+                    >
+                        <Icon name="lock" size={18} color="#fff" />
+                        <Text style={styles.changePasswordText}>
+                            {showChangePassword ? 'Hide Change Password' : 'Change Password'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {showChangePassword && (
+                        <View style={styles.passwordForm}>
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Current Password"
+                                    value={oldPassword}
+                                    onChangeText={setOldPassword}
+                                    secureTextEntry={!showOldPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowOldPassword(!showOldPassword)}
+                                >
+                                    <Icon
+                                        name={showOldPassword ? 'eye-off' : 'eye'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="New Password"
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    secureTextEntry={!showNewPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowNewPassword(!showNewPassword)}
+                                >
+                                    <Icon
+                                        name={showNewPassword ? 'eye-off' : 'eye'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Confirm New Password"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry={!showConfirmPassword}
+                                />
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                >
+                                    <Icon
+                                        name={showConfirmPassword ? 'eye-off' : 'eye'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.passwordRequirements}>
+                                Password must be at least 6 characters long
+                            </Text>
+
+                            <TouchableOpacity
+                                style={styles.submitButton}
+                                onPress={handleChangePassword}
+                            >
+                                <Text style={styles.submitButtonText}>Update Password</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Icon name="logout" size={18} color="#E74C3C" />
@@ -315,6 +458,24 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
     },
+    changePasswordButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#4CAF50',
+        paddingVertical: 12,
+        paddingHorizontal: 25,
+        borderRadius: 8,
+        marginTop: 15,
+        width: '100%',
+        elevation: 3,
+    },
+    changePasswordText: {
+        color: '#ffffff',
+        marginLeft: 10,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
     logoutButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -334,5 +495,46 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    passwordForm: {
+        width: '100%',
+        marginTop: 15,
+        padding: 15,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8,
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        marginBottom: 10,
+        backgroundColor: '#fff',
+    },
+    input: {
+        flex: 1,
+        padding: 12,
+        fontSize: 16,
+    },
+    eyeIcon: {
+        padding: 12,
+    },
+    passwordRequirements: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 15,
+        lineHeight: 18,
+    },
+    submitButton: {
+        backgroundColor: '#135CAF',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
