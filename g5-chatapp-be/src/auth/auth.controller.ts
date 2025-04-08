@@ -1,12 +1,22 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dtos/request/changePassword.dto';
+import { ForgotPassword } from './dtos/request/forgotPassword.dto';
+import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';
 import { LoginDto } from './dtos/request/login.dto';
+import { OtpVerificationDto } from './dtos/request/otpVerification.dto';
 import { SignUpDto } from './dtos/request/signUp.dto';
 import { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
-import { OtpVerificationDto } from './dtos/request/otpVerification.dto';
-import { ForgotPassword } from './dtos/request/forgotPassword.dto';
-import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -52,5 +62,20 @@ export class AuthController {
     return this.authService.verifyForgotPasswordOtp(
       forgotPasswordVerificationDto,
     );
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('change-password/:id')
+  async changePassword(
+    @Param('id') id: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return await this.authService.changePassword(id, changePasswordDto);
+  }
+
+  @Get('get-my-profile')
+  @UseGuards(AuthGuard('jwt'))
+  async getMyProfile(@Request() req) {
+    return await this.authService.getMyProfile(req);
   }
 }
