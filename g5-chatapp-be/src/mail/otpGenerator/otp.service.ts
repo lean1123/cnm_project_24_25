@@ -15,9 +15,10 @@ export class OtpService {
       .padStart(length, '0');
   }
 
-  async sendOTP(email: string, fullName: string) {
+  async sendOTP(email: string, fullName: string, isForgot: boolean = false) {
     const otp = this.generateOTP();
-    await this.redis.set(`otp:${email}`, otp, 'EX', 300);
+    if (!isForgot) await this.redis.set(`otp:${email}`, otp, 'EX', 300);
+    else await this.redis.set(`forgot-password-otp:${email}`, otp, 'EX', 300);
     await this.mailService.sendOtp(email, otp, fullName);
   }
 

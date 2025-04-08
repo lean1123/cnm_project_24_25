@@ -11,6 +11,8 @@ import Redis from 'ioredis';
 import { Model, ObjectId } from 'mongoose';
 import { OtpService } from 'src/mail/otpGenerator/otp.service';
 import { User } from 'src/users/schema/user.schema';
+import { ForgotPassword } from './dtos/request/forgotPassword.dto';
+import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';
 import { LoginDto } from './dtos/request/login.dto';
 import type { SignUpDto } from './dtos/request/signUp.dto';
 import type { AuthResponseDto } from './dtos/response/auth.response.dto';
@@ -218,5 +220,74 @@ export class AuthService {
     );
 
     await this.userModel.findOneAndUpdate(userId, { refreshToken });
+  }
+
+  async forgotPassword(forgotPassword: ForgotPassword) {
+    const existedUser = await this.userModel.findOne({
+      email: forgotPassword.email,
+    });
+
+    if (!existedUser) {
+      throw new Error('Email not found');
+    }
+
+    await this.redis.set(
+      `new-password-temp:${existedUser.email}`,
+      JSON.stringify(forgotPassword),
+      'EX',
+      300,
+    );
+
+    const fullName = `${existedUser.firstName} ${existedUser.lastName}`;
+
+    // Luu Trong Redis OTP
+    await this.otpService.sendOTP(forgotPassword.email, fullName, true);
+    return {
+      message: 'OTP sent to your email',
+      id: existedUser._id,
+    };
+  }
+
+  async verifyForgotPasswordOtp(
+    verificationForgotPassword: ForgotPasswordVerificationDto,
+  ): Promise<{ message: string; id: string }> {
+    const otp = await this.redis.get(
+      `forgot-password-otp:${verificationForgotPassword.email}`,
+    );
+
+    if (!otp) {
+      throw new UnauthorizedException('OTP expired or not found');
+    }
+    const newPasswordTemp = await this.redis.get(
+      `new-password-temp:${verificationForgotPassword.email}`,
+    );
+    if (!newPasswordTemp) {
+      throw new UnauthorizedException('New password temp not found');
+    }
+
+    if (otp !== verificationForgotPassword.otp) {
+      throw new UnauthorizedException('Invalid OTP');
+    }
+
+    const parsedUser = JSON.parse(newPasswordTemp) as ForgotPassword;
+
+    const existedUser = await this.userModel.findOne({
+      email: parsedUser.email,
+    });
+
+    if (!existedUser) {
+      throw new UnauthorizedException('Email not found');
+    }
+
+    const hashedPassword = await bcrypt.hash(parsedUser.newPassword, 10);
+
+    await this.userModel.findByIdAndUpdate(existedUser._id, {
+      password: hashedPassword,
+    });
+
+    return {
+      message: 'Password updated successfully',
+      id: existedUser._id as string,
+    };
   }
 }

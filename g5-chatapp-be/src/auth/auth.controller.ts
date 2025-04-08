@@ -5,6 +5,7 @@ import { SignUpDto } from './dtos/request/signUp.dto';
 import { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
 import { OtpVerificationDto } from './dtos/request/otpVerification.dto';
+import { ForgotPassword } from './dtos/request/forgotPassword.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -36,5 +37,10 @@ export class AuthController {
   @Post('refresh-token/:id')
   refreshToken(@Param('id') id: string): Promise<AuthResponseDto> {
     return this.authService.refreshToken(id);
+  }
+
+  @Post('forgot-password')
+  forgetPassword(@Body() forgotPassword: ForgotPassword) {
+    return this.authService.forgotPassword(forgotPassword);
   }
 }
