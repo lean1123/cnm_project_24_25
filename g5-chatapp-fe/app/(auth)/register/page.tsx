@@ -23,14 +23,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/useAuthStore";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z
   .object({
-    name: z
+    firstName: z
       .string()
-      .min(2, { message: "Name must be at least 2 characters long" }),
+      .min(2, { message: "First name must be at least 2 characters long" }),
+    lastName: z
+      .string()
+      .min(2, { message: "Last name must be at least 2 characters long" }),
     email: z.string().email({ message: "Invalid email address" }),
-    phone: z.string().min(10, { message: "Phone number must be valid" }),
+    // phone: z.string().min(10, { message: "Phone number must be valid" }),
+    gender: z.enum(["male", "female", "other"]),
     password: z
       .string()
       .min(6, { message: "Password must be at least 6 characters long" })
@@ -46,23 +58,22 @@ function Register() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
-      phone: "",
+      // phone: "",
       password: "",
       confirmPassword: "",
     },
   });
 
+  const { register, isLoading } = useAuthStore();
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       // Assuming an async registration function
+      await register(values);
       console.log(values);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
     } catch (error) {
       console.error("Form submission error", error);
       toast.error("Failed to submit the form. Please try again.");
@@ -82,15 +93,38 @@ function Register() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid gap-4">
-                {/* Name Field */}
+                {/* First Name Field */}
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="firstName"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel htmlFor="name">Full Name</FormLabel>
+                      <FormLabel htmlFor="firstName">First Name</FormLabel>
                       <FormControl>
-                        <Input id="name" placeholder="John Doe" {...field} />
+                        <Input
+                          id="firstName"
+                          placeholder="John Doe"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Last Name Field */}
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem className="grid gap-2">
+                      <FormLabel htmlFor="lastName">Lats Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          id="lastName"
+                          placeholder="John Doe"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -118,23 +152,28 @@ function Register() {
                   )}
                 />
 
-                {/* Phone Field */}
+                {/* Gender */}
                 <FormField
                   control={form.control}
-                  name="phone"
+                  name="gender"
                   render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <FormLabel htmlFor="phone">Phone Number</FormLabel>
-                      <FormControl>
-                        {/* <Input {...field} defaultCountry="TR" /> */}
-                        <Input
-                          id="phone"
-                          placeholder="555-123-4567"
-                          type="tel"
-                          autoComplete="tel"
-                          {...field}
-                        />
-                      </FormControl>
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          {/* <SelectItem value="other">Khác</SelectItem> */}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

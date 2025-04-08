@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type Props = {};
 
@@ -44,18 +45,19 @@ function Login({}: Props) {
     },
   });
 
+  const { login, isLoading, isAuthenticated } = useAuthStore();
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       // Assuming an async login function
       console.log(values);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
+      await login(values);
+      if (isAuthenticated) {
+        toast.success("Login successful!");
+      }
     } catch (error) {
       console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
+      toast.error("Login failed. Please check your credentials.");
     }
   }
   return (
@@ -98,7 +100,7 @@ function Login({}: Props) {
                       <div className="flex justify-between items-center">
                         <FormLabel htmlFor="password">Password</FormLabel>
                         <Link
-                          href="#"
+                          href="/forgot-password"
                           className="ml-auto inline-block text-sm underline"
                         >
                           Forgot your password?
@@ -117,12 +119,12 @@ function Login({}: Props) {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="`w-full" disabled={isLoading}>
                   Login
                 </Button>
-                <Button variant="outline" className="w-full">
+                {/* <Button variant="outline" className="w-full">
                   Login with Google
-                </Button>
+                </Button> */}
               </div>
             </form>
           </Form>

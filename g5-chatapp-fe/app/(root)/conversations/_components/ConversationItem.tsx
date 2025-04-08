@@ -8,7 +8,7 @@ import React from "react";
 type Props = {
   id: string;
   imageUrl: string;
-  username: string;
+  name: string;
   lastMessageSender: string;
   lastMessageContent: string;
 };
@@ -16,7 +16,7 @@ type Props = {
 const ConversationItem = ({
   id,
   imageUrl,
-  username,
+  name,
   lastMessageContent,
   lastMessageSender,
 }: Props) => {
@@ -25,11 +25,11 @@ const ConversationItem = ({
       <Card className="p-2 flex flex-row items-center gap-4 truncate">
         <div className="flex flex-row items-center gap-4 truncate">
           <Avatar>
-            <AvatarImage src={imageUrl} alt={username} />
-            <AvatarFallback>{getInitials(username)}</AvatarFallback>
+            <AvatarImage src={imageUrl} alt={name} />
+            <AvatarFallback>{getInitials(name)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col truncate">
-            <h4 className="truncate">{username}</h4>
+            <h4 className="truncate">{name}</h4>
             {lastMessageSender && lastMessageContent ? (
               <span className="text-sm text-muted-foreground flex truncate overflow-ellipsis">
                 <p className="font-semibold">
