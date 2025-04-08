@@ -203,7 +203,7 @@ export const verifyForgotPasswordOtp = async (email, otp) => {
       throw new Error("Invalid response from server");
     }
 
-    console.log("Verify OTP response:", response.data);
+    // console.log("Verify OTP response:", response.data);
     const { data, message, success } = response.data;
     
     if (!success) {
@@ -232,7 +232,7 @@ export const verifyForgotPasswordOtp = async (email, otp) => {
 
 export const changePassword = async (userId, oldPassword, newPassword, token) => {
     try {
-        console.log('Changing password for user:', userId);
+        // console.log('Changing password for user:', userId);
         const response = await axios.post(
             `${API_URL}/auth/change-password/${userId}`,
             {
@@ -247,7 +247,7 @@ export const changePassword = async (userId, oldPassword, newPassword, token) =>
             }
         );
 
-        console.log('Change password response:', response.data);
+        // console.log('Change password response:', response.data);
         return {
             ok: true,
             message: 'Password changed successfully'
