@@ -1,14 +1,5 @@
 {
-  "/(root)/page": "app/(root)/page.js",
-  "/(root)/contacts/page": "app/(root)/contacts/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
   "/(auth)/login/page": "app/(auth)/login/page.js",
-  "/(auth)/register/page": "app/(auth)/register/page.js",
-  "/(root)/conversations/page": "app/(root)/conversations/page.js",
-  "/(root)/conversations/[conversationId]/page": "app/(root)/conversations/[conversationId]/page.js",
-  "/(root)/contacts/friends/page": "app/(root)/contacts/friends/page.js",
-  "/(root)/contacts/groups/page": "app/(root)/contacts/groups/page.js",
-  "/(root)/contacts/requests/page": "app/(root)/contacts/requests/page.js",
-  "/(auth)/verify-otp/page": "app/(auth)/verify-otp/page.js"
+  "/(auth)/forgot-password/page": "app/(auth)/forgot-password/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js"
 }

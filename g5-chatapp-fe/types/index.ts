@@ -33,8 +33,13 @@ export type Conversation = {
     profilePicture?: string | null;
     isGroup: boolean;
     admin?: string;
-    members: string [];
+    members: Member [];
     lastMessage: string | null;
     createdAt: string;
     updatedAt: string;
+}
+
+export type Member = {
+    userId: string;
+    fullName: string;
 }

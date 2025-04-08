@@ -8,7 +8,7 @@ interface iConversationStore {
     selectedConversation: Conversation | null;
     isLoading: boolean;
     error: string | null;
-    getConversations: () => Promise<void>;
+    getConversations: (userId: string) => Promise<void>;
     setSelectedConversation: (conversation: Conversation) => void;
 }
 
@@ -18,10 +18,11 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     isLoading: false,
     error: null,
 
-    getConversations: async () => {
+    getConversations: async (userId: string) => {
         set({ isLoading: true, error: null });
         try {
-            const data = await getMyConversations();
+            const data = await getMyConversations(userId);
+            console.log("Conversations use store data:", data);
             set({ conversations: data.data });
         } catch (error) {
             set({ error: "Failed to fetch conversations" });

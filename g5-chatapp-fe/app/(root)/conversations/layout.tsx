@@ -1,8 +1,10 @@
 "use client";
 import ItemList from "@/components/common/item-list/ItemList";
 import { Loader2, Search } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ConversationItem from "./_components/ConversationItem";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useConversationStore } from "@/store/useConversationStore";
 
 type Props = React.PropsWithChildren<{}>;
 
@@ -36,11 +38,22 @@ const conversations = [
 const ConversationsLayout = ({ children }: Props) => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredConversations = conversations.filter(
-    (conversation) =>
-      !conversation.isGroup &&
-      conversation.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {user} = useAuthStore();
+  const {conversations, getConversations} = useConversationStore();
+
+  // const filteredConversations = conversations?.filter(
+  //   (conversation) =>
+  //     !conversation.isGroup && conversation.lastMessage && // Ensure lastMessage exists
+  //     conversation?.lastMessage.toLowerCase().includes(searchTerm.toLowerCase())
+  // );
+  useEffect(() => {
+    const fetchConversations = async () => {
+      if (!user) return;
+      await getConversations(user.id);
+      console.log("Conversations ui data:", conversations);
+    };
+    fetchConversations();
+  }, []);
   return (
     <>
       <ItemList title="Conversations">
@@ -58,17 +71,17 @@ const ConversationsLayout = ({ children }: Props) => {
         </div>
 
         {conversations ? (
-          filteredConversations.length === 0 ? (
+          conversations.length === 0 ? (
             <p>No conversations found</p>
           ) : (
-            filteredConversations.map((conversation) => {
+            conversations && conversations.map((conversation) => {
               return conversation.isGroup ? null : (
                 <ConversationItem
-                  key={conversation.id}
-                  id={conversation.id}
-                  imageUrl={conversation.imageUrl}
-                  username={conversation.username}
-                  lastMessageContent="Hello!"
+                  key={conversation._id}
+                  id={conversation._id}
+                  imageUrl={conversation.profilePicture || ""}
+                  name={conversation.members[0].fullName || ""}
+                  lastMessageContent={conversation.lastMessage || ""}
                   lastMessageSender="1a2b3c"
                 />
               );
