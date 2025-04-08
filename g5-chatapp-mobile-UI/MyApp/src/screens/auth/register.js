@@ -39,16 +39,29 @@ const SignUpScreen = ({ navigation }) => {
       setModalVisible(true);
       return;
     }
-    const result = await signUp(form);
 
-    if (result.ok) {
-      setModalMessage(result.message);
-      setModalVisible(true);
-      setTimeout(() => {
-        navigation.navigate("SignInScreen");
-      }, 1500);
-    } else {
-      setModalMessage(result.message);
+    try {
+      const result = await signUp(form);
+      // console.log("Sign up result:", result);
+
+      if (result.ok && result.userId) {
+        await AsyncStorage.setItem('tempUserId', result.userId);
+        // console.log("Stored tempUserId:", result.userId);
+        
+        setModalMessage("OTP has been sent to your email. Please verify.");
+        setModalVisible(true);
+        setTimeout(() => {
+          navigation.navigate("VerifyOTPScreen", {
+            userId: result.userId
+          });
+        }, 1500);
+      } else {
+        setModalMessage(result.message || "Registration failed. Please try again.");
+        setModalVisible(true);
+      }
+    } catch (error) {
+      console.error("Sign up error:", error);
+      setModalMessage("An error occurred during registration. Please try again.");
       setModalVisible(true);
     }
   };

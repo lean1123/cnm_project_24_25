@@ -15,21 +15,22 @@ import RegisterScreen from "../screens/account/registerAccount";
 import chatDetailScreen from "../screens/chat/ChatDetailScreen";
 import ProfileScreen from "../screens/chat/ProfileScreen";
 import FriendsListScreen from "../screens/chat/FriendsListScreen";
-import LocationScreen from "../screens/location";
+import LocationScreen from "../screens/othersScreen/location";
 import SettingsScreen from "../screens/othersScreen/more";
 import UserInfoScreen from "../screens/chat/info/infoChat";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
 // Login/Register without API
-import SignUpScreen from "../screens/account/register";
-import SignInScreen from "../screens/account/login";
+import SignUpScreen from "../screens/auth/register";
+import SignInScreen from "../screens/auth/login";
+import VerifyOTPScreen from "../screens/auth/verifyOTP";
 
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="Loading_start">
+    <Stack.Navigator initialRouteName="SignUpScreen">
       {/* Login/Register without API */}
       <Stack.Screen
         name="SignUpScreen"
@@ -39,6 +40,11 @@ const MainNavigator = () => {
       <Stack.Screen
         name="SignInScreen"
         component={SignInScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VerifyOTPScreen"
+        component={VerifyOTPScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

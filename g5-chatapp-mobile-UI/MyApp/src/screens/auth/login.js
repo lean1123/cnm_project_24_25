@@ -14,6 +14,7 @@ import PasswordField from "../../components/PasswordInput";
 import NotificationModal from "../../components/CustomModal";
 import { signIn } from "../../services/auth/authService";
 import { validateEmail, validatePassword } from "../../utils/validators";
+import { CommonActions } from "@react-navigation/native";
 
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -22,40 +23,40 @@ const SignInScreen = ({ navigation }) => {
   const [modalMessage, setModalMessage] = useState("");
 
   const handleSignIn = async () => {
-  
     try {
-      const result = await signIn(email, password);  // Gọi hàm signIn từ services
+      const result = await signIn(email, password);
+      // console.log("Sign in result:", result);
 
       if (result.ok) {
         // Lưu thông tin người dùng và token vào AsyncStorage
-        await AsyncStorage.setItem("user", JSON.stringify(result.user));  
-        await AsyncStorage.setItem("userToken", result.token); 
+        await AsyncStorage.setItem("user", JSON.stringify(result.user));
+        await AsyncStorage.setItem("userToken", result.token);
+        await AsyncStorage.setItem("userId", result.user.id);
+        // console.log("User data saved to AsyncStorage");
 
-        console.log("Navigating to Home_Chat..."); 
-        showModal("Login successful", () => {
-          setTimeout(() => {
-            navigation.navigate("Home_Chat"); 
-          }, 1500); 
-        });
+        setModalMessage("Login successful!");
+        setModalVisible(true);
+        
+        // Chuyển hướng sau khi hiển thị modal
+        setTimeout(() => {
+          // console.log("Attempting to navigate to Home_Chat...");
+          setModalVisible(false);
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: "Home_Chat" }],
+            })
+          );
+        }, 1500);
       } else {
-        showModal(result.message || "Something went wrong");
+        console.log("Login failed:", result.message);
+        setModalMessage(result.message || "Login failed. Please try again.");
+        setModalVisible(true);
       }
     } catch (error) {
-      console.error("Sign-in error:", error); 
-      showModal(error.message || "An error occurred. Please try again later.");
-    }
-    
-  };
-  
-
-  const showModal = (message, callback) => {
-    setModalMessage(message);
-    setModalVisible(true);
-    if (callback) {
-      setTimeout(() => {
-        setModalVisible(false);
-        callback();
-      }, 1500);
+      console.error("Sign-in error:", error);
+      setModalMessage(error.message || "An error occurred. Please try again later.");
+      setModalVisible(true);
     }
   };
 
