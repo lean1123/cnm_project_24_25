@@ -11,6 +11,7 @@ import Redis from 'ioredis';
 import { Model, ObjectId } from 'mongoose';
 import { OtpService } from 'src/mail/otpGenerator/otp.service';
 import { User } from 'src/users/schema/user.schema';
+import { ChangePasswordDto } from './dtos/request/changePassword.dto';
 import { ForgotPassword } from './dtos/request/forgotPassword.dto';
 import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';
 import { LoginDto } from './dtos/request/login.dto';
@@ -99,7 +100,7 @@ export class AuthService {
       );
     }
 
-    const token = this.jwtService.sign({ id: savedUser._id });
+    const token = this.jwtService.sign({ sub: savedUser._id });
     return {
       token,
       user: {
@@ -145,7 +146,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid password');
     }
 
-    const token = this.jwtService.sign({ id: user._id });
+    const token = this.jwtService.sign({ sub: user._id });
 
     // update refresh token
     await this.generateAndUpdateRefreshToken(user._id as ObjectId, user.email);
@@ -285,9 +286,48 @@ export class AuthService {
       password: hashedPassword,
     });
 
+    await this.redis.del(`new-password-temp:${existedUser.email}`);
+    await this.redis.del(`forgot-password-otp:${existedUser.email}`);
+
     return {
       message: 'Password updated successfully',
       id: existedUser._id as string,
     };
+  }
+
+  async changePassword(userId: string, changePassword: ChangePasswordDto) {
+    const user = await this.userModel.findById(userId);
+    console.log('userId:', userId);
+    console.log('user:', user);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const isPasswordValid = await bcrypt.compare(
+      changePassword.oldPassword,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+    const hashedPassword = await bcrypt.hash(changePassword.newPassword, 10);
+    await this.userModel.findByIdAndUpdate(userId, {
+      password: hashedPassword,
+    });
+    return {
+      message: 'Password updated successfully',
+      id: user._id as string,
+    };
+  }
+
+  async getMyProfile(req) {
+    const userId = req.user._id;
+    const user = await this.userModel
+      .findById(userId)
+      .select(['-password', '-refreshToken']);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return user;
   }
 }
