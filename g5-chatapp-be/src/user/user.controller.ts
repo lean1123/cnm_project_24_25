@@ -9,7 +9,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
+import { UserService } from './user.service';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from 'src/auth/decorators/role.decorator';
 import { Role } from 'src/auth/enums/role.enum';
@@ -22,25 +22,25 @@ import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('users')
 export class UsersController {
-  constructor(private UsersService: UsersService) {}
+  constructor(private UserService: UserService) {}
 
   @Get()
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard(), RolesGuard)
   async findAll(): Promise<User[]> {
-    return await this.UsersService.findAll();
+    return await this.UserService.findAll();
   }
 
   @Post()
   async create(@Body() user: User): Promise<User> {
-    return await this.UsersService.create(user);
+    return await this.UserService.create(user);
   }
 
   @Get(':id')
   @UseGuards(AuthGuard(), RolesGuard)
   @Roles(Role.ADMIN, Role.USER)
   async findById(@Param('id') id: string): Promise<User> {
-    return await this.UsersService.findById(id);
+    return await this.UserService.findById(id);
   }
 
   @Put()
@@ -51,6 +51,6 @@ export class UsersController {
     @Body() userDto: UserRequest,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<User> {
-    return await this.UsersService.update(user, userDto, file);
+    return await this.UserService.update(user, userDto, file);
   }
 }

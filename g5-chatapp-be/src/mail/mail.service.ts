@@ -4,14 +4,14 @@ import {
   TransactionalEmailsApiApiKeys,
 } from '@getbrevo/brevo';
 import { Injectable, Logger } from '@nestjs/common';
-import { UsersService } from 'src/users/users.service';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
   private readonly emailApi: TransactionalEmailsApi;
 
-  constructor(private readonly userService: UsersService) {
+  constructor(private readonly userService: UserService) {
     this.emailApi = new TransactionalEmailsApi();
     this.emailApi.setApiKey(
       TransactionalEmailsApiApiKeys.apiKey,

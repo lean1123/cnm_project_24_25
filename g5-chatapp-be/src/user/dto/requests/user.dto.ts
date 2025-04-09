@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsOptional, Length } from 'class-validator';
+import { IsDateString, IsNotEmpty, Length } from 'class-validator';
 import { Gender } from 'src/auth/enums/gender.enum';
 import { IsBeforeToday } from 'src/common/validates/is-before-date.validator';
 

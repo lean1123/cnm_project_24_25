@@ -8,12 +8,12 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { ConvensationService } from './convensation.service';
+import { ConversationService } from './conversation.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
 
 @Controller('convensation')
 export class ConvensationController {
-  constructor(private convensationService: ConvensationService) {}
+  constructor(private convensationService: ConversationService) {}
 
   @Post()
   async createConvensation(@Body() convensationReq: ConvensationRequest) {

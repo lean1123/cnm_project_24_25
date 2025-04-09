@@ -10,7 +10,7 @@ import * as bcrypt from 'bcrypt';
 import Redis from 'ioredis';
 import { Model, ObjectId, Date } from 'mongoose';
 import { OtpService } from 'src/mail/otpGenerator/otp.service';
-import { User } from 'src/users/schema/user.schema';
+import { User } from 'src/user/schema/user.schema';
 import { ChangePasswordDto } from './dtos/request/changePassword.dto';
 import { ForgotPassword } from './dtos/request/forgotPassword.dto';
 import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';

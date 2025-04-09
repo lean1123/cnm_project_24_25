@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { ConvensationService } from 'src/convensation/convensation.service';
+import { ConversationService } from 'src/conversation/conversation.service';
 // import { UploadService } from 'src/upload/upload.service';
-import { UsersService } from 'src/users/users.service';
+import { UserService } from 'src/user/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -12,8 +12,8 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 export class MessageService {
   constructor(
     @InjectModel(Message.name) private messageModel: Model<Message>,
-    private readonly userService: UsersService,
-    private readonly convensationService: ConvensationService,
+    private readonly userService: UserService,
+    private readonly conversationService: ConversationService,
     // private readonly uploadFileService: UploadService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
@@ -24,7 +24,7 @@ export class MessageService {
     files: Express.Multer.File[],
   ): Promise<Message> {
     const conversation =
-      await this.convensationService.getConvensationById(convensationId);
+      await this.conversationService.getConvensationById(convensationId);
 
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
@@ -69,7 +69,7 @@ export class MessageService {
     };
 
     const messageSaved = await this.messageModel.create(messageSchema);
-    await this.convensationService.updateLastMessageField(
+    await this.conversationService.updateLastMessageField(
       convensationId,
       messageSaved._id as string,
     );

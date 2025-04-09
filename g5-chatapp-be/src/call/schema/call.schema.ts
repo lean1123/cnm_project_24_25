@@ -4,8 +4,8 @@ import { CallType } from './callType.enum';
 import { CallStatus } from './callStatus.enum';
 import { CallParticipant } from './callParticipants.schema';
 import { CallQuality } from './callQuality.schema';
-import { Convensation } from 'src/convensation/schema/convensation.schema';
-import { User } from 'src/users/schema/user.schema';
+import { Convensation } from 'src/conversation/schema/convensation.schema';
+import { User } from 'src/user/schema/user.schema';
 
 @Schema({
   timestamps: true,
