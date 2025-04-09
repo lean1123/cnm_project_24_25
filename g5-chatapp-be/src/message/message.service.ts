@@ -3,10 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConversationService } from 'src/conversation/conversation.service';
 // import { UploadService } from 'src/upload/upload.service';
+import { UploadService } from 'src/upload/upload.service';
 import { UserService } from 'src/user/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class MessageService {
@@ -14,8 +14,8 @@ export class MessageService {
     @InjectModel(Message.name) private messageModel: Model<Message>,
     private readonly userService: UserService,
     private readonly conversationService: ConversationService,
-    // private readonly uploadFileService: UploadService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly uploadFileService: UploadService,
+    // private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createMessage(
@@ -50,9 +50,11 @@ export class MessageService {
     if (files) {
       fileUrls = await Promise.all(
         files.map(async (file) => {
-          const { fileName, url } =
-            await this.cloudinaryService.uploadFile(file);
-          return { fileName, url };
+          const url = await this.uploadFileService.uploadFile(
+            file.originalname,
+            file.buffer,
+          );
+          return { fileName: file.originalname, url };
         }),
       );
     }

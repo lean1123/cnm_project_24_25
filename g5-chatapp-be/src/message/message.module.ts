@@ -20,6 +20,7 @@ import { ChatGateway } from 'src/gateway/chat.gateway';
     forwardRef(() => ConversationModule),
     UploadModule,
     CloudinaryModule,
+    UploadModule,
   ],
   providers: [
     MessageService,

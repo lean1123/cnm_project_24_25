@@ -20,7 +20,8 @@ export class ConvensationController {
     try {
       return await this.convensationService.createConvensation(convensationReq);
     } catch (error) {
-      throw new HttpException(error.message as String, HttpStatus.BAD_REQUEST);
+      const err = error as Error;
+      throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -35,7 +36,8 @@ export class ConvensationController {
         convensationReq,
       );
     } catch (error) {
-      throw new HttpException(error.message as String, HttpStatus.BAD_REQUEST);
+      const err = error as Error;
+      throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
     }
   }
 
