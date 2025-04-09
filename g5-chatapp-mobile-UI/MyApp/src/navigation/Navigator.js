@@ -15,22 +15,24 @@ import RegisterScreen from "../screens/account/registerAccount";
 import chatDetailScreen from "../screens/chat/ChatDetailScreen";
 import ProfileScreen from "../screens/chat/ProfileScreen";
 import FriendsListScreen from "../screens/chat/FriendsListScreen";
-import LocationScreen from "../screens/location";
+import LocationScreen from "../screens/othersScreen/location";
 import SettingsScreen from "../screens/othersScreen/more";
 import UserInfoScreen from "../screens/chat/info/infoChat";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
 // Login/Register without API
-import SignUpScreen from "../screens/account/register";
-import SignInScreen from "../screens/account/login";
+import SignUpScreen from "../screens/auth/register";
+import SignInScreen from "../screens/auth/login";
+import VerifyOTPScreen from "../screens/auth/verifyOTP";
+import ForgotPasswordScreen from "../screens/account/forgotPassword";
 
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   return (
-    <Stack.Navigator initialRouteName="Loading_start">
-      {/* Login/Register without API */}
+    <Stack.Navigator initialRouteName="SignInScreen">
+      {/* Auth Screens */}
       <Stack.Screen
         name="SignUpScreen"
         component={SignUpScreen}
@@ -41,6 +43,18 @@ const MainNavigator = () => {
         component={SignInScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="VerifyOTPScreen"
+        component={VerifyOTPScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ForgotPasswordScreen"
+        component={ForgotPasswordScreen}
+        options={{ headerShown: false }}
+      />
+
+      {/* Onboarding Screens */}
       <Stack.Screen
         name="Loading_start"
         component={Loading_start}
@@ -61,6 +75,8 @@ const MainNavigator = () => {
         component={Introduce}
         options={{ headerShown: false }}
       />
+
+      {/* Main App Screens */}
       <Stack.Screen
         name="Home_Chat"
         component={Home_Chat}
