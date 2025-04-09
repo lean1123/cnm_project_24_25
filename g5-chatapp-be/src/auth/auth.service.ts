@@ -160,16 +160,14 @@ export class AuthService {
     };
   }
 
-  async refreshToken(userId: string): Promise<AuthResponseDto> {
-    // const user = await this.userModel.findById(new Types.ObjectId({ userId }));
-    console.log('userId:', userId);
-    const user = await this.userModel.findById(userId);
+  async refreshToken(user: JwtPayload): Promise<AuthResponseDto> {
+    const matchedUser = await this.userModel.findById(user._id);
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    if (!matchedUser) {
+      throw new UnauthorizedException('User not found in refresh token');
     }
 
-    const refreshToken = user.refreshToken;
+    const refreshToken = matchedUser.refreshToken;
 
     if (!refreshToken) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -200,11 +198,14 @@ export class AuthService {
       username: user.email,
     });
 
-    await this.generateAndUpdateRefreshToken(user._id as ObjectId, user.email);
+    await this.generateAndUpdateRefreshToken(
+      matchedUser._id as ObjectId,
+      user.email,
+    );
 
     return {
       token: newAccessToken,
-      user: { id: user._id as string, email: user.email },
+      user: { id: matchedUser._id as string, email: user.email },
     };
   }
 
@@ -295,10 +296,9 @@ export class AuthService {
     };
   }
 
-  async changePassword(userId: string, changePassword: ChangePasswordDto) {
+  async changePassword(req: JwtPayload, changePassword: ChangePasswordDto) {
+    const userId = req._id;
     const user = await this.userModel.findById(userId);
-    console.log('userId:', userId);
-    console.log('user:', user);
 
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -320,8 +320,13 @@ export class AuthService {
     };
   }
 
-  async getMyProfile(req) {
-    const userId = req.user._id;
+  async getMyProfile(req: JwtPayload) {
+    const userId = req._id;
+
+    if (!userId) {
+      throw new UnauthorizedException('User not found in Jwt Payload');
+    }
+
     const user = await this.userModel
       .findById(userId)
       .select(['-password', '-refreshToken']);
