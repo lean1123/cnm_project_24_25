@@ -7,4 +7,5 @@ export class TempUser {
   status: string;
   gender: string;
   password: string;
+  dob: string;
 }

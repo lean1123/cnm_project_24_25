@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseInterceptor } from './common/intercepters/response.intercepter';
@@ -20,11 +20,20 @@ async function bootstrap() {
 
   app.use(helmet());
   app.enableCors({
-    origin: 'http://localhost:5173', // Chỉ chấp nhận từ frontend này
+    origin: ['http://localhost:5173'], // Chỉ chấp nhận từ frontend này
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Cho phép gửi cookie & header xác thực
   });
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => {
+        const messages = errors
+          .map((err) => Object.values(err.constraints || {}))
+          .flat();
+        return new BadRequestException(messages);
+      },
+    }),
+  );
   app.useGlobalInterceptors(new ResponseInterceptor());
   await app.listen(process.env.PORT ?? 3000);
 }
