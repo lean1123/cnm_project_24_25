@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { User } from 'src/common/decorator/user.decorator';
+import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto } from './dtos/request/changePassword.dto';
 import { ForgotPassword } from './dtos/request/forgotPassword.dto';
@@ -41,7 +41,7 @@ export class AuthController {
 
   @Post('refresh-token')
   @UseGuards(AuthGuard('jwt'))
-  refreshToken(@User() user: JwtPayload): Promise<AuthResponseDto> {
+  refreshToken(@UserDecorator() user: JwtPayload): Promise<AuthResponseDto> {
     return this.authService.refreshToken(user);
   }
 
@@ -62,7 +62,7 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Post('change-password')
   async changePassword(
-    @User() req: JwtPayload,
+    @UserDecorator() req: JwtPayload,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
     return await this.authService.changePassword(req, changePasswordDto);
@@ -70,7 +70,7 @@ export class AuthController {
 
   @Get('get-my-profile')
   @UseGuards(AuthGuard('jwt'))
-  async getMyProfile(@User() req: JwtPayload) {
+  async getMyProfile(@UserDecorator() req: JwtPayload) {
     return await this.authService.getMyProfile(req);
   }
 }
