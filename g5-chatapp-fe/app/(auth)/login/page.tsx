@@ -25,6 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useRouter } from "next/navigation";
+
 
 type Props = {};
 
@@ -47,16 +49,23 @@ function Login({}: Props) {
 
   const { login, isLoading, isAuthenticated } = useAuthStore();
 
+  const router = useRouter();
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       // Assuming an async login function
       console.log(values);
-      await login(values);
-      if (isAuthenticated) {
+      const result = await login(values);
+      if (result) {
         toast.success("Login successful!");
+        // Redirect to conversations page or wherever needed
+        setTimeout(() => {
+          router.push("/conversations");
+        }, 1000);
       }
     } catch (error) {
       console.error("Form submission error", error);
+
       toast.error("Login failed. Please check your credentials.");
     }
   }

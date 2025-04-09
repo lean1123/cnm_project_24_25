@@ -1,5 +1,7 @@
 {
   "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/(root)/conversations/page": "app/(root)/conversations/page.js",
   "/(auth)/forgot-password/page": "app/(auth)/forgot-password/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js"
+  "/(auth)/verify-otp/page": "app/(auth)/verify-otp/page.js"
 }

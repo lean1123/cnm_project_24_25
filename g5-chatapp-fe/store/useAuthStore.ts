@@ -20,7 +20,7 @@ interface iAuthStore {
   error: string | null;
   userRegistrationId: string | null;
   emailForgotPassword: string | null;
-  login: (dataLogin: DataLogin) => Promise<void>;
+  login: (dataLogin: DataLogin) => Promise<Boolean>;
   register: (dataRegister: DataRegister) => Promise<void>;
   logout: () => void;
   getMyProfile: () => Promise<void>;
@@ -29,6 +29,7 @@ interface iAuthStore {
   forgotPassword: (email: string, newPassword: string) => Promise<void>;
   verifyForgotPassword: (email: string, otp: string) => Promise<void>;
 }
+
 
 export const useAuthStore = create<iAuthStore>()(
   persist(
@@ -40,17 +41,24 @@ export const useAuthStore = create<iAuthStore>()(
       userRegistrationId: null,
       emailForgotPassword: null,
 
-      login: async (dataLogin: DataLogin) => {
+      login: async (dataLogin: DataLogin) =>  {
         set({ isLoading: true, error: null, emailForgotPassword: null });
         try {
           const data = await login(dataLogin);
-          set({ user: data.user, isAuthenticated: true });
-          toast.success("Login successful!");
-          setTimeout(() => {
-            window.location.href = "/conversations";
-          }, 1000);
+          if (data) {
+            set({ user: data.user, isAuthenticated: true });
+            // toast.success("Login successful!");
+            // setTimeout(() => {
+            //   window.location.href = "/conversations";
+            //   // router.push("/conversations");
+            // }, 1000);
+            return true;
+          }
+          return false;
         } catch (error) {
           set({ error: "Login failed" });
+          // toast.error("Login failed. Please check your credentials.");
+          return false;
         } finally {
           set({ isLoading: false });
         }
@@ -73,7 +81,7 @@ export const useAuthStore = create<iAuthStore>()(
         await logout();
         useAuthStore.persist.clearStorage(); // Clear the persisted state
         useAuthStore.persist.rehydrate(); // Rehydrate the store to its initial state
-        set({ user: null, isAuthenticated: false, emailForgotPassword: null });
+        // set({ user: null, isAuthenticated: false, emailForgotPassword: null });
       },
       getMyProfile: async () => {
         set({ isLoading: true, error: null });
@@ -146,7 +154,7 @@ export const useAuthStore = create<iAuthStore>()(
         } finally {
           set({ isLoading: false });
         }
-      }
+      },
     }),
     {
       name: "auth-storage", // name of the item in the storage (must be unique);
