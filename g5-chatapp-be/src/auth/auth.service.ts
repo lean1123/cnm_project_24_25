@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import Redis from 'ioredis';
-import { Model, ObjectId } from 'mongoose';
+import { Model, ObjectId, Date } from 'mongoose';
 import { OtpService } from 'src/mail/otpGenerator/otp.service';
 import { User } from 'src/users/schema/user.schema';
 import { ChangePasswordDto } from './dtos/request/changePassword.dto';
@@ -32,7 +32,8 @@ export class AuthService {
   ) {}
 
   async signUp(signUpDto: SignUpDto): Promise<TempUser> {
-    const { firstName, lastName, email, password, role, gender } = signUpDto;
+    const { firstName, lastName, email, password, role, gender, dob } =
+      signUpDto;
 
     // Check if email already exists
     const existedUser = await this.userModel.findOne({ email });
@@ -54,6 +55,7 @@ export class AuthService {
       role,
       status: 'inactive',
       gender,
+      dob,
     };
 
     try {

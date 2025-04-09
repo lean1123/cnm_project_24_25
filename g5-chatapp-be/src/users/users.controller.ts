@@ -13,7 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Roles } from 'src/auth/decorators/role.decorator';
 import { Role } from 'src/auth/enums/role.enum';
 import { RolesGuard } from 'src/auth/guards/role.guards';
-import { UserRequest } from './dto/requests/user.req';
+import { UserRequest } from './dto/requests/user.dto';
 
 @Controller('users')
 export class UsersController {

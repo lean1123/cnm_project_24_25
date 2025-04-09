@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Date, Document } from 'mongoose';
 import { Gender } from 'src/auth/enums/gender.enum';
 import { Role } from 'src/auth/enums/role.enum';
 
@@ -23,6 +23,10 @@ export class User extends Document {
   refreshToken: string;
   @Prop()
   gender: Gender;
+  @Prop({ type: Date, required: true })
+  dob: Date;
+  @Prop({ required: false })
+  avatar: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
