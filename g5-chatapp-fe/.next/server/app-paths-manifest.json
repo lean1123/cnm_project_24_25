@@ -3,5 +3,7 @@
   "/favicon.ico/route": "app/favicon.ico/route.js",
   "/(root)/conversations/page": "app/(root)/conversations/page.js",
   "/(auth)/forgot-password/page": "app/(auth)/forgot-password/page.js",
-  "/(auth)/verify-otp/page": "app/(auth)/verify-otp/page.js"
+  "/(auth)/verify-otp/page": "app/(auth)/verify-otp/page.js",
+  "/(root)/conversations/[conversationId]/page": "app/(root)/conversations/[conversationId]/page.js",
+  "/(auth)/register/page": "app/(auth)/register/page.js"
 }

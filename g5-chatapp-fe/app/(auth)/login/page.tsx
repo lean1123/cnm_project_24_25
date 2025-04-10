@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 
-
 type Props = {};
 
 const formSchema = z.object({
@@ -53,22 +52,22 @@ function Login({}: Props) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Assuming an async login function
-      console.log(values);
       const result = await login(values);
       if (result) {
         toast.success("Login successful!");
-        // Redirect to conversations page or wherever needed
         setTimeout(() => {
           router.push("/conversations");
         }, 1000);
+      } else {
+        toast.error("Login failed. Please check your credentials.");
+        return;
       }
-    } catch (error) {
-      console.error("Form submission error", error);
-
-      toast.error("Login failed. Please check your credentials.");
+    } catch (err) {
+      toast.error("Something went wrong during login.");
+      return;
     }
   }
+
   return (
     <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
       <Card className="mx-auto max-w-sm">
@@ -93,7 +92,7 @@ function Login({}: Props) {
                           id="email"
                           placeholder="johndoe@mail.com"
                           type="email"
-                          autoComplete="email"
+                          // autoComplete="email"
                           {...field}
                         />
                       </FormControl>
@@ -120,7 +119,7 @@ function Login({}: Props) {
                           type="password"
                           id="password"
                           placeholder="******"
-                          autoComplete="current-password"
+                          // autoComplete="current-password"
                           {...field}
                         />
                       </FormControl>

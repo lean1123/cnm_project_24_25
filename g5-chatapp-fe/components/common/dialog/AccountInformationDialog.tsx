@@ -34,15 +34,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { useAuthStore } from "@/store/useAuthStore";
 type Props = {};
 
-
 function AccountInformationDialog({}: Props) {
   const [isEdit, setIsEdit] = useState(false);
-  const [date, setDate] = useState<Date>(new Date());
-  const {user, getMyProfile} = useAuthStore();
+  const [date, setDate] = useState<Date>(new Date("2003-11-11"));
+  const { user, getMyProfile } = useAuthStore();
   useEffect(() => {
-    getMyProfile()
-  }
-  , [])
+    getMyProfile();
+  }, []);
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -87,7 +85,9 @@ function AccountInformationDialog({}: Props) {
                   </Button>
                 </div>
                 <div className="flex flex-col items-center gap-2">
-                  <span className="font-semibold text-2xl">{user?.firstName +" "+ user?.lastName}</span>
+                  <span className="font-semibold text-2xl">
+                    {user?.firstName + " " + user?.lastName}
+                  </span>
                 </div>
               </div>
               <Separator />
@@ -98,7 +98,13 @@ function AccountInformationDialog({}: Props) {
                 </div>
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Birthday</span>
-                  <span className="font-normal">{date.toLocaleString()}</span>
+                  <span className="font-normal">
+                    {date.getDate() +
+                      "/" +
+                      date.getMonth() +
+                      "/" +
+                      date.getFullYear()}
+                  </span>
                 </div>
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Email</span>

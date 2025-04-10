@@ -80,7 +80,7 @@ function Register() {
   }
 
   return (
-    <div className="flex min-h-[60vh] h-full w-full items-center justify-center px-4">
+    <div className="flex min-h-[60vh] h-full w-full items-center justify-center px-4 overflow-auto">
       <Card className="mx-auto max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">Register</CardTitle>
