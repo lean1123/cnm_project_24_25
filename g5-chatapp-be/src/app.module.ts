@@ -6,10 +6,10 @@ import { AuthModule } from './auth/auth.module';
 import { CallModule } from './call/call.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ContactModule } from './contact/contact.module';
-import { ConvensationModule } from './convensation/convensation.module';
+import { ConversationModule } from './conversation/conversation.module';
 import { MessageModule } from './message/message.module';
 import { UploadModule } from './upload/upload.module';
-import { UsersModule } from './users/users.module';
+import { UserModule } from './user/user.module';
 import { MailModule } from './mail/mail.module';
 import { RedisModule } from './redis/redis.module';
 import { OtpModule } from './mail/otpGenerator/otp.module';
@@ -26,10 +26,10 @@ import { OtpModule } from './mail/otpGenerator/otp.module';
       envFilePath: '.env',
       isGlobal: true,
     }),
-    MongooseModule.forRoot(process.env.MONGO_URI!),
-    UsersModule,
+    MongooseModule.forRoot(process.env.MONGO_URI),
+    UserModule,
     AuthModule,
-    ConvensationModule,
+    ConversationModule,
     MessageModule,
     ContactModule,
     CallModule,
@@ -38,6 +38,7 @@ import { OtpModule } from './mail/otpGenerator/otp.module';
     MailModule,
     RedisModule,
     OtpModule,
+    UploadModule,
   ],
   controllers: [],
   providers: [],

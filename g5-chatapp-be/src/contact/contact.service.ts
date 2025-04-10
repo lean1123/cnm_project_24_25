@@ -1,16 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ConvensationService } from 'src/convensation/convensation.service';
-import { UsersService } from 'src/users/users.service';
+import { ConversationService } from 'src/conversation/conversation.service';
+import { UserService } from 'src/user/user.service';
 import { Status } from './enum/status.enum';
 import { Contact } from './schema/contact.schema';
 
 @Injectable()
 export class ContactService {
   constructor(
-    private readonly userService: UsersService,
-    private readonly convensationService: ConvensationService,
+    private readonly userService: UserService,
+    private readonly conversationService: ConversationService,
     @InjectModel(Contact.name) private contactModel: Model<Contact>,
   ) {}
 
@@ -40,7 +40,7 @@ export class ContactService {
     //   admin: null,
     // };
 
-    // await this.convensationService.createConvensation(convensationSchema);
+    // await this.conversationService.createConvensation(convensationSchema);
 
     return savedContact;
   }
@@ -77,7 +77,7 @@ export class ContactService {
 
     // Kiểm tra xem cuộc trò chuyện đã tồn tại chưa
     const existingConversation =
-      await this.convensationService.getConvensationByMemberForChatDirect([
+      await this.conversationService.getConvensationByMemberForChatDirect([
         {
           userId: user._id as string,
           fullName: `${user.firstName} ${user.lastName}`,
@@ -91,7 +91,7 @@ export class ContactService {
     // Nếu chưa có cuộc trò chuyện, tạo mới
     if (!existingConversation) {
       try {
-        await this.convensationService.createConvensation({
+        await this.conversationService.createConvensation({
           isGroup: false,
           members: [
             {

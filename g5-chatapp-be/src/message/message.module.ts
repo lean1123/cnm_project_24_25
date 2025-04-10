@@ -6,20 +6,21 @@ import { AuthModule } from 'src/auth/auth.module';
 import { MessageController } from './message.controller';
 import { MessageService } from './message.service';
 import { Message, MessageSchema } from './schema/messege.chema';
-import { UsersModule } from 'src/users/users.module';
-import { ConvensationModule } from 'src/convensation/convensation.module';
+import { UserModule } from 'src/user/user.module';
+import { ConversationModule } from 'src/conversation/conversation.module';
 import { UploadModule } from 'src/upload/upload.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
-import { ChatGateway } from 'src/gateway/chat.gateway';
+import { ChatGateway } from 'src/message/gateway/chat.gateway';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Message.name, schema: MessageSchema }]),
     AuthModule,
-    UsersModule,
-    forwardRef(() => ConvensationModule),
+    UserModule,
+    forwardRef(() => ConversationModule),
     UploadModule,
     CloudinaryModule,
+    UploadModule,
   ],
   providers: [
     MessageService,

@@ -1,36 +1,39 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { ConvensationService } from 'src/convensation/convensation.service';
+import { ConversationService } from 'src/conversation/conversation.service';
 // import { UploadService } from 'src/upload/upload.service';
-import { UsersService } from 'src/users/users.service';
+import { UploadService } from 'src/upload/upload.service';
+import { UserService } from 'src/user/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageType } from './schema/messageType.enum';
 
 @Injectable()
 export class MessageService {
   constructor(
     @InjectModel(Message.name) private messageModel: Model<Message>,
-    private readonly userService: UsersService,
-    private readonly convensationService: ConvensationService,
-    // private readonly uploadFileService: UploadService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly userService: UserService,
+    private readonly conversationService: ConversationService,
+    private readonly uploadFileService: UploadService,
+    // private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createMessage(
     convensationId: string,
+    user: JwtPayload,
     dto: MessageRequest,
     files: Express.Multer.File[],
   ): Promise<Message> {
     const conversation =
-      await this.convensationService.getConvensationById(convensationId);
+      await this.conversationService.getConvensationById(convensationId);
 
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
     }
 
-    const sender = await this.userService.findById(dto.sender_id.userId);
+    const sender = await this.userService.findById(user._id);
 
     if (!sender) {
       throw new NotFoundException('Sender not found in create new message');
@@ -38,7 +41,7 @@ export class MessageService {
 
     // Kiểm tra người gửi có tồn tại trong participant không
     const isParticipant = conversation.members.some(
-      (member) => member.userId.toString() === dto.sender_id.userId,
+      (member) => member.userId.toString() === user._id.toString(),
     );
 
     if (!isParticipant) {
@@ -46,13 +49,30 @@ export class MessageService {
     }
 
     let fileUrls = [];
+    let type: string = MessageType.TEXT; // Mặc định là TEXT
 
     if (files) {
       fileUrls = await Promise.all(
         files.map(async (file) => {
-          const { fileName, url } =
-            await this.cloudinaryService.uploadFile(file);
-          return { fileName, url };
+          const url = await this.uploadFileService.uploadFile(
+            file.originalname,
+            file.buffer,
+          );
+
+          if (file.mimetype.startsWith('image/')) {
+            type = MessageType.IMAGE;
+          }
+          if (file.mimetype.startsWith('video/')) {
+            type = MessageType.VIDEO;
+          }
+          if (file.mimetype.startsWith('audio/')) {
+            type = MessageType.AUDIO;
+          }
+          if (file.mimetype.startsWith('application/')) {
+            type = MessageType.FILE;
+          }
+
+          return { fileName: file.originalname, url };
         }),
       );
     }
@@ -60,16 +80,16 @@ export class MessageService {
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
       sender: {
-        userId: dto.sender_id.userId,
+        userId: user._id,
         fullName: `${sender.firstName} ${sender.lastName}`,
       },
       content: dto.content,
-      emotion: dto.emotion || [],
       files: fileUrls || [],
+      type,
     };
 
     const messageSaved = await this.messageModel.create(messageSchema);
-    await this.convensationService.updateLastMessageField(
+    await this.conversationService.updateLastMessageField(
       convensationId,
       messageSaved._id as string,
     );
