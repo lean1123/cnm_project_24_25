@@ -15,10 +15,9 @@ import { ChatGateway } from 'src/message/gateway/chat.gateway';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Message.name, schema: MessageSchema }]),
-    AuthModule,
-    UserModule,
+    forwardRef(() => AuthModule),
+    forwardRef(() => UserModule),
     forwardRef(() => ConversationModule),
-    UploadModule,
     CloudinaryModule,
     UploadModule,
   ],
@@ -31,6 +30,6 @@ import { ChatGateway } from 'src/message/gateway/chat.gateway';
     ChatGateway,
   ],
   controllers: [MessageController],
-  exports: [MessageService, MongooseModule],
+  exports: [MessageService, MongooseModule, ChatGateway],
 })
 export class MessageModule {}

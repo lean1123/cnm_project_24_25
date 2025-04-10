@@ -10,13 +10,14 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { ConversationService } from 'src/conversation/conversation.service';
 import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { MessageService } from 'src/message/message.service';
 
 @WebSocketGateway({
   cors: {
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST'],
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
   },
 })
@@ -26,7 +27,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private logger: Logger = new Logger(ChatGateway.name);
 
-  constructor(private readonly chatService: MessageService) {}
+  constructor(
+    private readonly chatService: MessageService,
+    private readonly conversationService: ConversationService,
+  ) {}
 
   private activeUsers = new Map<string, string>();
 
@@ -45,6 +49,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     for (const room of client.rooms) {
       await client.leave(room);
+    }
+  }
+
+  @SubscribeMessage('login')
+  async handleLogin(
+    @MessageBody() { userId }: { userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    this.logger.log(`User ${userId} logged in with socket ${client.id}`);
+    this.activeUsers.set(userId, client.id);
+
+    const conversations =
+      await this.conversationService.getMyConversationId(userId);
+
+    for (const conversationId of conversations) {
+      await client.join(conversationId.toString());
+      this.logger.log(
+        `User ${userId} joined room ${conversationId.toString()} with socket ${client.id}`,
+      );
     }
   }
 
