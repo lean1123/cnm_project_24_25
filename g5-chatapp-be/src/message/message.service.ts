@@ -7,6 +7,8 @@ import { UploadService } from 'src/upload/upload.service';
 import { UserService } from 'src/user/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageType } from './schema/messageType.enum';
 
 @Injectable()
 export class MessageService {
@@ -20,6 +22,7 @@ export class MessageService {
 
   async createMessage(
     convensationId: string,
+    user: JwtPayload,
     dto: MessageRequest,
     files: Express.Multer.File[],
   ): Promise<Message> {
@@ -30,7 +33,7 @@ export class MessageService {
       throw new NotFoundException('Conversation not found');
     }
 
-    const sender = await this.userService.findById(dto.sender_id.userId);
+    const sender = await this.userService.findById(user._id);
 
     if (!sender) {
       throw new NotFoundException('Sender not found in create new message');
@@ -38,7 +41,7 @@ export class MessageService {
 
     // Kiểm tra người gửi có tồn tại trong participant không
     const isParticipant = conversation.members.some(
-      (member) => member.userId.toString() === dto.sender_id.userId,
+      (member) => member.userId.toString() === user._id.toString(),
     );
 
     if (!isParticipant) {
@@ -46,6 +49,7 @@ export class MessageService {
     }
 
     let fileUrls = [];
+    let type: string = MessageType.TEXT; // Mặc định là TEXT
 
     if (files) {
       fileUrls = await Promise.all(
@@ -54,6 +58,20 @@ export class MessageService {
             file.originalname,
             file.buffer,
           );
+
+          if (file.mimetype.startsWith('image/')) {
+            type = MessageType.IMAGE;
+          }
+          if (file.mimetype.startsWith('video/')) {
+            type = MessageType.VIDEO;
+          }
+          if (file.mimetype.startsWith('audio/')) {
+            type = MessageType.AUDIO;
+          }
+          if (file.mimetype.startsWith('application/')) {
+            type = MessageType.FILE;
+          }
+
           return { fileName: file.originalname, url };
         }),
       );
@@ -62,12 +80,12 @@ export class MessageService {
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
       sender: {
-        userId: dto.sender_id.userId,
+        userId: user._id,
         fullName: `${sender.firstName} ${sender.lastName}`,
       },
       content: dto.content,
-      emotion: dto.emotion || [],
       files: fileUrls || [],
+      type,
     };
 
     const messageSaved = await this.messageModel.create(messageSchema);

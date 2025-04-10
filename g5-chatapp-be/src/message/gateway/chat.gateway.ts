@@ -9,6 +9,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { MessageService } from 'src/message/message.service';
 
@@ -69,17 +70,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     {
       conversationId,
+      user,
       messageDto,
       files,
     }: {
       conversationId: string;
+      user: JwtPayload;
       messageDto: MessageRequest;
       files: Express.Multer.File[];
     },
-    @ConnectedSocket() client: Socket,
   ) {
     const message = await this.chatService.createMessage(
       conversationId,
+      user,
       messageDto,
       files,
     );

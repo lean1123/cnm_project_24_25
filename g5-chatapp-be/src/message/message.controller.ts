@@ -7,29 +7,40 @@ import {
   Put,
   Query,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { ChatGateway } from 'src/message/gateway/chat.gateway';
 import { MessageRequest } from './dtos/requests/message.request';
 import { MessageService } from './message.service';
 import { Message } from './schema/messege.chema';
+import { AuthGuard } from '@nestjs/passport';
+import { UserDecorator } from 'src/common/decorator/user.decorator';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 
 @Controller('message')
 export class MessageController {
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    private readonly messageService: MessageService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
-  @Post(':convensationId')
+  @Post('/send-message/:convensationId')
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FilesInterceptor('files'))
   async sendMessage(
-    @Param('convensationId') convensationId: string,
+    @Param('convensationId') conversationId: string,
+    @UserDecorator() user: JwtPayload,
     @Body() message: MessageRequest,
-    @UploadedFiles() files: Express.Multer.File[],
-  ) {
-    return await this.messageService.createMessage(
-      convensationId,
-      message,
-      files,
-    );
+    @UploadedFiles() file: Express.Multer.File[],
+  ): Promise<void> {
+    await this.chatGateway.handleMessage({
+      conversationId,
+      user,
+      messageDto: message,
+      files: file,
+    });
   }
 
   @Get(':conversationId')
