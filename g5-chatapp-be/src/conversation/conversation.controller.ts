@@ -7,13 +7,23 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ConversationService } from './conversation.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
+import { UserDecorator } from 'src/common/decorator/user.decorator';
+import { JwtPayload } from './interfaces/jwtPayload.interface';
 
-@Controller('convensation')
+@Controller('conversation')
 export class ConvensationController {
   constructor(private convensationService: ConversationService) {}
+
+  @Get()
+  @UseGuards(AuthGuard('jwt'))
+  async getAllConvensation() {
+    return await this.convensationService.getAllConvensation();
+  }
 
   @Post()
   async createConvensation(@Body() convensationReq: ConvensationRequest) {
@@ -41,18 +51,14 @@ export class ConvensationController {
     }
   }
 
+  @Get('my-conversation')
+  @UseGuards(AuthGuard('jwt'))
+  getMyConversation(@UserDecorator() userPayload: JwtPayload) {
+    return this.convensationService.getMyConversation(userPayload);
+  }
+
   @Get(':id')
   async getConvensationById(@Param('id') id: string) {
     return await this.convensationService.getConvensationById(id);
-  }
-
-  @Get()
-  async getAllConvensation() {
-    return await this.convensationService.getAllConvensation();
-  }
-
-  @Get('/my-conversation/:userId')
-  async getMyConversationBy(@Param('userId') userId: string) {
-    return await this.convensationService.getMyConversation(userId);
   }
 }

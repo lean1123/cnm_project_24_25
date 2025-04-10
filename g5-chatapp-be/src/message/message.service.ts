@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConversationService } from 'src/conversation/conversation.service';
@@ -15,9 +20,9 @@ export class MessageService {
   constructor(
     @InjectModel(Message.name) private messageModel: Model<Message>,
     private readonly userService: UserService,
+    @Inject(forwardRef(() => ConversationService))
     private readonly conversationService: ConversationService,
     private readonly uploadFileService: UploadService,
-    // private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createMessage(

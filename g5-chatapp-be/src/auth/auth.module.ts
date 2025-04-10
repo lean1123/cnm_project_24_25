@@ -9,6 +9,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { OtpModule } from 'src/mail/otpGenerator/otp.module';
 import { RedisModule } from 'src/redis/redis.module';
+import { MessageModule } from 'src/message/message.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RedisModule } from 'src/redis/redis.module';
     MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
     forwardRef(() => OtpModule), // OtpModule được sử dụng trong AuthService
     forwardRef(() => RedisModule),
+    forwardRef(() => MessageModule), // MessageModule được sử dụng trong AuthService
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

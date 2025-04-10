@@ -1,17 +1,19 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Types } from 'mongoose';
+import { MessageService } from 'src/message/message.service';
 import { UserService } from 'src/user/user.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
 import { MemberRequest } from './dto/requests/member.request';
 import { Convensation } from './schema/convensation.schema';
-import { MessageService } from 'src/message/message.service';
+import { JwtPayload } from './interfaces/jwtPayload.interface';
 
 @Injectable()
 export class ConversationService {
   constructor(
     @InjectModel(Convensation.name)
     private convenstationModel: mongoose.Model<Convensation>,
+    @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     @Inject(forwardRef(() => MessageService))
     private readonly messageService: MessageService,
@@ -92,7 +94,20 @@ export class ConversationService {
     return await this.convenstationModel.find().exec();
   }
 
-  async getMyConversation(userId: string): Promise<Convensation[]> {
+  async getMyConversation(userPayload: JwtPayload): Promise<Convensation[]> {
+    const user = await this.userService.findById(userPayload._id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const conversations = await this.convenstationModel
+      .find({
+        'members.userId': new Types.ObjectId(userPayload._id.toString()),
+      })
+      .exec();
+    return conversations || [];
+  }
+
+  async getMyConversationId(userId: string): Promise<Types.ObjectId[]> {
     const user = await this.userService.findById(userId);
     if (!user) {
       throw new Error('User not found');
@@ -102,7 +117,10 @@ export class ConversationService {
         'members.userId': new Types.ObjectId(userId),
       })
       .exec();
-    return conversations || [];
+    return (
+      conversations.map((conversation) => conversation._id as Types.ObjectId) ||
+      []
+    );
   }
 
   async updateConvensation(

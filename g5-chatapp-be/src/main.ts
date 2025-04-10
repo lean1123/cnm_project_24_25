@@ -20,7 +20,7 @@ async function bootstrap() {
 
   app.use(helmet());
   app.enableCors({
-    origin: ['http://localhost:5173'], // Chỉ chấp nhận từ frontend này
+    origin: ['http://localhost:5173', 'http://localhost:5174'], // Chỉ chấp nhận từ frontend này
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Cho phép gửi cookie & header xác thực
   });

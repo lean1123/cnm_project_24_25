@@ -5,6 +5,8 @@ import { ConversationService } from 'src/conversation/conversation.service';
 import { UserService } from 'src/user/user.service';
 import { Status } from './enum/status.enum';
 import { Contact } from './schema/contact.schema';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { ContactDto } from './dto/contact.dto';
 
 @Injectable()
 export class ContactService {
@@ -14,9 +16,12 @@ export class ContactService {
     @InjectModel(Contact.name) private contactModel: Model<Contact>,
   ) {}
 
-  async createContact(userId: string, contactId: string): Promise<Contact> {
-    const user = await this.userService.findById(userId);
-    const contact = await this.userService.findById(contactId);
+  async createContact(
+    userPayload: JwtPayload,
+    contactDto: ContactDto,
+  ): Promise<Contact> {
+    const user = await this.userService.findById(userPayload._id);
+    const contact = await this.userService.findById(contactDto.contactId);
 
     if (!user || !contact) {
       throw new NotFoundException('User not found');
@@ -29,18 +34,6 @@ export class ContactService {
     };
 
     const savedContact = await this.contactModel.create(contactSchema);
-
-    // const convensationSchema: ConvensationRequest = {
-    //   isGroup: false,
-    //   members: [userId, contactId],
-    //   lastMessage: null,
-    //   _id: null,
-    //   name: null,
-    //   profilePicture: null,
-    //   admin: null,
-    // };
-
-    // await this.conversationService.createConvensation(convensationSchema);
 
     return savedContact;
   }
@@ -115,5 +108,31 @@ export class ContactService {
     }
 
     return updatedContact;
+  }
+
+  async getMyContact(userPayload: JwtPayload): Promise<Contact[]> {
+    const user = await this.userService.findById(userPayload._id);
+    if (!user) {
+      throw new NotFoundException('User not found in get my contact');
+    }
+    const contacts = await this.contactModel
+      .find({ userId: user._id, status: Status.ACTIVE })
+      .exec();
+    return contacts || [];
+  }
+
+  async getListAcceptedContact(userPayload: JwtPayload): Promise<Contact[]> {
+    const user = await this.userService.findById(userPayload._id);
+    if (!user) {
+      throw new NotFoundException('User not found in get my contact');
+    }
+    const contacts = await this.contactModel
+      .find({ userId: user._id, status: Status.INACTIVE })
+      .exec();
+    return contacts || [];
+  }
+
+  async getContactById(contactId: string): Promise<Contact> {
+    return await this.contactModel.findById(contactId).exec();
   }
 }

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { User } from 'src/user/schema/user.schema';
 import { Member } from './member.schema';
 import { LastMessage } from './lastMessage.schema';
@@ -7,7 +7,7 @@ import { LastMessage } from './lastMessage.schema';
 @Schema({
   timestamps: true,
 })
-export class Convensation {
+export class Convensation extends Document {
   @Prop({ required: false })
   name: string;
   @Prop()

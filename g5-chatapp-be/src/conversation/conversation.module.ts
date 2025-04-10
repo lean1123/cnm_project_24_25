@@ -14,8 +14,8 @@ import { ConvensationSchema } from './schema/convensation.schema';
     MongooseModule.forFeature([
       { name: 'Convensation', schema: ConvensationSchema },
     ]),
-    AuthModule,
-    UserModule,
+    forwardRef(() => AuthModule),
+    forwardRef(() => UserModule),
     forwardRef(() => MessageModule),
   ],
   providers: [
