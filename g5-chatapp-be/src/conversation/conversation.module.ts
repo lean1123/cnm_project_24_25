@@ -4,9 +4,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from 'src/auth/auth.module';
 import { MessageModule } from 'src/message/message.module';
-import { UsersModule } from 'src/users/users.module';
-import { ConvensationController } from './convensation.controller';
-import { ConvensationService } from './convensation.service';
+import { UserModule } from 'src/user/user.module';
+import { ConvensationController } from './conversation.controller';
+import { ConversationService } from './conversation.service';
 import { ConvensationSchema } from './schema/convensation.schema';
 
 @Module({
@@ -15,17 +15,17 @@ import { ConvensationSchema } from './schema/convensation.schema';
       { name: 'Convensation', schema: ConvensationSchema },
     ]),
     AuthModule,
-    UsersModule,
+    UserModule,
     forwardRef(() => MessageModule),
   ],
   providers: [
-    ConvensationService,
+    ConversationService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
   ],
   controllers: [ConvensationController],
-  exports: [ConvensationService, MongooseModule],
+  exports: [ConversationService, MongooseModule],
 })
-export class ConvensationModule {}
+export class ConversationModule {}

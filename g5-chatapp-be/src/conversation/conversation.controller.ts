@@ -8,19 +8,20 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
-import { ConvensationService } from './convensation.service';
+import { ConversationService } from './conversation.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
 
 @Controller('convensation')
 export class ConvensationController {
-  constructor(private convensationService: ConvensationService) {}
+  constructor(private convensationService: ConversationService) {}
 
   @Post()
   async createConvensation(@Body() convensationReq: ConvensationRequest) {
     try {
       return await this.convensationService.createConvensation(convensationReq);
     } catch (error) {
-      throw new HttpException(error.message as String, HttpStatus.BAD_REQUEST);
+      const err = error as Error;
+      throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
     }
   }
 
@@ -35,7 +36,8 @@ export class ConvensationController {
         convensationReq,
       );
     } catch (error) {
-      throw new HttpException(error.message as String, HttpStatus.BAD_REQUEST);
+      const err = error as Error;
+      throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
     }
   }
 

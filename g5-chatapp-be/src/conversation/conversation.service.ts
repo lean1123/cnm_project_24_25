@@ -1,18 +1,18 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Types } from 'mongoose';
-import { UsersService } from 'src/users/users.service';
+import { UserService } from 'src/user/user.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
 import { MemberRequest } from './dto/requests/member.request';
 import { Convensation } from './schema/convensation.schema';
 import { MessageService } from 'src/message/message.service';
 
 @Injectable()
-export class ConvensationService {
+export class ConversationService {
   constructor(
     @InjectModel(Convensation.name)
     private convenstationModel: mongoose.Model<Convensation>,
-    private readonly userService: UsersService,
+    private readonly userService: UserService,
     @Inject(forwardRef(() => MessageService))
     private readonly messageService: MessageService,
   ) {}

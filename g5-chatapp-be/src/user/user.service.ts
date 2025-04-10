@@ -7,7 +7,7 @@ import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Injectable()
-export class UsersService {
+export class UserService {
   constructor(
     @InjectModel(User.name)
     private userModel: mongoose.Model<User>,
