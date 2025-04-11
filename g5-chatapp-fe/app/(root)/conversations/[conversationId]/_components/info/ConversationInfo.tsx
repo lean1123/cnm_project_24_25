@@ -1,7 +1,9 @@
+"use client"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, getNameFallBack } from "@/lib/utils";
+import { useConversationStore } from "@/store/useConversationStore";
 import { Bell, Download, FileText, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -47,6 +49,7 @@ const conversationInfo = {
 };
 
 function ConversationInfo({ isOpen, setOpen }: Props) {
+  const {userSelected} = useConversationStore()
   return (
     <Card
       className={cn(
@@ -57,10 +60,10 @@ function ConversationInfo({ isOpen, setOpen }: Props) {
       {/* info */}
       <div className="flex flex-col gap-2 justify-center items-center mt-6">
         <Avatar className="h-16 w-16">
-          <AvatarFallback>JD</AvatarFallback>
+          <AvatarFallback>{getNameFallBack(userSelected?.firstName || "", userSelected?.lastName || "")}</AvatarFallback>
         </Avatar>
         <p className="text-base font-semibold text-center">
-          {conversationInfo.name}
+          {userSelected?.firstName + " " + userSelected?.lastName}
         </p>
         {/* button */}
         <div className="mt-2 flex justify-evenly items-start w-full">

@@ -7,14 +7,15 @@ import { Card } from "@/components/ui/card";
 //   DropdownMenuItem,
 //   DropdownMenuTrigger,
 // } from "@/components/ui/dropdown-menu";
-import { cn, getInitials } from "@/lib/utils";
+import { cn, getInitials, getNameFallBack } from "@/lib/utils";
 import { CircleArrowLeft, Settings, User } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
 type Props = {
   imageUrl?: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   options?: {
     label: string;
     icon?: React.ReactNode;
@@ -22,7 +23,7 @@ type Props = {
   }[];
 };
 
-const Header = ({ imageUrl, name, options }: Props) => {
+const Header = ({ imageUrl, firstName, lastName, options }: Props) => {
   return (
     <Card className="w-full flex rounded-lg items-center p-2 justify-between">
       <div className="flex items-center gap-2">
@@ -30,10 +31,10 @@ const Header = ({ imageUrl, name, options }: Props) => {
           <CircleArrowLeft />
         </Link>
         <Avatar className="h-8 w-8">
-          <AvatarImage src={imageUrl} alt={name} />
-          <AvatarFallback>{getInitials(name)}</AvatarFallback>
+          <AvatarImage src={imageUrl} alt={firstName} />
+          <AvatarFallback>{getNameFallBack(firstName, lastName)}</AvatarFallback>
         </Avatar>
-        <h2 className="font-semibold">{name}</h2>
+        <h2 className="font-semibold">{firstName + " " + lastName}</h2>
       </div>
       <div className="flex gap-2">
         {options &&

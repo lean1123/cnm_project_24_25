@@ -11,6 +11,7 @@ type Props = {
   name: string;
   lastMessageSender: string;
   lastMessageContent: string;
+  onClick?: () => void;
 };
 
 const ConversationItem = ({
@@ -32,12 +33,12 @@ const ConversationItem = ({
             <h4 className="truncate">{name}</h4>
             {lastMessageSender && lastMessageContent ? (
               <span className="text-sm text-muted-foreground flex truncate overflow-ellipsis">
-                <p className="font-semibold">
+                {/* <p className="font-semibold">
                   {lastMessageSender === "1232" ? "You :" : ""}
                 </p>
                 <p className="truncate overflow-ellipsis">
                   {lastMessageContent}
-                </p>
+                </p> */}
               </span>
             ) : (
               <p className="text-sm text-muted-foreground truncate">

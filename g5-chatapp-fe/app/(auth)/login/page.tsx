@@ -46,7 +46,7 @@ function Login({}: Props) {
     },
   });
 
-  const { login, isLoading, isAuthenticated } = useAuthStore();
+  const { login, isLogging, isAuthenticated } = useAuthStore();
 
   const router = useRouter();
 
@@ -127,7 +127,7 @@ function Login({}: Props) {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="`w-full" disabled={isLoading}>
+                <Button type="submit" className="`w-full" disabled={isLogging}>
                   Login
                 </Button>
                 {/* <Button variant="outline" className="w-full">

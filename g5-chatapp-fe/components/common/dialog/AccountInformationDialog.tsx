@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getInitials } from "@/lib/utils";
+import { cn, getInitials, getNameFallBack } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   CalendarIcon,
@@ -32,6 +32,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useAuthStore } from "@/store/useAuthStore";
+import { toStringFromDate } from "@/lib/format";
 type Props = {};
 
 function AccountInformationDialog({}: Props) {
@@ -40,6 +41,7 @@ function AccountInformationDialog({}: Props) {
   const { user, getMyProfile } = useAuthStore();
   useEffect(() => {
     getMyProfile();
+    setDate(new Date(user?.dob!));
   }, []);
   return (
     <Dialog>
@@ -74,7 +76,7 @@ function AccountInformationDialog({}: Props) {
                   <Avatar className="size-28">
                     {/* <AvatarImage src={user?.id} alt="User" /> */}
                     <AvatarFallback className="text-4xl">
-                      {getInitials(user?.firstName + " " + user?.lastName)}
+                      {getNameFallBack(user?.firstName || "", user?.lastName || "")}
                     </AvatarFallback>
                   </Avatar>
                   <Button
@@ -99,11 +101,7 @@ function AccountInformationDialog({}: Props) {
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Birthday</span>
                   <span className="font-normal">
-                    {date.getDate() +
-                      "/" +
-                      date.getMonth() +
-                      "/" +
-                      date.getFullYear()}
+                    {toStringFromDate(date)}{" "}
                   </span>
                 </div>
                 <div className="flex flex-row justify-between gap-2">
