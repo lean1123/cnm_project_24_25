@@ -1,4 +1,5 @@
 import {
+  forwardRef,
   Inject,
   Injectable,
   Logger,
@@ -19,6 +20,7 @@ import type { SignUpDto } from './dtos/request/signUp.dto';
 import type { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
+import { ChatGateway } from 'src/message/gateway/chat.gateway';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +31,8 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly otpService: OtpService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
+    @Inject(forwardRef(() => ChatGateway))
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   async signUp(signUpDto: SignUpDto): Promise<TempUser> {
