@@ -137,19 +137,19 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
         formData
       );
       set({ isSuccessSendMessage: true });
-      get().removeTempMessage("temp"); // Xóa tin nhắn tạm thời sau khi gửi thành công
+      // get().removeTempMessage("temp"); // Xóa tin nhắn tạm thời sau khi gửi thành công
       // console.log("Sent message:", response.data);
     } catch (error) {
       console.error("Failed to send message:", error);
       set({ errorSendMessage: "Failed to send message" });
-      set({
-        messages: get().messages.map((msg) =>
+      set((state) => ({
+        messages: state.messages.map((msg) =>
           msg._id === "temp" ? { ...msg, isError: true } : msg
         ),
-        messagesTemp: get().messagesTemp.map((msg) =>
+        messagesTemp: state.messagesTemp.map((msg) =>
           msg._id === "temp" ? { ...msg, isError: true } : msg
         ),
-      })
+      }));
     } finally {
       set({ isLoadingSendMessage: false });
     }
@@ -157,16 +157,12 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   addTempMessage: (message: Message) => {
     set((state) => ({
       messages: [message, ...state.messages],
-    }));
-    set((state) => ({
       messagesTemp: [message, ...state.messagesTemp],
     }));
   },
   removeTempMessage: (messageId: string) => {
     set((state) => ({
       messages: state.messages.filter((message) => message._id !== messageId),
-    }));
-    set((state) => ({
       messagesTemp: state.messagesTemp.filter(
         (message) => message._id !== messageId
       ),
@@ -177,7 +173,11 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     if (socket) {
       socket.on("newMessage", (message: Message) => {
         set((state) => ({
-          messages: [message, ...state.messages],
+          messages: [
+            message,
+            ...state.messages.filter((m) => m._id !== "temp"),
+          ],
+          messagesTemp: state.messagesTemp.filter((m) => m._id !== "temp"),
         }));
       });
     }
