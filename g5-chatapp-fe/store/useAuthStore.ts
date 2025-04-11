@@ -27,6 +27,8 @@ interface iAuthStore {
   connectSocket: () => void;
   disconnectSocket: () => void;
   socket: Socket | null;
+  activeUsers: string[];
+  setActiveUsers: (activeUsers: string[]) => void;
 }
 
 export const useAuthStore = create<iAuthStore>()(
@@ -41,6 +43,7 @@ export const useAuthStore = create<iAuthStore>()(
       userRegistrationId: null,
       emailForgotPassword: null,
       socket: null,
+      activeUsers: [],
 
       login: async (dataLogin: DataLogin) => {
         set({ isLogging: true, errorLogging: null, emailForgotPassword: null });
@@ -190,16 +193,38 @@ export const useAuthStore = create<iAuthStore>()(
           // set({ isLoading: false });
         }
       },
+      setActiveUsers: (activeUsers: string[]) => {
+        set({ activeUsers });
+      },
 
       connectSocket: () => {
         const user = get().user;
         if (!user || get().socket?.connected) return;
-        const socket = getSocket();
+        // const socket = getSocket();
+        const socket = io("http://localhost:3000", {
+          autoConnect: true,
+          reconnection: true,
+        });
+        socket.on("connect", () => {
+          console.log("Socket connected:", socket?.id);
+          socket?.emit("login", {
+            userId: user?.id || "userId",
+          });
+          socket?.on("activeUsers", (data) => {
+            console.log("Active users:", data.activeUsers);
+            set({ activeUsers: data.activeUsers });
+          });
+        });
         set({ socket });
         
       },
       disconnectSocket: () => {
-        disconnectSocket();
+        // disconnectSocket();
+        const { socket } = get();
+        if (socket) {
+          socket.disconnect();
+          console.log("Socket disconnected:", socket?.id);
+        }
         set({ socket: null });
       },
     }),

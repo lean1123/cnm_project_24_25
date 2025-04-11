@@ -22,6 +22,7 @@ export type User = {
     role: string[];
     dob: string;
     refreshToken?: string;
+    _id?: string;
 }
 
 export type SocketUser = {

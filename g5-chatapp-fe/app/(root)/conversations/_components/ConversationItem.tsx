@@ -1,8 +1,10 @@
+"use client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { getInitials } from "@/lib/utils";
 import { User } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import React from "react";
 
 type Props = {
@@ -21,9 +23,11 @@ const ConversationItem = ({
   lastMessageContent,
   lastMessageSender,
 }: Props) => {
+  const path = usePathname();
+  const isActive = path === `/conversations/${id}`;
   return (
     <Link href={`/conversations/${id}`} className="w-full">
-      <Card className="p-2 flex flex-row items-center gap-4 truncate">
+      <Card className={`p-2 flex flex-row items-center gap-4 truncate ${isActive ? "bg-secondary/65" : ""}`}>
         <div className="flex flex-row items-center gap-4 truncate">
           <Avatar>
             <AvatarImage src={imageUrl} alt={name} />

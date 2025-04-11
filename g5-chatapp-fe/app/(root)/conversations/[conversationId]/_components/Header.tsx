@@ -8,9 +8,11 @@ import { Card } from "@/components/ui/card";
 //   DropdownMenuTrigger,
 // } from "@/components/ui/dropdown-menu";
 import { cn, getInitials, getNameFallBack } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useConversationStore } from "@/store/useConversationStore";
 import { CircleArrowLeft, Settings, User } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect } from "react";
 
 type Props = {
   imageUrl?: string;
@@ -24,6 +26,18 @@ type Props = {
 };
 
 const Header = ({ imageUrl, firstName, lastName, options }: Props) => {
+  const { activeUsers } = useAuthStore();
+  const { userSelected } = useConversationStore();
+  const [isOnline, setIsOnline] = React.useState(false);
+  useEffect(() => {
+    console.log("userSelected", userSelected);
+    if (!userSelected?._id) return;
+    console.log("activeUsers", activeUsers);
+    const isUserOnline = activeUsers.includes(userSelected._id);
+    console.log("isUserOnline", isUserOnline);
+    setIsOnline(isUserOnline);
+  }, [activeUsers, userSelected?._id]);
+
   return (
     <Card className="w-full flex rounded-lg items-center p-2 justify-between">
       <div className="flex items-center gap-2">
@@ -32,9 +46,21 @@ const Header = ({ imageUrl, firstName, lastName, options }: Props) => {
         </Link>
         <Avatar className="h-8 w-8">
           <AvatarImage src={imageUrl} alt={firstName} />
-          <AvatarFallback>{getNameFallBack(firstName, lastName)}</AvatarFallback>
+          <AvatarFallback>
+            {getNameFallBack(firstName, lastName)}
+          </AvatarFallback>
         </Avatar>
-        <h2 className="font-semibold">{firstName + " " + lastName}</h2>
+        <div>
+          <h2 className="font-semibold">{firstName + " " + lastName}</h2>
+          <p className="text-sm text-muted-foreground flex items-center gap-1">
+            {isOnline ? (
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+            ) : (
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+            )}
+            {isOnline ? "Online" : "Offline"}
+          </p>
+        </div>
       </div>
       <div className="flex gap-2">
         {options &&

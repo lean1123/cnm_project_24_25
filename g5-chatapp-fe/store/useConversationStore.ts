@@ -80,7 +80,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   getConversations: async (userId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.get("/convensation/my-conversation/" + userId);
+      const { data } = await api.get("/conversation/my-conversation");
       console.log("Conversations use store data:", data);
       set({ conversations: data.data });
     } catch (error) {
@@ -98,7 +98,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   getConversation: async (conversationId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.get(`/convensation/${conversationId}`);
+      const { data } = await api.get(`/conversation/${conversationId}`);
       set({ selectedConversation: data.data });
       return data.data;
     } catch (error) {

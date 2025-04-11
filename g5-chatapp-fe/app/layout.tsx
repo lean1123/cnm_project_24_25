@@ -30,10 +30,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SocketProvider>
+        {/* <SocketProvider> */}
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster />
-        </SocketProvider>
+        {/* </SocketProvider> */}
       </body>
     </html>
   );
