@@ -11,3 +11,9 @@ export function getInitials(name: string) {
     .map((n) => n[0])
     .join("");
 }
+
+export function getNameFallBack(firstName: string, lastName: string) {
+  const firstInitial = firstName.trim()[0] || "";
+  const lastInitial = lastName.trim()[0] || "";
+  return (firstInitial + lastInitial).toUpperCase();
+}

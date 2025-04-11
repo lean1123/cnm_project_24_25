@@ -9,6 +9,7 @@ export type DataRegister = {
     email: string;
     password: string;
     gender: string;
+    dob: string;
     role?: string[];
 }
 
@@ -19,7 +20,9 @@ export type User = {
     email: string;
     gender: string;
     role: string[];
+    dob: string;
     refreshToken?: string;
+    _id?: string;
 }
 
 export type SocketUser = {
@@ -42,4 +45,32 @@ export type Conversation = {
 export type Member = {
     userId: string;
     fullName: string;
+}
+
+export type Message = {
+    _id: string;
+    conversation: string;
+    sender: Member;
+    content: string;
+    files: MessageFile[] | null;
+    deletedFor: any[];
+    isRevoked: boolean;
+    forwardFrom: string | null;
+    type: string;
+    createdAt: string;
+    updatedAt: string;
+    isTemp?: boolean;
+    isError?: boolean;
+}
+
+export type MessageRequest = {
+    content: string;
+    files?: File[] | null;
+    isRevoked?: boolean;
+    forwardFrom?: string | null;
+}
+
+export type MessageFile = {
+    fileName: string;
+    url: string;
 }

@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Message from "./Message";
+import { useConversationStore } from "@/store/useConversationStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type Props = {};
 
 const Body = (props: Props) => {
-  const messages = [
+  const mockMessages = [
     {
       message: {
         senderId: "user_1",
@@ -50,27 +52,53 @@ const Body = (props: Props) => {
       isCurrentUser: false,
     },
   ];
+  const {
+    sendMessage,
+    messages,
+    selectedConversation,
+    fetchMessages,
+    subscribeToNewMessages,
+    unsubscribeFromNewMessages,
+  } = useConversationStore();
+  const { user } = useAuthStore();
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation._id);
+    }
+  }, [selectedConversation, fetchMessages]);
+
+  useEffect(() => {
+    subscribeToNewMessages();
+    return () => {
+      unsubscribeFromNewMessages();
+    };
+  }, [subscribeToNewMessages, unsubscribeFromNewMessages]);
+
   return (
-    <div className="flex-1 w-full flex overflow-y-scroll flex-col-reverse gap-2 p-3 no-scrollbar">
-      {messages?.map(
-        ({ message, senderImage, senderName, isCurrentUser }, index) => {
-          const lastByUser =
-            messages[index - 1]?.message.senderId ===
-            messages[index]?.message.senderId;
-          return (
-            <Message
-              key={index}
-              fromCurrentUser={isCurrentUser}
-              senderImage={senderImage}
-              senderName={senderName}
-              lastByUser={lastByUser}
-              content={message.content}
-              createdAt={message.createdAt}
-              type={message.type}
-            />
-          );
-        }
-      )}
+    <div className="h-[calc(100vh-335px)] w-full flex flex-col">
+      <div className="flex-1 w-full flex overflow-y-scroll flex-col-reverse gap-2 p-3 no-scrollbar">
+        {messages &&
+          messages?.map((message, index) => {
+            const lastByUser =
+              messages[index - 1]?.sender.userId === message.sender.userId;
+            const isCurrentUser = message.sender.userId === user?.id;
+            return (
+              <Message
+                key={index}
+                fromCurrentUser={isCurrentUser}
+                senderImage={message.sender.fullName || ""}
+                file={message?.files || []}
+                senderName={message.sender.fullName || ""}
+                lastByUser={lastByUser}
+                content={message.content}
+                createdAt={message.createdAt}
+                type={message.type}
+                isTemp={message.isTemp || false}
+                isError={message.isError || false}
+              />
+            );
+          })}
+      </div>
     </div>
   );
 };

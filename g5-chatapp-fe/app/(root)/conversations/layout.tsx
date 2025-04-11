@@ -39,7 +39,7 @@ const ConversationsLayout = ({ children }: Props) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const {user} = useAuthStore();
-  const {conversations, getConversations} = useConversationStore();
+  const {conversations, getConversations, setSelectedConversation} = useConversationStore();
 
   // const filteredConversations = conversations?.filter(
   //   (conversation) =>
@@ -53,7 +53,14 @@ const ConversationsLayout = ({ children }: Props) => {
       console.log("Conversations ui data:", conversations);
     };
     fetchConversations();
-  }, []);
+  }, [user]);
+
+  const getMemberName = (conversation: any) => {
+    if (conversation.members[0].userId !== user?.id) {
+      return conversation.members[0].fullName;
+    }
+    return conversation.members[1].fullName;
+  }
   return (
     <>
       <ItemList title="Conversations">
@@ -80,9 +87,13 @@ const ConversationsLayout = ({ children }: Props) => {
                   key={conversation._id}
                   id={conversation._id}
                   imageUrl={conversation.profilePicture || ""}
-                  name={conversation.members[0].fullName || ""}
+                  name={getMemberName(conversation)}
                   lastMessageContent={conversation.lastMessage || ""}
                   lastMessageSender="1a2b3c"
+                  onClick={() => {
+                    setSelectedConversation(conversation);
+                    console.log("Selected conversation:", conversation._id);
+                  }}
                 />
               );
             })

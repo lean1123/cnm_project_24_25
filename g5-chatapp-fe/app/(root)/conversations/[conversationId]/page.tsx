@@ -7,6 +7,9 @@ import Body from "./_components/body/Body";
 import ChatInput from "./_components/input/ChatInput";
 import ConversationContainer from "@/components/common/conversation/ConversationContainer";
 import ConversationInfo from "./_components/info/ConversationInfo";
+import { useConversationStore } from "@/store/useConversationStore";
+import { root } from "postcss";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type Props = {
   params: Promise<{
@@ -29,9 +32,28 @@ function ConversationPage({ params }: Props) {
 
   const { conversationId } = use(params);
 
+  const { selectedConversation, getConversation, userSelected, fetchingUser } = useConversationStore();
+
+  const {user} = useAuthStore()
+
   useEffect(() => {
     console.log("Conversation ID:", conversationId);
+    if (conversationId) {
+      getConversation(conversationId);
+    }
   }, [conversationId]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      console.log("Selected conversation:", selectedConversation);
+      if (user?.id !== selectedConversation.members[0].userId) {
+        fetchingUser(selectedConversation.members[0].userId);
+      } else {
+        fetchingUser(selectedConversation.members[1].userId);
+      }
+    }
+  }
+  , [selectedConversation]);
 
   const [removeFriendDialogOpen, setRemoveFriendDialogOpen] = useState(false);
   const [deleteGroupDialogOpen, setDeleteGroupDialogOpen] = useState(false);
@@ -56,12 +78,13 @@ function ConversationPage({ params }: Props) {
         setOpen={setRemoveFriendDialogOpen}
       /> */}
       <div
-        className={`flex flex-col ${
+        className={`flex flex-col justify-between ${
           isOpenRightBar ? "col-span-6" : "col-span-9"
         }`}
       >
         <Header
-          name={header.name}
+          firstName={userSelected?.firstName || ""}
+          lastName={userSelected?.lastName || ""}
           imageUrl={header.imageUrl}
           options={[
             {
