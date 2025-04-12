@@ -119,4 +119,30 @@ export class MessageController {
       userId,
     );
   }
+
+  /**
+   * forward message to other conversationId (only sender has permission forward)
+   * @param messageId
+   * @param conversationIds
+   * @param req
+   * @returns message
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('/forward')
+  async forwardMessage(
+    @Body()
+    body: {
+      originalMessageId: string;
+      newConversationIds: string[];
+    },
+    @Request() req,
+  ): Promise<Message[]> {
+    const userId = req.user._id;
+
+    return this.messageService.forwardMessageToMultipleConversations(
+      body.originalMessageId,
+      body.newConversationIds,
+      userId,
+    );
+  }
 }
