@@ -45,6 +45,8 @@ const ForgotPasswordPage = (props: Props) => {
         resolver: zodResolver(FormSchema),
         defaultValues: {
           email: "",
+          newPassword: "",
+          confirmPassword: "",
         },
       });
 
@@ -135,7 +137,7 @@ const ForgotPasswordPage = (props: Props) => {
                 />
             
                 <Button type="submit" className="`w-full">
-                    Send
+                    Get OTP
                 </Button>
                 <Button type="button" className="`w-full" variant={"outline"} onClick={() => router.back()}>
                     Back

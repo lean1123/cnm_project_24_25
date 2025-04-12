@@ -54,6 +54,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     for (const room of client.rooms) {
       await client.leave(room);
     }
+
+    this.server.emit('activeUsers', {
+      activeUsers: Array.from(this.activeUsers.keys()),
+    });
   }
 
   @SubscribeMessage('login')
@@ -73,6 +77,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         `User ${userId} joined room ${conversationId.toString()} with socket ${client.id}`,
       );
     }
+    this.server.emit('activeUsers', {
+      activeUsers: Array.from(this.activeUsers.keys()),
+    });
   }
 
   @SubscribeMessage('join')

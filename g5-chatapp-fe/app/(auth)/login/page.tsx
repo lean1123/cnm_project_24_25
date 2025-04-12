@@ -25,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useRouter } from "next/navigation";
 
 type Props = {};
 
@@ -45,21 +46,28 @@ function Login({}: Props) {
     },
   });
 
-  const { login, isLoading, isAuthenticated } = useAuthStore();
+  const { login, isLogging, isAuthenticated } = useAuthStore();
+
+  const router = useRouter();
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Assuming an async login function
-      console.log(values);
-      await login(values);
-      if (isAuthenticated) {
+      const result = await login(values);
+      if (result) {
         toast.success("Login successful!");
+        setTimeout(() => {
+          router.push("/conversations");
+        }, 1000);
+      } else {
+        toast.error("Login failed. Please check your credentials.");
+        return;
       }
-    } catch (error) {
-      console.error("Form submission error", error);
-      toast.error("Login failed. Please check your credentials.");
+    } catch (err) {
+      toast.error("Something went wrong during login.");
+      return;
     }
   }
+
   return (
     <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
       <Card className="mx-auto max-w-sm">
@@ -84,7 +92,7 @@ function Login({}: Props) {
                           id="email"
                           placeholder="johndoe@mail.com"
                           type="email"
-                          autoComplete="email"
+                          // autoComplete="email"
                           {...field}
                         />
                       </FormControl>
@@ -111,7 +119,7 @@ function Login({}: Props) {
                           type="password"
                           id="password"
                           placeholder="******"
-                          autoComplete="current-password"
+                          // autoComplete="current-password"
                           {...field}
                         />
                       </FormControl>
@@ -119,7 +127,7 @@ function Login({}: Props) {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="`w-full" disabled={isLoading}>
+                <Button type="submit" className="`w-full" disabled={isLogging}>
                   Login
                 </Button>
                 {/* <Button variant="outline" className="w-full">

@@ -1,8 +1,10 @@
+"use client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { getInitials } from "@/lib/utils";
 import { User } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import React from "react";
 
 type Props = {
@@ -11,6 +13,7 @@ type Props = {
   name: string;
   lastMessageSender: string;
   lastMessageContent: string;
+  onClick?: () => void;
 };
 
 const ConversationItem = ({
@@ -20,9 +23,11 @@ const ConversationItem = ({
   lastMessageContent,
   lastMessageSender,
 }: Props) => {
+  const path = usePathname();
+  const isActive = path === `/conversations/${id}`;
   return (
     <Link href={`/conversations/${id}`} className="w-full">
-      <Card className="p-2 flex flex-row items-center gap-4 truncate">
+      <Card className={`p-2 flex flex-row items-center gap-4 truncate ${isActive ? "bg-secondary/65" : ""}`}>
         <div className="flex flex-row items-center gap-4 truncate">
           <Avatar>
             <AvatarImage src={imageUrl} alt={name} />
@@ -32,12 +37,12 @@ const ConversationItem = ({
             <h4 className="truncate">{name}</h4>
             {lastMessageSender && lastMessageContent ? (
               <span className="text-sm text-muted-foreground flex truncate overflow-ellipsis">
-                <p className="font-semibold">
+                {/* <p className="font-semibold">
                   {lastMessageSender === "1232" ? "You :" : ""}
                 </p>
                 <p className="truncate overflow-ellipsis">
                   {lastMessageContent}
-                </p>
+                </p> */}
               </span>
             ) : (
               <p className="text-sm text-muted-foreground truncate">

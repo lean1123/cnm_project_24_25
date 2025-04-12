@@ -31,6 +31,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { toStringFromDate } from "@/lib/format";
 
 const formSchema = z
   .object({
@@ -43,6 +52,7 @@ const formSchema = z
     email: z.string().email({ message: "Invalid email address" }),
     // phone: z.string().min(10, { message: "Phone number must be valid" }),
     gender: z.enum(["male", "female", "other"]),
+    dob: z.string(),
     password: z
       .string()
       .min(6, { message: "Password must be at least 6 characters long" })
@@ -62,6 +72,8 @@ function Register() {
       lastName: "",
       email: "",
       // phone: "",
+      gender: "male",
+      dob: "",
       password: "",
       confirmPassword: "",
     },
@@ -76,13 +88,12 @@ function Register() {
       console.log(values);
     } catch (error) {
       console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
     }
   }
 
   return (
-    <div className="flex min-h-[60vh] h-full w-full items-center justify-center px-4">
-      <Card className="mx-auto max-w-sm">
+    <div className="flex min-h-[60vh] h-full w-full items-center justify-center px-4 overflow-auto">
+      <Card className="mx-auto max-w-xl">
         <CardHeader>
           <CardTitle className="text-2xl">Register</CardTitle>
           <CardDescription>
@@ -92,7 +103,27 @@ function Register() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <div className="grid gap-4">
+              {/* Email Field */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="grid gap-2">
+                    <FormLabel htmlFor="email">Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        id="email"
+                        placeholder="johndoe@mail.com"
+                        type="email"
+                        autoComplete="email"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid gap-4 md:grid-cols-2">
                 {/* First Name Field */}
                 <FormField
                   control={form.control}
@@ -118,32 +149,11 @@ function Register() {
                   name="lastName"
                   render={({ field }) => (
                     <FormItem className="grid gap-2">
-                      <FormLabel htmlFor="lastName">Lats Name</FormLabel>
+                      <FormLabel htmlFor="lastName">Last Name</FormLabel>
                       <FormControl>
                         <Input
                           id="lastName"
                           placeholder="John Doe"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Email Field */}
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <FormLabel htmlFor="email">Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          id="email"
-                          placeholder="johndoe@mail.com"
-                          type="email"
-                          autoComplete="email"
                           {...field}
                         />
                       </FormControl>
@@ -174,6 +184,53 @@ function Register() {
                           {/* <SelectItem value="other">Khác</SelectItem> */}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* date of birth */}
+                <FormField
+                  control={form.control}
+                  name="dob"
+                  render={({ field }) => (
+                    <FormItem className="grid gap-2">
+                      <FormLabel>Date of Birth</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value
+                                ? new Date(field.value).toLocaleDateString(
+                                    "en-GB"
+                                  )
+                                : "Select date"}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={
+                              field.value ? new Date(field.value) : undefined
+                            }
+                            onSelect={(date) => {
+                              if (date) field.onChange(date.toISOString());
+                            }}
+                            captionLayout="dropdown-buttons"
+                            fromYear={1900}
+                            toYear={new Date().getFullYear()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -222,11 +279,10 @@ function Register() {
                     </FormItem>
                   )}
                 />
-
-                <Button type="submit" className="w-full">
-                  Register
-                </Button>
               </div>
+              <Button type="submit" className="w-full">
+                Register
+              </Button>
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">

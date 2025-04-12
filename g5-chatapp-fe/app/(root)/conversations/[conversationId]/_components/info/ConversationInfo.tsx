@@ -1,11 +1,14 @@
+"use client"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, getNameFallBack } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useConversationStore } from "@/store/useConversationStore";
 import { Bell, Download, FileText, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect } from "react";
 
 type Props = {
   isOpen: boolean;
@@ -47,6 +50,7 @@ const conversationInfo = {
 };
 
 function ConversationInfo({ isOpen, setOpen }: Props) {
+  const {userSelected} = useConversationStore()
   return (
     <Card
       className={cn(
@@ -57,11 +61,20 @@ function ConversationInfo({ isOpen, setOpen }: Props) {
       {/* info */}
       <div className="flex flex-col gap-2 justify-center items-center mt-6">
         <Avatar className="h-16 w-16">
-          <AvatarFallback>JD</AvatarFallback>
+          <AvatarFallback>{getNameFallBack(userSelected?.firstName || "", userSelected?.lastName || "")}</AvatarFallback>
         </Avatar>
+        {/* <div> */}
+
         <p className="text-base font-semibold text-center">
-          {conversationInfo.name}
+          {userSelected?.firstName + " " + userSelected?.lastName}
         </p>
+        {/* {isOnline ? (
+          <p className="text-sm text-green-500">Active</p>
+        )
+        : (
+          <p className="text-sm text-red-500">Inactive</p>
+        )}
+        </div> */}
         {/* button */}
         <div className="mt-2 flex justify-evenly items-start w-full">
           <div className="flex flex-col items-center gap-2">
