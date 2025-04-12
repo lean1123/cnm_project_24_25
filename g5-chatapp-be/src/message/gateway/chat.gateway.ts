@@ -13,6 +13,7 @@ import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { MessageService } from 'src/message/message.service';
+import { Message } from '../schema/messege.chema';
 
 @WebSocketGateway({
   cors: {
@@ -121,5 +122,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       files,
     );
     this.server.to(conversationId).emit('newMessage', message);
+  }
+
+  handleForwardMessage(@MessageBody() messageForwarded: Message) {
+    this.server
+      .to(messageForwarded.conversation.toString())
+      .emit('newMessage', messageForwarded);
   }
 }

@@ -18,6 +18,7 @@ import { Message } from './schema/messege.chema';
 import { AuthGuard } from '@nestjs/passport';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 
 @Controller('message')
 export class MessageController {
@@ -41,6 +42,22 @@ export class MessageController {
       messageDto: message,
       files: file,
     });
+  }
+
+  @Post('/forward-message')
+  @UseGuards(AuthGuard('jwt'))
+  async forwardMessage(
+    @UserDecorator() user: JwtPayload,
+
+    @Body() messageForwardation: MessageForwardationRequest,
+  ) {
+    const messageForwarded = await this.messageService.forwardMessage(
+      user,
+      messageForwardation,
+    );
+    this.chatGateway.handleForwardMessage(messageForwarded);
+
+    return messageForwarded;
   }
 
   @Get(':conversationId')

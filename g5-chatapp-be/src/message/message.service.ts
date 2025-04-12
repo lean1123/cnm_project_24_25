@@ -14,6 +14,7 @@ import { MessageRequest } from './dtos/requests/message.request';
 import { Message } from './schema/messege.chema';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { MessageType } from './schema/messageType.enum';
+import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 
 @Injectable()
 export class MessageService {
@@ -155,5 +156,47 @@ export class MessageService {
 
   async deleteMessage(messageId: string): Promise<Message> {
     return await this.messageModel.findByIdAndDelete(messageId);
+  }
+
+  async forwardMessage(
+    userPayload: JwtPayload,
+    messageDto: MessageForwardationRequest,
+  ) {
+    const sender = await this.userService.findById(userPayload._id);
+    if (!sender) {
+      throw new NotFoundException('Sender not found in forward message');
+    }
+    const conversation = await this.conversationService.getConvensationById(
+      messageDto.conversationId,
+    );
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found in forward message');
+    }
+    const isParticipant = conversation.members.some(
+      (member) => member.userId.toString() === userPayload._id.toString(),
+    );
+    if (!isParticipant) {
+      throw new NotFoundException(
+        'User not in conversation in forward message',
+      );
+    }
+
+    const messageSchema = {
+      conversation: new Types.ObjectId(messageDto.conversationId),
+      sender: {
+        userId: userPayload._id,
+        fullName: `${sender.firstName} ${sender.lastName}`,
+      },
+      content: messageDto.content,
+      files: messageDto.files || [],
+      type: messageDto.type,
+    };
+
+    const messageSaved = await this.messageModel.create(messageSchema);
+    await this.conversationService.updateLastMessageField(
+      messageDto.conversationId,
+      messageSaved._id as string,
+    );
+    return messageSaved;
   }
 }
