@@ -56,7 +56,7 @@ const GenderSelector = ({ gender, setGender }) => {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   label: {
     fontSize: 16,
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 10,
+    padding: 5,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

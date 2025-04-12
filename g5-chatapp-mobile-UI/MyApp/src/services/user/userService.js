@@ -99,23 +99,27 @@ export const getUserProfile = async () => {
     }
 };
 
-export const updateUserProfile = async (profileData) => {
+export const updateUserProfile = async (profileData, token) => {
   try {
-    const userId = await AsyncStorage.getItem("userId");
-    if (!userId) {
-      throw new Error("No userId found");
-    }
+    if (!token) throw new Error("No token provided");
 
-    const response = await api.put(`/users/${userId}`, profileData);
+    const response = await api.put(`/users`, profileData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
     return {
       ok: true,
-      data: response.data
+      data: response.data,
     };
   } catch (error) {
     console.error("Update user profile error:", error);
     return {
       ok: false,
-      message: error.response?.data?.message || error.message || "Failed to update profile"
+      message: error.response?.data?.message || error.message || "Failed to update profile",
     };
   }
-}; 
+};
+
+

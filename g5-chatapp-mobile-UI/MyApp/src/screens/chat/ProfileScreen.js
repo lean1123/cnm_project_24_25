@@ -12,6 +12,7 @@ import NotificationModal from '../../components/CustomModal';
 import EditProfileModal from '../../components/EditProfileModal';
 import { API_URL } from '../../config/constants';
 import { changePassword } from '../../services/auth/authService';
+import dayjs from "dayjs";
 
 const ProfileScreen = ({ navigation }) => {
     const [user, setUser] = useState(null);
@@ -34,66 +35,44 @@ const ProfileScreen = ({ navigation }) => {
     const fetchUserProfile = async () => {
         try {
             setLoading(true);
-            
+    
             // Lấy token từ AsyncStorage
             const token = await AsyncStorage.getItem("userToken");
+            console.log("Token:", token);
             if (!token) {
-                // console.error("No token found");
                 showNotification("Please login again");
                 navigation.navigate("SignInScreen");
                 return;
             }
-
-            // Lấy userId từ AsyncStorage
-            const userId = await AsyncStorage.getItem("userId");
-            if (!userId) {
-                // console.error("No userId found");
-                showNotification("Please login again");
-                navigation.navigate("SignInScreen");
-                return;
-            }
-
-            // console.log("Token:", token);
-            // console.log("UserId:", userId);
-
-            // Lấy thông tin user từ API
-            const response = await fetch(`${API_URL}/users/${userId}`, {
+    
+            // Gọi API 
+            const response = await fetch(`${API_URL}/auth/get-my-profile`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
             });
-
+    
             const result = await response.json();
-            // console.log("User profile API response:", result);
-
+    
             if (!response.ok) {
                 throw new Error(result.message || "Failed to fetch user profile");
             }
-
-            // Cập nhật state với dữ liệu mới
+    
             if (result.data) {
                 const userData = result.data;
-                // console.log("User data to set:", {
-                //     firstName: userData.firstName || "",
-                //     lastName: userData.lastName || "",
-                //     email: userData.email || "",
-                //     gender: userData.gender || "Not set",
-                //     role: Array.isArray(userData.role) ? userData.role : [userData.role].filter(Boolean),
-                //     avatar: userData.avatar || null
-                // });
-                
                 setUser({
                     firstName: userData.firstName || "",
                     lastName: userData.lastName || "",
                     email: userData.email || "",
                     gender: userData.gender || "Not set",
                     role: Array.isArray(userData.role) ? userData.role : [userData.role].filter(Boolean),
-                    avatar: userData.avatar || null
+                    avatar: userData.avatar || null,
+                    dob: userData.dob || null,
                 });
             }
-            
+    
         } catch (error) {
             console.error("Profile fetch error:", error);
             showNotification(error.message || "An error occurred while loading profile");
@@ -101,6 +80,7 @@ const ProfileScreen = ({ navigation }) => {
             setLoading(false);
         }
     };
+    
 
     const handleLogout = async () => {
         try {
@@ -118,11 +98,13 @@ const ProfileScreen = ({ navigation }) => {
 
     const handleSave = async (updatedProfile) => {
         try {
-            const result = await updateUserProfile(updatedProfile);
+            const tokenUpdate = await AsyncStorage.getItem("userToken");
+            const result = await updateUserProfile(updatedProfile, tokenUpdate);
             if (result.ok) {
                 setUser(result.data);
                 setEditModalVisible(false);
                 showNotification("Profile updated successfully");
+                fetchUserProfile();
             } else {
                 showNotification(result.message || "Failed to update profile");
             }
@@ -131,6 +113,7 @@ const ProfileScreen = ({ navigation }) => {
             showNotification("An error occurred while updating profile");
         }
     };
+    
 
     const showNotification = (message) => {
         setNotificationMessage(message);
@@ -153,28 +136,21 @@ const ProfileScreen = ({ navigation }) => {
             showNotification('Please fill in all fields');
             return;
         }
-
+    
         if (newPassword !== confirmPassword) {
             showNotification('New passwords do not match');
             return;
         }
-
+    
         const passwordError = validatePassword(newPassword);
         if (passwordError) {
             showNotification(passwordError);
             return;
         }
-
+    
         try {
-            const userId = await AsyncStorage.getItem("userId");
-            const token = await AsyncStorage.getItem("userToken");
-            
-            if (!token) {
-                showNotification('Authentication token not found. Please login again.');
-                return;
-            }
-
-            const response = await changePassword(userId, oldPassword, newPassword, token);
+            const response = await changePassword(oldPassword, newPassword);
+    
             if (response.ok) {
                 showNotification('Password changed successfully');
                 setShowChangePassword(false);
@@ -189,6 +165,8 @@ const ProfileScreen = ({ navigation }) => {
             showNotification('An error occurred. Please try again later.');
         }
     };
+    
+    
 
     if (loading) {
         return (
@@ -225,7 +203,10 @@ const ProfileScreen = ({ navigation }) => {
                     <View style={styles.infoContainer}>
                         <InfoRow label="Email" value={user.email} />
                         <InfoRow label="Gender" value={user.gender} />
-                        <InfoRow label="Role" value={user.role?.join(', ')} />
+                        <InfoRow
+                        label="Date of Birth"
+                        value={user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"}
+                      />
                     </View>
 
                     <TouchableOpacity style={styles.editButton} onPress={() => setEditModalVisible(true)}>

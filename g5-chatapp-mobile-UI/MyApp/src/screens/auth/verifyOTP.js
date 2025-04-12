@@ -172,19 +172,19 @@ const VerifyOTPScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#135CAF',
   },
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
   header: {
+    marginTop: Platform.OS === 'android' ? 0 : 0,
     backgroundColor: '#135CAF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? 12 : 48,
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'android' ? 12 : 28,
     paddingBottom: 16,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
@@ -220,8 +220,9 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   illustration: {
-    width: width * 0.5,
-    height: width * 0.5,
+    marginTop: '-40%',
+    width: width * 0.4,
+    height: width * 0.35,
   },
   textContainer: {
     alignItems: 'center',

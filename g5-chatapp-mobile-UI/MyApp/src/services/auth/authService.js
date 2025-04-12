@@ -12,7 +12,8 @@ export const signUp = async (formData) => {
       lastName: formData.lastName,
       password: formData.password,
       gender: formData.gender,
-      role: ['user'] // Default role for new users
+      role: ['user'], // Default role for new users
+      dob: formData.dob,
     });
     
     // console.log("Sign up response:", response.data);
@@ -230,33 +231,36 @@ export const verifyForgotPasswordOtp = async (email, otp) => {
   }
 };
 
-export const changePassword = async (userId, oldPassword, newPassword, token) => {
-    try {
-        // console.log('Changing password for user:', userId);
-        const response = await axios.post(
-            `${API_URL}/auth/change-password/${userId}`,
-            {
-                oldPassword,
-                newPassword
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
+export const changePassword = async (oldPassword, newPassword) => {
+  const tokena = await AsyncStorage.getItem("userToken");
+  console.log("Token received:", tokena);
+  try {
+      const response = await axios.post(
+          `${API_URL}/auth/change-password`,
+          {
+              oldPassword,
+              newPassword
+          },
+          {
+            
+              headers: {
+                  'Authorization': `Bearer ${tokena}`,
+                  'Content-Type': 'application/json'
+              }
+          }
+      );
 
-        // console.log('Change password response:', response.data);
-        return {
-            ok: true,
-            message: 'Password changed successfully'
-        };
-    } catch (error) {
-        console.error('Change password error:', error);
-        return {
-            ok: false,
-            message: error.response?.data?.message || 'Failed to change password'
-        };
-    }
+      return {
+          ok: true,
+          message: 'Password changed successfully',
+          data: response.data
+      };
+  } catch (error) {
+      console.error('Change password error:', error);
+      return {
+          ok: false,
+          message: error.response?.data?.message || 'Failed to change password'
+      };
+  }
 };
+
