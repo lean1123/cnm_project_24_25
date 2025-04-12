@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { UserService } from 'src/user/user.service';
 import { Status } from './enum/status.enum';
@@ -25,6 +25,19 @@ export class ContactService {
 
     if (!user || !contact) {
       throw new NotFoundException('User not found');
+    }
+
+    const matchedContact = await this.contactModel.findOne({
+      userId: user._id,
+      contactId: contact._id,
+    });
+
+    if (matchedContact && matchedContact.status !== Status.ACTIVE) {
+      return this.contactModel.findByIdAndUpdate(
+        matchedContact._id,
+        { status: Status.PENDING },
+        { new: true },
+      );
     }
 
     const contactSchema = {
@@ -162,7 +175,7 @@ export class ContactService {
       throw new Error("Can't reject this contact or contact already rejected");
     }
 
-    if (contact.contactId.toString() !== rejectByUser._id) {
+    if (!contact.contactId.equals(rejectByUser._id as Types.ObjectId)) {
       throw new Error("You don't have permission to reject this contact");
     }
 

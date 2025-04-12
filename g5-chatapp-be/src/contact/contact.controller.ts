@@ -41,13 +41,8 @@ export class ContactController {
     return this.contactService.getListRequestContact(userPayload);
   }
 
-  @Get(':id')
-  @UseGuards(AuthGuard('jwt'))
-  async getContactById(@Param('id') id: string) {
-    return await this.contactService.getContactById(id);
-  }
-
   @Post('/reject/:contactId')
+  @UseGuards(AuthGuard('jwt'))
   async rejectContact(
     @UserDecorator() userPayload: JwtPayload,
     @Param('contactId') contactId: string,
@@ -56,10 +51,17 @@ export class ContactController {
   }
 
   @Post('/cancel/:contactId')
+  @UseGuards(AuthGuard('jwt'))
   async cancelContact(
     @UserDecorator() userPayload: JwtPayload,
     @Param('contactId') contactId: string,
   ) {
     return await this.contactService.cancelContact(userPayload, contactId);
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard('jwt'))
+  async getContactById(@Param('id') id: string) {
+    return await this.contactService.getContactById(id);
   }
 }
