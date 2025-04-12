@@ -71,4 +71,34 @@ export class UserService {
       })
       .select('-password -role -refreshToken')) as User;
   }
+
+  async changeAvatar(
+    userPayload: JwtPayload,
+    file: Express.Multer.File,
+  ): Promise<User> {
+    const userId = userPayload._id;
+
+    if (!userId) {
+      throw new Error('User ID not found in payload');
+    }
+
+    const matchedUser = await this.userModel.findById(userId);
+
+    if (!matchedUser) {
+      throw new Error('User not found in update user');
+    }
+
+    const uploadResult = await this.cloudinaryService.uploadFile(file);
+    const avatar = uploadResult.url;
+
+    return (await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { avatar },
+        {
+          new: true,
+        },
+      )
+      .select('-password -role -refreshToken')) as User;
+  }
 }

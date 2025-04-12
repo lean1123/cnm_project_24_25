@@ -53,4 +53,14 @@ export class UsersController {
   ): Promise<User> {
     return await this.UserService.update(user, userDto, file);
   }
+
+  @Put('change-avatar')
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file'))
+  async changeAvatar(
+    @UserDecorator() user: JwtPayload,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<User> {
+    return await this.UserService.changeAvatar(user, file);
+  }
 }
