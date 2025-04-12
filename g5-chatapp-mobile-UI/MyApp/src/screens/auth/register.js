@@ -17,6 +17,9 @@ import NotificationModal from "../../components/CustomModal";
 
 import { signUp } from "../../services/auth/authService";
 import { validateSignUp } from "../../utils/validators";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Platform } from "react-native";
+import DateInputField from "../../components/DateInputField";
 
 const SignUpScreen = ({ navigation }) => {
   const [form, setForm] = useState({
@@ -25,10 +28,12 @@ const SignUpScreen = ({ navigation }) => {
     email: "",
     password: "",
     gender: "male",
+    dob: "",
   });
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [modalMessage, setModalMessage] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
+  const [dobPickerVisible, setDobPickerVisible] = useState(false);
 
   const toggleSecure = () => setSecureTextEntry(!secureTextEntry);
 
@@ -45,23 +50,27 @@ const SignUpScreen = ({ navigation }) => {
       // console.log("Sign up result:", result);
 
       if (result.ok && result.userId) {
-        await AsyncStorage.setItem('tempUserId', result.userId);
+        await AsyncStorage.setItem("tempUserId", result.userId);
         // console.log("Stored tempUserId:", result.userId);
-        
+
         setModalMessage("OTP has been sent to your email. Please verify.");
         setModalVisible(true);
         setTimeout(() => {
           navigation.navigate("VerifyOTPScreen", {
-            userId: result.userId
+            userId: result.userId,
           });
         }, 1500);
       } else {
-        setModalMessage(result.message || "Registration failed. Please try again.");
+        setModalMessage(
+          result.message || "Registration failed. Please try again."
+        );
         setModalVisible(true);
       }
     } catch (error) {
       console.error("Sign up error:", error);
-      setModalMessage("An error occurred during registration. Please try again.");
+      setModalMessage(
+        "An error occurred during registration. Please try again."
+      );
       setModalVisible(true);
     }
   };
@@ -104,6 +113,27 @@ const SignUpScreen = ({ navigation }) => {
             gender={form.gender}
             setGender={(g) => setForm({ ...form, gender: g })}
           />
+          <DateInputField
+            value={form.dob}
+            onPress={() => setDobPickerVisible(true)}
+          />
+
+          {dobPickerVisible && (
+            <DateTimePicker
+              value={form.dob ? new Date(form.dob) : new Date()}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(event, selectedDate) => {
+                setDobPickerVisible(false);
+                if (selectedDate) {
+                  const formattedDate = selectedDate
+                    .toISOString()
+                    .split("T")[0];
+                  setForm({ ...form, dob: formattedDate });
+                }
+              }}
+            />
+          )}
 
           <TouchableOpacity style={styles.submitButtonContainer}>
             <Button
@@ -176,6 +206,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: "#4484CD",
     fontSize: 16,
+  },
+  dobPickerContainer: {
+    width: "100%",
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 12,
+    marginTop: 10,
+    backgroundColor: "#fff",
+  },
+
+  dobText: {
+    fontSize: 16,
+    color: "#4484CD",
+    fontStyle: "italic",
+    fontWeight: "bold",
   },
 });
 

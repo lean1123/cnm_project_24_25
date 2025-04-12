@@ -13,7 +13,7 @@ const FriendsListScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
     <Header />
-      <Text style={styles.title}>Danh sách bạn bè</Text>
+      <Text style={styles.title}>List Friend</Text>
       <FlatList
         data={friends}
         keyExtractor={(item) => item.id}
