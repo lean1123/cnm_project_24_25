@@ -14,6 +14,7 @@ import { ConversationService } from 'src/conversation/conversation.service';
 import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { MessageService } from 'src/message/message.service';
 import { Message } from '../schema/messege.chema';
+import { TypinationRequest } from '../dtos/requests/typination.request';
 
 @WebSocketGateway({
   cors: {
@@ -100,7 +101,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`User ${userId} connected with socket ${client.id}`);
   }
 
-  @SubscribeMessage('sendMessage')
   async handleMessage(
     @MessageBody()
     {
@@ -128,5 +128,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server
       .to(messageForwarded.conversation.toString())
       .emit('newMessage', messageForwarded);
+  }
+
+  @SubscribeMessage('typing')
+  handleTyping(
+    @MessageBody() typinationDto: TypinationRequest,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { userId, conversationId } = typinationDto;
+
+    client.to(conversationId).emit('typing', userId);
+  }
+
+  @SubscribeMessage('stopTyping')
+  handleStopTyping(
+    @MessageBody() data: TypinationRequest,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.to(data.conversationId).emit('stopTyping', {
+      userId: data.userId,
+    });
   }
 }
