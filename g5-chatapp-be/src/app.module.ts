@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ThrottlerModule } from '@nestjs/throttler';
+// import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { CallModule } from './call/call.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
@@ -16,12 +16,12 @@ import { OtpModule } from './mail/otpGenerator/otp.module';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([
-      {
-        ttl: 10000,
-        limit: 60,
-      },
-    ]),
+    // ThrottlerModule.forRoot([
+    //   {
+    //     ttl: 10000,
+    //     limit: 60,
+    //   },
+    // ]),
     ConfigModule.forRoot({
       envFilePath: '.env',
       isGlobal: true,

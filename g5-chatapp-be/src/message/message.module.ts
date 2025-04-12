@@ -1,7 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+// import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ThrottlerGuard } from '@nestjs/throttler';
+// import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from 'src/auth/auth.module';
 import { MessageController } from './message.controller';
 import { MessageService } from './message.service';
@@ -23,10 +23,10 @@ import { ChatGateway } from 'src/message/gateway/chat.gateway';
   ],
   providers: [
     MessageService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
     ChatGateway,
   ],
   controllers: [MessageController],
