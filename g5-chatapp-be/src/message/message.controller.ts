@@ -45,22 +45,6 @@ export class MessageController {
     });
   }
 
-  @Post('/forward-message')
-  @UseGuards(AuthGuard('jwt'))
-  async forwardMessage(
-    @UserDecorator() user: JwtPayload,
-
-    @Body() messageForwardation: MessageForwardationRequest,
-  ) {
-    const messageForwarded = await this.messageService.forwardMessage(
-      user,
-      messageForwardation,
-    );
-    this.chatGateway.handleForwardMessage(messageForwarded);
-
-    return messageForwarded;
-  }
-
   @Get(':conversationId')
   async getMessagesByConvensation(
     @Param('conversationId') conversationId: string,
@@ -139,29 +123,28 @@ export class MessageController {
     );
   }
 
-  //   /**
-  //    * forward message to other conversationId (only sender has permission forward)
-  //    * @param messageId
-  //    * @param conversationIds
-  //    * @param req
-  //    * @returns message
-  //    */
-  //   @UseGuards(AuthGuard('jwt'))
-  //   @Patch('/forward')
-  //   async forwardMessage(
-  //     @Body()
-  //     body: {
-  //       originalMessageId: string;
-  //       newConversationIds: string[];
-  //     },
-  //     @Request() req,
-  //   ): Promise<Message[]> {
-  //     const userId = req.user._id;
+  /**
+   * forward message to other conversationId (only sender has permission forward)
+   * @param messageId
+   * @param conversationIds
+   * @param req
+   * @returns message
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('/forward')
+  async forwardMessage(
+    @Body()
+    body: MessageForwardationRequest,
+    @UserDecorator() userPayload: JwtPayload,
+  ): Promise<Message[]> {
+    const messageForwardations =
+      await this.messageService.forwardMessageToMultipleConversations(
+        body,
+        userPayload,
+      );
 
-  //     return this.messageService.forwardMessageToMultipleConversations(
-  //       body.originalMessageId,
-  //       body.newConversationIds,
-  //       userId,
-  //     );
-  //   }
+    this.chatGateway.handleForwardMessage(messageForwardations);
+
+    return messageForwardations;
+  }
 }

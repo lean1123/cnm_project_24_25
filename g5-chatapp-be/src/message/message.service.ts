@@ -156,48 +156,6 @@ export class MessageService {
   async deleteMessage(messageId: string): Promise<Message> {
     return await this.messageModel.findByIdAndDelete(messageId);
   }
-
-  async forwardMessage(
-    userPayload: JwtPayload,
-    messageDto: MessageForwardationRequest,
-  ) {
-    const sender = await this.userService.findById(userPayload._id);
-    if (!sender) {
-      throw new NotFoundException('Sender not found in forward message');
-    }
-    const conversation = await this.conversationService.getConvensationById(
-      messageDto.conversationId,
-    );
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found in forward message');
-    }
-    const isParticipant = conversation.members.some(
-      (member) => member.userId.toString() === userPayload._id.toString(),
-    );
-    if (!isParticipant) {
-      throw new NotFoundException(
-        'User not in conversation in forward message',
-      );
-    }
-
-    const messageSchema = {
-      conversation: new Types.ObjectId(messageDto.conversationId),
-      sender: {
-        userId: userPayload._id,
-        fullName: `${sender.firstName} ${sender.lastName}`,
-      },
-      content: messageDto.content,
-      files: messageDto.files || [],
-      type: messageDto.type,
-    };
-
-    const messageSaved = await this.messageModel.create(messageSchema);
-    await this.conversationService.updateLastMessageField(
-      messageDto.conversationId,
-      messageSaved._id as string,
-    );
-    return messageSaved;
-  }
   // xoa msg -> an tin nhan o 1 ben
   async revokeMessage(messageId: string, userId: string): Promise<Message> {
     const message = await this.messageModel.findById(messageId);
@@ -265,36 +223,51 @@ export class MessageService {
     return updatedMessage;
   }
 
-  // async forwardMessageToMultipleConversations(
-  //   originalMessageId: string,
-  //   newConversationIds: string[], // Mảng các ID của cuộc trò chuyện cần forward tới
-  //   userRequestId: string, // ID người yêu cầu forward
-  // ): Promise<Message[]> {
-  //   // Tìm tin nhắn gốc
-  //   const originalMessage = await this.messageModel.findById(originalMessageId);
-  //   if (!originalMessage) {
-  //     throw new NotFoundException('Original message not found');
-  //   }
+  async forwardMessageToMultipleConversations(
+    messageForwardationDto: MessageForwardationRequest,
+    userPayload: JwtPayload,
+  ): Promise<Message[]> {
+    // Tìm tin nhắn gốc
+    const originalMessage = await this.messageModel.findById(
+      messageForwardationDto.originalMessageId,
+    );
+    if (!originalMessage) {
+      throw new NotFoundException('Original message not found');
+    }
 
-  //   // Duyệt qua tất cả các cuộc trò chuyện và forward tin nhắn
-  //   const forwardedMessages = [];
+    const sender = await this.userService.findById(userPayload._id);
 
-  //   for (const newConversationId of newConversationIds) {
-  //     // Tạo bản sao của tin nhắn gốc cho mỗi cuộc trò chuyện
-  //     const forwardedMessage = await this.messageModel.create({
-  //       conversation: new Types.ObjectId(newConversationId),
-  //       sender: originalMessage.sender,
-  //       content: originalMessage.content,
-  //       files: originalMessage.files,
-  //       type: originalMessage.type,
-  //       forwardFrom: originalMessageId, // Đánh dấu tin nhắn gốc
-  //     });
+    // Duyệt qua tất cả các cuộc trò chuyện và forward tin nhắn
+    const forwardedMessages = [];
 
-  //     // Lưu tin nhắn đã forward vào mảng để trả về sau
-  //     forwardedMessages.push(forwardedMessage);
-  //   }
+    for (const newConversationId of messageForwardationDto.conversationIds) {
+      // Kiểm tra xem cuộc trò chuyện có tồn tại không
+      const conversation =
+        await this.conversationService.getConvensationById(newConversationId);
+      if (!conversation) {
+        throw new NotFoundException(
+          `Conversation with ID ${newConversationId} not found`,
+        );
+      }
 
-  //   // Trả về tất cả các tin nhắn đã được forward
-  //   return forwardedMessages;
-  // }
+      // Tạo bản sao của tin nhắn gốc cho mỗi cuộc trò chuyện
+      const forwardedMessage = await this.messageModel.create({
+        conversation: new Types.ObjectId(newConversationId),
+        sender: {
+          userId: userPayload._id,
+          fullName: `${sender.firstName} ${sender.lastName}`,
+        },
+        content: originalMessage.content,
+        files: originalMessage.files,
+        type: originalMessage.type,
+        forwardFrom: originalMessage._id, // Đánh dấu tin nhắn gốc
+      });
+
+      // Lưu tin nhắn đã forward vào mảng để trả về sau
+      forwardedMessages.push(forwardedMessage);
+    }
+
+    // Trả về tất cả các tin nhắn đã được forward
+    return forwardedMessages as Message[];
+  }
 }

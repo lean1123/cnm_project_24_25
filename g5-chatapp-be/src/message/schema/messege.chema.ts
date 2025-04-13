@@ -24,10 +24,10 @@ export class Message extends Document {
   @Prop({ default: false })
   isRevoked: boolean;
   @Prop({
-    required: false,
-    default: null,
     type: Types.ObjectId,
     ref: 'Message',
+    default: null,
+    required: false,
   })
   forwardFrom: Types.ObjectId;
   @Prop({ type: String, default: [], required: false })

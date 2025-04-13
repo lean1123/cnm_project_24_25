@@ -124,10 +124,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(conversationId).emit('newMessage', message);
   }
 
-  handleForwardMessage(@MessageBody() messageForwarded: Message) {
-    this.server
-      .to(messageForwarded.conversation.toString())
-      .emit('newMessage', messageForwarded);
+  handleForwardMessage(@MessageBody() messageForwarded: Message[]) {
+    for (const message of messageForwarded) {
+      const conversationId = message.conversation?.toString();
+      if (conversationId) {
+        this.server.to(conversationId).emit('newMessage', message);
+      }
+    }
   }
 
   @SubscribeMessage('typing')
