@@ -11,6 +11,7 @@ import { ConversationModule } from 'src/conversation/conversation.module';
 import { UploadModule } from 'src/upload/upload.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { ChatGateway } from 'src/message/gateway/chat.gateway';
+import { ContactModule } from 'src/contact/contact.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ChatGateway } from 'src/message/gateway/chat.gateway';
     forwardRef(() => ConversationModule),
     CloudinaryModule,
     UploadModule,
+    forwardRef(() => ContactModule),
   ],
   providers: [
     MessageService,

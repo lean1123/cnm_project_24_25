@@ -1,8 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { User } from 'src/user/schema/user.schema';
-import { Member } from './member.schema';
-import { LastMessage } from './lastMessage.schema';
 
 @Schema({
   timestamps: true,
@@ -16,10 +14,10 @@ export class Convensation extends Document {
   isGroup: boolean;
   @Prop({ ref: User.name, schema: User, type: Types.ObjectId })
   admin: Types.ObjectId;
-  @Prop({ type: [Member], required: true })
-  members: Member[];
-  @Prop({ type: LastMessage, required: false })
-  lastMessage: LastMessage;
+  @Prop({ type: [Types.ObjectId], ref: 'User', required: true })
+  members: Types.ObjectId[];
+  @Prop({ type: Types.ObjectId, ref: 'Message', required: false })
+  lastMessage: Types.ObjectId;
 }
 
 export const ConvensationSchema = SchemaFactory.createForClass(Convensation);
