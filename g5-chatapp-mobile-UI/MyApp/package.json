@@ -23,7 +23,7 @@
     "expo-av": "~15.0.2",
     "expo-document-picker": "~13.0.3",
     "expo-file-system": "~18.0.10",
-    "expo-image-picker": "^16.0.6",
+    "expo-image-picker": "~16.0.6",
     "expo-location": "^18.0.6",
     "expo-sharing": "~13.0.1",
     "expo-status-bar": "~2.0.1",
