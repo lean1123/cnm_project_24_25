@@ -224,4 +224,37 @@ export class MessageService {
 
     return updatedMessage;
   }
+
+  async forwardMessageToMultipleConversations(
+    originalMessageId: string,
+    newConversationIds: string[], // Mảng các ID của cuộc trò chuyện cần forward tới
+    userRequestId: string, // ID người yêu cầu forward
+  ): Promise<Message[]> {
+    // Tìm tin nhắn gốc
+    const originalMessage = await this.messageModel.findById(originalMessageId);
+    if (!originalMessage) {
+      throw new NotFoundException('Original message not found');
+    }
+
+    // Duyệt qua tất cả các cuộc trò chuyện và forward tin nhắn
+    const forwardedMessages = [];
+
+    for (const newConversationId of newConversationIds) {
+      // Tạo bản sao của tin nhắn gốc cho mỗi cuộc trò chuyện
+      const forwardedMessage = await this.messageModel.create({
+        conversation: new Types.ObjectId(newConversationId),
+        sender: originalMessage.sender,
+        content: originalMessage.content,
+        files: originalMessage.files,
+        type: originalMessage.type,
+        forwardFrom: originalMessageId, // Đánh dấu tin nhắn gốc
+      });
+
+      // Lưu tin nhắn đã forward vào mảng để trả về sau
+      forwardedMessages.push(forwardedMessage);
+    }
+
+    // Trả về tất cả các tin nhắn đã được forward
+    return forwardedMessages;
+  }
 }
