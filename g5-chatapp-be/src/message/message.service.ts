@@ -265,6 +265,13 @@ export class MessageService {
 
       // Lưu tin nhắn đã forward vào mảng để trả về sau
       forwardedMessages.push(forwardedMessage);
+
+      // Cập nhật trường lastMessageId của cuộc trò chuyện
+
+      await this.conversationService.updateLastMessageField(
+        newConversationId,
+        forwardedMessage._id as string,
+      );
     }
 
     // Trả về tất cả các tin nhắn đã được forward

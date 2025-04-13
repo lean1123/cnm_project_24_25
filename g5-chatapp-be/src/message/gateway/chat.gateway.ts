@@ -15,6 +15,7 @@ import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { MessageService } from 'src/message/message.service';
 import { Message } from '../schema/messege.chema';
 import { TypinationRequest } from '../dtos/requests/typination.request';
+import { UserService } from 'src/user/user.service';
 
 @WebSocketGateway({
   cors: {
@@ -36,6 +37,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly chatService: MessageService,
     private readonly conversationService: ConversationService,
+    private readonly userService: UserService,
   ) {}
 
   private activeUsers = new Map<string, string>();
@@ -133,14 +135,31 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  handleDeleteMessage(@MessageBody() message: Message) {
+    const conversationId = message.conversation?.toString();
+    if (conversationId) {
+      this.server.to(conversationId).emit('deleteMessage', message);
+    }
+  }
+
+  handleRevokeMessage(@MessageBody() message: Message) {
+    const conversationId = message.conversation?.toString();
+    if (conversationId) {
+      this.server.to(conversationId).emit('revokeMessage', message);
+    }
+  }
+
   @SubscribeMessage('typing')
-  handleTyping(
+  async handleTyping(
     @MessageBody() typinationDto: TypinationRequest,
     @ConnectedSocket() client: Socket,
   ) {
     const { userId, conversationId } = typinationDto;
 
-    client.to(conversationId).emit('typing', userId);
+    const user = await this.userService.findById(userId);
+    const fullName = `${user.firstName} ${user.lastName}`;
+
+    client.to(conversationId).emit('typing', fullName);
   }
 
   @SubscribeMessage('stopTyping')

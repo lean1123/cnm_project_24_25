@@ -208,7 +208,7 @@ export class ContactService {
       throw new Error("Can't cancel this contact or contact already cancelled");
     }
 
-    if (contact.contactId.toString() !== cancelByUser._id) {
+    if (!contact.userId.equals(cancelByUser._id as Types.ObjectId)) {
       throw new Error("You don't have permission to cancel this contact");
     }
 

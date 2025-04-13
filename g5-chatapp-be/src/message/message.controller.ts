@@ -98,8 +98,15 @@ export class MessageController {
     @UserDecorator() req: JwtPayload,
   ) {
     const userId = req._id;
-    console.log('userId', userId);
-    return await this.messageService.revokeMessage(messageId, userId);
+
+    const seltHidationMessage = await this.messageService.revokeMessage(
+      messageId,
+      userId,
+    );
+
+    this.chatGateway.handleDeleteMessage(seltHidationMessage);
+
+    return seltHidationMessage;
   }
 
   /**
@@ -116,11 +123,14 @@ export class MessageController {
     @UserDecorator() req: JwtPayload,
   ) {
     const userId = req._id;
-    return await this.messageService.revokeMessageBoth(
+    const revorkedMessage = await this.messageService.revokeMessageBoth(
       messageId,
       conversationId,
       userId,
     );
+
+    this.chatGateway.handleRevokeMessage(revorkedMessage);
+    return revorkedMessage;
   }
 
   /**
