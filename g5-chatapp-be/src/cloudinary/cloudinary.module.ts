@@ -9,10 +9,10 @@ import { CloudinaryController } from './cloudinary.controller';
   providers: [
     CloudinaryService,
     CloudinaryProvider,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
   exports: [CloudinaryService, CloudinaryProvider],
   controllers: [CloudinaryController],

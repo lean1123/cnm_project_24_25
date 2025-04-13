@@ -7,10 +7,10 @@ import { UploadController } from './upload.controller';
 @Module({
   providers: [
     UploadService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
     UploadController,
   ],
   controllers: [UploadController],

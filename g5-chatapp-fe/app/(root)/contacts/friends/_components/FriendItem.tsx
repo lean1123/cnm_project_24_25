@@ -1,3 +1,4 @@
+"use client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,18 +7,33 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { getInitials } from "@/lib/utils";
+import { getInitials, getNameFallBack } from "@/lib/utils";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useUserStore } from "@/store/useUserStore";
+import { User } from "@/types";
 import { MoreHorizontal } from "lucide-react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 type Props = {
-  id: number;
-  name: string;
-  avatar: string;
-  state: string;
+  id: string;
+  // name: string;
+  // avatar: string;
+  // state: string;
 };
 
-const FriendItem = ({ id, name, avatar, state }: Props) => {
+const FriendItem = ({ id }: Props) => {
+  const {getUserById} = useUserStore();
+  const [user, setUser] = useState<User | null>(null);
+  const {activeUsers} = useAuthStore();
+  const isOnline = activeUsers.find((user) => user === id);
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userData = await getUserById(id);
+      setUser(userData);
+    };
+    fetchUser();
+  }
+  , [id, getUserById]);
   return (
     <div
       key={id}
@@ -26,15 +42,22 @@ const FriendItem = ({ id, name, avatar, state }: Props) => {
       <div className="flex items-center gap-2">
         <Avatar>
           <AvatarImage
-            src={avatar}
-            alt={name}
+            src={user?.avatar || ""}
+            alt={user?.firstName + " " + user?.lastName}
             // className="w-12 h-12 rounded-full"
           />
-          <AvatarFallback>{getInitials(name)}</AvatarFallback>
+          <AvatarFallback>{getNameFallBack(user?.firstName || "", user?.lastName || "")}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
-          <span className="font-semibold">{name}</span>
-          <span className="text-sm text-gray-500">{state}</span>
+          <span className="font-semibold">{user?.firstName + " " + user?.lastName}</span>
+          <p className="text-sm text-muted-foreground flex items-center gap-1">
+            {isOnline ? (
+              <span className="h-2 w-2 rounded-full bg-green-500" />
+            ) : (
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+            )}
+            {isOnline ? "Online" : "Offline"}
+          </p>
         </div>
       </div>
       <Popover>

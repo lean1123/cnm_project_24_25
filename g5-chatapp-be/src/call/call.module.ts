@@ -25,10 +25,10 @@ import { CallQuality, CallQualitySchema } from './schema/callQuality.schema';
   ],
   providers: [
     CallService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
   controllers: [CallController],
   exports: [CallService, MongooseModule],

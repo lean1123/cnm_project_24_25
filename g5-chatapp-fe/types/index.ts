@@ -23,6 +23,7 @@ export type User = {
     dob: string;
     refreshToken?: string;
     _id?: string;
+    avatar?: string | null;
 }
 
 export type SocketUser = {
@@ -37,9 +38,15 @@ export type Conversation = {
     isGroup: boolean;
     admin?: string;
     members: Member [];
-    lastMessage: string | null;
+    lastMessage: LastMessage | null;
     createdAt: string;
     updatedAt: string;
+}
+
+export type LastMessage = {
+    _id: string;
+    sender: string;
+    message: string;
 }
 
 export type Member = {
@@ -73,4 +80,20 @@ export type MessageRequest = {
 export type MessageFile = {
     fileName: string;
     url: string;
+}
+
+export type Contact = {
+    _id: string;
+    userId: string;
+    contactId: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type UserUpdate = {
+    firstName: string;
+    lastName: string;
+    gender: string;
+    dob: string;
 }
