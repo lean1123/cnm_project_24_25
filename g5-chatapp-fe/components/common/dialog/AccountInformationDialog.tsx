@@ -37,12 +37,36 @@ type Props = {};
 
 function AccountInformationDialog({}: Props) {
   const [isEdit, setIsEdit] = useState(false);
-  const [date, setDate] = useState<Date>(new Date("2003-11-11"));
-  const { user, getMyProfile } = useAuthStore();
+  const { user, getMyProfile, changeAvatar, updateProfile } = useAuthStore();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [gender, setGender] = useState("male");
+  const [dob, setDob] = useState<Date>(new Date());
   useEffect(() => {
     getMyProfile();
-    setDate(new Date(user?.dob!));
+    setDob(new Date(user?.dob!));
+    setFirstName(user?.firstName!);
+    setLastName(user?.lastName!);
+    setGender(user?.gender || "male");
   }, []);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      changeAvatar(file);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    const data = {
+      firstName,
+      lastName,
+      gender,
+      dob: dob.toISOString(),
+    };
+    await updateProfile(data);
+  }
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -74,14 +98,24 @@ function AccountInformationDialog({}: Props) {
               <div className="flex flex-col items-center justify-center gap-4">
                 <div className="relative">
                   <Avatar className="size-28">
-                    {/* <AvatarImage src={user?.id} alt="User" /> */}
-                    <AvatarFallback className="text-4xl">
-                      {getNameFallBack(user?.firstName || "", user?.lastName || "")}
-                    </AvatarFallback>
+                    <AvatarImage
+                      src={user?.avatar || "/avatar.png"}
+                      alt="User"
+                    />
                   </Avatar>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
                   <Button
                     variant={"outline"}
                     className="rounded-full p-3 border bg-background text-black absolute bottom-0 right-0"
+                    onClick={() =>
+                      document.getElementById("avatar-upload")?.click()
+                    }
                   >
                     <Pencil />
                   </Button>
@@ -100,9 +134,7 @@ function AccountInformationDialog({}: Props) {
                 </div>
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Birthday</span>
-                  <span className="font-normal">
-                    {toStringFromDate(date)}{" "}
-                  </span>
+                  <span className="font-normal">{toStringFromDate(dob)} </span>
                 </div>
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Email</span>
@@ -122,12 +154,16 @@ function AccountInformationDialog({}: Props) {
           <>
             <div className="flex flex-col gap-4 py-4">
               <div className="flex flex-col gap-2">
-                <Label>Display name</Label>
-                <Input placeholder="" defaultValue={user?.firstName} />
+                <Label>First name</Label>
+                <Input placeholder="" value={firstName} onChange={(e) => setFirstName(e.target.value)}/>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Last name</Label>
+                <Input placeholder="" value={lastName} onChange={(e) => setLastName(e.target.value)}/>
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Gender</Label>
-                <RadioGroup defaultValue="male" className="flex flex-row gap-4">
+                <RadioGroup  value={gender} onValueChange={setGender} className="flex flex-row gap-4">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="male" id="r2" />
                     <Label htmlFor="r2">Male</Label>
@@ -146,18 +182,18 @@ function AccountInformationDialog({}: Props) {
                       variant={"outline"}
                       className={cn(
                         "w-[280px] justify-start text-left font-normal",
-                        !date && "text-muted-foreground"
+                        !dob && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon />
-                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                      {dob ? format(dob, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      selected={date}
-                      onSelect={(day) => day && setDate(day)}
+                      selected={dob}
+                      onSelect={(day) => day && setDob(day)}
                       initialFocus
                     />
                   </PopoverContent>
@@ -170,7 +206,7 @@ function AccountInformationDialog({}: Props) {
                 <Undo />
                 Cancel
               </Button>
-              <Button variant="default">Update</Button>
+              <Button variant="default" onClick={()=> handleUpdateProfile()}>Update</Button>
             </DialogFooter>
           </>
         )}

@@ -8,9 +8,10 @@ import {
   UserRoundPlus,
   UsersRound,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ConversationItem from "../conversations/_components/ConversationItem";
 import NavItem from "./_components/NavItem";
+import { useContactStore } from "@/store/useContactStore";
 
 type Props = React.PropsWithChildren<{}>;
 
@@ -36,6 +37,13 @@ const nav = [
 ];
 
 const ContactsLayout = ({ children }: Props) => {
+  // const { getListPendingContact, getListRequestContact, subscribeContact, unsubscribeContact } = useContactStore();
+  //   useEffect(() => {
+  //     subscribeContact();
+  //     return () => {
+  //       unsubscribeContact();
+  //     };
+  //   }, [subscribeContact, unsubscribeContact]);
   return (
     <>
       <ItemList title="Contacts">

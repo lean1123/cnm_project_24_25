@@ -129,7 +129,10 @@ export class ContactService {
       throw new NotFoundException('User not found in get my contact');
     }
     const contacts = await this.contactModel
-      .find({ userId: user._id, status: Status.ACTIVE })
+      .find({
+        $or: [{ userId: user._id }, { contactId: user._id }],
+        status: Status.ACTIVE,
+      })
       .exec();
     return contacts || [];
   }

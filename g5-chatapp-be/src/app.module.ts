@@ -7,12 +7,12 @@ import { CallModule } from './call/call.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { ContactModule } from './contact/contact.module';
 import { ConversationModule } from './conversation/conversation.module';
+import { MailModule } from './mail/mail.module';
+import { OtpModule } from './mail/otpGenerator/otp.module';
 import { MessageModule } from './message/message.module';
+import { RedisModule } from './redis/redis.module';
 import { UploadModule } from './upload/upload.module';
 import { UserModule } from './user/user.module';
-import { MailModule } from './mail/mail.module';
-import { RedisModule } from './redis/redis.module';
-import { OtpModule } from './mail/otpGenerator/otp.module';
 
 @Module({
   imports: [
