@@ -23,10 +23,10 @@ import { ChatGateway } from 'src/message/gateway/chat.gateway';
   ],
   providers: [
     MessageService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   // useClass: ThrottlerGuard,
+    // },
     ChatGateway,
   ],
   controllers: [MessageController],

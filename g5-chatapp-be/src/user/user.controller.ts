@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -35,6 +36,11 @@ export class UsersController {
   async create(@Body() user: User): Promise<User> {
     return await this.UserService.create(user);
   }
+  @Get('search')
+  @UseGuards(AuthGuard('jwt'))
+  async search(@Query('keyword') keyword: string, @UserDecorator() user: JwtPayload): Promise<User[]> {
+    return await this.UserService.search(keyword, user);
+  }
 
   @Get(':id')
   @UseGuards(AuthGuard(), RolesGuard)
@@ -63,4 +69,5 @@ export class UsersController {
   ): Promise<User> {
     return await this.UserService.changeAvatar(user, file);
   }
+
 }

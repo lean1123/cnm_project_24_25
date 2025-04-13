@@ -20,10 +20,10 @@ import { ConvensationSchema } from './schema/convensation.schema';
   ],
   providers: [
     ConversationService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
   controllers: [ConvensationController],
   exports: [ConversationService, MongooseModule],

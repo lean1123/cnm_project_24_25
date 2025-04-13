@@ -10,6 +10,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { ContactResponseDto } from 'src/contact/dto/contactResponse.dto';
+import { Contact } from 'src/contact/schema/contact.schema';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { MessageService } from 'src/message/message.service';
@@ -71,6 +73,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const conversations =
       await this.conversationService.getMyConversationId(userId);
 
+    await client.join(userId.toString());
+    this.logger.log(
+      `User ${userId} joined to room ${userId} send notification with socket ${client.id}`,
+    );
     for (const conversationId of conversations) {
       await client.join(conversationId.toString());
       this.logger.log(
@@ -121,5 +127,68 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       files,
     );
     this.server.to(conversationId).emit('newMessage', message);
+  }
+
+  @SubscribeMessage('sendRequestContact')
+  async handleRequestContact(
+    @MessageBody()
+    {
+      receiverId,
+      contact,
+    }: {
+      receiverId: string;
+      contact: ContactResponseDto;
+    },
+  ) {
+    // Log receiverId và kiểm tra activeUsers
+  this.logger.log(`[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`);
+
+  // Kiểm tra người nhận có online không
+  if (!this.activeUsers.has(receiverId)) {
+    this.logger.error(`[Contact] User ${receiverId} is offline`);
+    return;
+  }
+
+  // Kiểm tra phòng receiverId có tồn tại không
+  const receiverRoom = this.server.sockets.adapter.rooms.get(receiverId);
+  this.logger.log(`[Contact] Receiver room exists: ${!!receiverRoom}`);
+
+  // Gửi sự kiện
+  this.server.to(receiverId).emit('newRequestContact', contact);
+  this.logger.log(`[Contact] Event sent to ${receiverId}`);
+  }
+
+  @SubscribeMessage('cancelRequestContact')
+  async handleCancelRequestContact(
+    @MessageBody()
+    {
+      receiverId,
+      contactId,
+    }: {
+      receiverId: string;
+      contactId: string;
+    },
+  ) {
+    // Log receiverId và kiểm tra activeUsers
+    this.logger.log(`[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`);
+    this.server.to(receiverId).emit('cancelRequestContact', contactId);
+  }
+  @SubscribeMessage('rejectRequestContact')
+  async handleRejectRequestContact(
+    @MessageBody()
+    {
+      receiverId,
+      name,
+      contactId,
+    }: {
+      receiverId: string;
+      name: string;
+      contactId: string;
+    },
+  ) {
+    this.server.to(receiverId).emit('rejectRequestContact', {
+      contactId,
+      name,
+    });
   }
 }

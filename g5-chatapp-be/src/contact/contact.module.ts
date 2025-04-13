@@ -18,10 +18,10 @@ import { Contact, ContactSchema } from './schema/contact.schema';
   ],
   providers: [
     ContactService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
   controllers: [ContactController],
   exports: [ContactService, MongooseModule],

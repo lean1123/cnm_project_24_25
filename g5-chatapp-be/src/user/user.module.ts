@@ -16,10 +16,10 @@ import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
   ],
   providers: [
     UserService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
   controllers: [UsersController],
   exports: [UserService, MongooseModule],
