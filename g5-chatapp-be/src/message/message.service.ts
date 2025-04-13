@@ -1,3 +1,4 @@
+import { Convensation } from './../conversation/schema/convensation.schema';
 import {
   forwardRef,
   Inject,
@@ -155,5 +156,72 @@ export class MessageService {
 
   async deleteMessage(messageId: string): Promise<Message> {
     return await this.messageModel.findByIdAndDelete(messageId);
+  }
+
+  // xoa msg -> an tin nhan o 1 ben
+  async revokeMessage(messageId: string, userId: string): Promise<Message> {
+    const message = await this.messageModel.findById(messageId);
+
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    return await this.messageModel.findByIdAndUpdate(
+      messageId,
+      {
+        $set: {
+          isRevoked: true,
+          updatedAt: new Date(),
+        },
+        $addToSet: {
+          deletedFor: userId,
+        },
+      },
+      { new: true },
+    );
+  }
+
+  // xoa msg -> an tin nhan o ca 2 ben
+  async revokeMessageBoth(
+    messageId: string,
+    conversationId: string,
+    userRequestId: string,
+  ): Promise<Message> {
+    const conversation =
+      await this.conversationService.getConvensationById(conversationId);
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    // ✅ Lấy tất cả userId từ members
+    const memberIds = conversation.members.map(
+      (m) => new Types.ObjectId(m.userId),
+    );
+
+    const updatedMessage = await this.messageModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(messageId),
+        'sender.userId': new Types.ObjectId(userRequestId), // Chỉ cho phép sender thu hồi
+      },
+      {
+        $set: {
+          isRevoked: true,
+          updatedAt: new Date(),
+        },
+        $addToSet: {
+          deletedFor: { $each: memberIds }, // ✅ Thêm toàn bộ userId
+        },
+      },
+      { new: true },
+    );
+
+    if (!updatedMessage) {
+      throw new NotFoundException(
+        'Message not found or you are not the sender',
+      );
+    }
+
+    return updatedMessage;
   }
 }
