@@ -28,8 +28,8 @@ export class ContactService {
     }
 
     const matchedContact = await this.contactModel.findOne({
-      userId: user._id,
-      contactId: contact._id,
+      user: user._id,
+      contact: contact._id,
     });
 
     if (matchedContact && matchedContact.status !== Status.ACTIVE) {
@@ -41,8 +41,8 @@ export class ContactService {
     }
 
     const contactSchema = {
-      userId: user._id,
-      contactId: contact._id,
+      user: user._id,
+      contact: contact._id,
       status: Status.PENDING,
     };
 
@@ -51,11 +51,24 @@ export class ContactService {
     return savedContact;
   }
 
-  async acceptContact(contactId: string): Promise<Contact> {
+  async acceptContact(
+    userPayload: JwtPayload,
+    contactId: string,
+  ): Promise<Contact> {
     const contact = await this.contactModel.findById(contactId).exec();
 
     if (!contact || contact.status === Status.ACTIVE) {
       throw new Error("Can't accept this contact or contact already accepted");
+    }
+
+    // Kiểm tra xem người dùng có quyền chấp nhận liên hệ không
+    const acceptByUser = await this.userService.findById(userPayload._id);
+    if (!acceptByUser) {
+      throw new NotFoundException('User not found in accept contact');
+    }
+
+    if (!contact.contact.equals(acceptByUser._id as Types.ObjectId)) {
+      throw new Error("You don't have permission to accept this contact");
     }
 
     // Cập nhật trạng thái liên hệ
@@ -70,9 +83,9 @@ export class ContactService {
     }
 
     // Tìm thông tin người dùng
-    const user = await this.userService.findById(contact.userId.toString());
+    const user = await this.userService.findById(contact.user.toString());
     const contactUser = await this.userService.findById(
-      contact.contactId.toString(),
+      contact.contact.toString(),
     );
 
     if (!user || !contactUser) {
@@ -84,14 +97,8 @@ export class ContactService {
     // Kiểm tra xem cuộc trò chuyện đã tồn tại chưa
     const existingConversation =
       await this.conversationService.getConvensationByMemberForChatDirect([
-        {
-          userId: user._id as string,
-          fullName: `${user.firstName} ${user.lastName}`,
-        },
-        {
-          userId: contactUser._id as string,
-          fullName: `${contactUser.firstName} ${contactUser.lastName}`,
-        },
+        user._id as Types.ObjectId,
+        contactUser._id as Types.ObjectId,
       ]);
 
     // Nếu chưa có cuộc trò chuyện, tạo mới
@@ -99,16 +106,7 @@ export class ContactService {
       try {
         await this.conversationService.createConvensation({
           isGroup: false,
-          members: [
-            {
-              userId: user._id as string,
-              fullName: `${user.firstName} ${user.lastName}`,
-            },
-            {
-              userId: contactUser._id as string,
-              fullName: `${contactUser.firstName} ${contactUser.lastName}`,
-            },
-          ],
+          members: [user._id as string, contactUser._id as string],
           lastMessage: null,
           _id: null,
           name: null,
@@ -130,9 +128,11 @@ export class ContactService {
     }
     const contacts = await this.contactModel
       .find({
-        $or: [{ userId: user._id }, { contactId: user._id }],
+        $or: [{ user: user._id }, { contact: user._id }],
         status: Status.ACTIVE,
       })
+      .populate('user', 'firstName lastName email avatar')
+      .populate('contact', 'firstName lastName email avatar')
       .exec();
     return contacts || [];
   }
@@ -143,13 +143,19 @@ export class ContactService {
       throw new NotFoundException('User not found in get my contact');
     }
     const contacts = await this.contactModel
-      .find({ userId: user._id, status: Status.PENDING })
+      .find({ user: user._id, status: Status.PENDING })
+      .populate('user', 'firstName lastName email avatar')
+      .populate('contact', 'firstName lastName email avatar')
       .exec();
     return contacts || [];
   }
 
   async getContactById(contactId: string): Promise<Contact> {
-    return await this.contactModel.findById(contactId).exec();
+    return await this.contactModel
+      .findById(contactId)
+      .populate('user', 'firstName lastName email avatar')
+      .populate('contact', 'firstName lastName email avatar')
+      .exec();
   }
 
   async getListRequestContact(userPayload: JwtPayload): Promise<Contact[]> {
@@ -158,7 +164,9 @@ export class ContactService {
       throw new NotFoundException('User not found in get my request contact');
     }
     const contacts = await this.contactModel
-      .find({ contactId: user._id, status: Status.PENDING })
+      .find({ contact: user._id, status: Status.PENDING })
+      .populate('user', 'firstName lastName email avatar')
+      .populate('contact', 'firstName lastName email avatar')
       .exec();
     return contacts || [];
   }
@@ -178,7 +186,7 @@ export class ContactService {
       throw new Error("Can't reject this contact or contact already rejected");
     }
 
-    if (!contact.contactId.equals(rejectByUser._id as Types.ObjectId)) {
+    if (!contact.contact.equals(rejectByUser._id as Types.ObjectId)) {
       throw new Error("You don't have permission to reject this contact");
     }
 
@@ -211,7 +219,7 @@ export class ContactService {
       throw new Error("Can't cancel this contact or contact already cancelled");
     }
 
-    if (!contact.userId.equals(cancelByUser._id as Types.ObjectId)) {
+    if (!contact.user.equals(cancelByUser._id as Types.ObjectId)) {
       throw new Error("You don't have permission to cancel this contact");
     }
 

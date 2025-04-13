@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 // import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 // import { ThrottlerGuard } from '@nestjs/throttler';
@@ -14,7 +14,7 @@ import { Contact, ContactSchema } from './schema/contact.schema';
     MongooseModule.forFeature([{ name: Contact.name, schema: ContactSchema }]),
     UserModule,
     ConversationModule,
-    MessageModule,
+    forwardRef(() => MessageModule),
   ],
   providers: [
     ContactService,

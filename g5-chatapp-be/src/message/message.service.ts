@@ -45,8 +45,8 @@ export class MessageService {
     }
 
     // Kiểm tra người gửi có tồn tại trong participant không
-    const isParticipant = conversation.members.some(
-      (member) => member.userId.toString() === user._id.toString(),
+    const isParticipant = conversation.members.some((member) =>
+      member._id.equals(user._id),
     );
 
     if (!isParticipant) {
@@ -84,10 +84,7 @@ export class MessageService {
 
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
-      sender: {
-        userId: user._id,
-        fullName: `${sender.firstName} ${sender.lastName}`,
-      },
+      sender: user._id,
       content: dto.content,
       files: fileUrls || [],
       type,
@@ -114,6 +111,7 @@ export class MessageService {
     const [data, total] = await Promise.all([
       this.messageModel
         .find({ conversation: new Types.ObjectId(conversationId) })
+        .populate('sender', 'firstName lastName email avatar')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -135,13 +133,16 @@ export class MessageService {
   ): Promise<Message[]> {
     return await this.messageModel
       .find({ conversation: new Types.ObjectId(conversationId) })
+      .populate('sender', 'firstName lastName email avatar')
       .sort({ createdAt: 1 }) // Sắp xếp mới nhất trước
       .limit(20) // Giới hạn 20 tin nhắn
       .exec();
   }
 
   async getMessageById(messageId: string): Promise<Message> {
-    return await this.messageModel.findById(messageId);
+    return await this.messageModel
+      .findById(messageId)
+      .populate('sender', 'firstName lastName email avatar');
   }
 
   async updateMessage(
@@ -193,14 +194,12 @@ export class MessageService {
     }
 
     // ✅ Lấy tất cả userId từ members
-    const memberIds = conversation.members.map(
-      (m) => new Types.ObjectId(m.userId),
-    );
+    const memberIds = conversation.members.map((m) => m._id);
 
     const updatedMessage = await this.messageModel.findOneAndUpdate(
       {
         _id: new Types.ObjectId(messageId),
-        'sender.userId': new Types.ObjectId(userRequestId), // Chỉ cho phép sender thu hồi
+        sender: new Types.ObjectId(userRequestId), // Chỉ cho phép sender thu hồi
       },
       {
         $set: {

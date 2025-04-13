@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { forwardRef, Inject, Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -17,6 +17,7 @@ import { MessageService } from 'src/message/message.service';
 import { Message } from '../schema/messege.chema';
 import { TypinationRequest } from '../dtos/requests/typination.request';
 import { UserService } from 'src/user/user.service';
+import { ContactService } from '../../contact/contact.service';
 
 @WebSocketGateway({
   cors: {
@@ -39,6 +40,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly chatService: MessageService,
     private readonly conversationService: ConversationService,
     private readonly userService: UserService,
+    @Inject(forwardRef(() => ContactService))
+    private readonly contactService: ContactService,
   ) {}
 
   private activeUsers = new Map<string, string>();

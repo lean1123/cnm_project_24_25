@@ -4,9 +4,8 @@ import mongoose, { Types } from 'mongoose';
 import { MessageService } from 'src/message/message.service';
 import { UserService } from 'src/user/user.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
-import { MemberRequest } from './dto/requests/member.request';
-import { Convensation } from './schema/convensation.schema';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
+import { Convensation } from './schema/convensation.schema';
 
 @Injectable()
 export class ConversationService {
@@ -34,7 +33,7 @@ export class ConversationService {
 
     if (isGroup === false) {
       const existedConversation = await this.convenstationModel.findOne({
-        'members.useId': { $all: members.map((m) => m.userId) },
+        members: { $all: members.map((m) => m) },
         isGroup: false,
       });
 
@@ -67,13 +66,23 @@ export class ConversationService {
   }
 
   async getConvensationById(id: string): Promise<Convensation> {
-    return await this.convenstationModel.findById({
-      _id: new Types.ObjectId(id),
-    });
+    return await this.convenstationModel
+      .findById(id)
+      .populate('members', 'firstName lastName email avatar')
+      .populate('admin', 'firstName lastName email avatar')
+      .populate({
+        path: 'lastMessage',
+        select: 'sender content type files',
+        populate: {
+          path: 'sender',
+          select: 'firstName lastName',
+        },
+      })
+      .exec();
   }
 
   async getConvensationByMemberForChatDirect(
-    members: MemberRequest[],
+    members: Types.ObjectId[],
   ): Promise<Convensation> {
     return await this.convenstationModel.findOne({
       members: { $all: members },
@@ -82,7 +91,7 @@ export class ConversationService {
   }
 
   async getConvensationByMemberForChatGroup(
-    members: MemberRequest[],
+    members: Types.ObjectId[],
   ): Promise<Convensation> {
     return await this.convenstationModel.findOne({
       members: { $all: members },
@@ -101,7 +110,17 @@ export class ConversationService {
     }
     const conversations = await this.convenstationModel
       .find({
-        'members.userId': new Types.ObjectId(userPayload._id.toString()),
+        members: new Types.ObjectId(userPayload._id.toString()),
+      })
+      .populate('members', 'firstName lastName email avatar')
+      .populate('admin', 'firstName lastName email avatar')
+      .populate({
+        path: 'lastMessage',
+        select: 'sender content type files',
+        populate: {
+          path: 'sender',
+          select: 'firstName lastName',
+        },
       })
       .exec();
     return conversations || [];
@@ -114,7 +133,7 @@ export class ConversationService {
     }
     const conversations = await this.convenstationModel
       .find({
-        'members.userId': new Types.ObjectId(userId),
+        members: new Types.ObjectId(userId),
       })
       .exec();
     return (
@@ -136,9 +155,7 @@ export class ConversationService {
 
   async updateLastMessageField(conversationId: string, messageId: string) {
     const message = await this.messageService.getMessageById(messageId);
-    const sender = await this.userService.findById(
-      message.sender.userId.toString(),
-    );
+    const sender = await this.userService.findById(message.sender.toString());
     if (!sender) {
       throw new Error('Sender not found in updateLastMessageField');
     }
@@ -152,11 +169,7 @@ export class ConversationService {
     }
 
     await this.convenstationModel.findByIdAndUpdate(conversationId, {
-      lastMessage: {
-        sender: `${sender.firstName} ${sender.lastName}`,
-        message: message.content,
-        createdAt: new Date(),
-      },
+      lastMessage: message._id,
     });
   }
 }
