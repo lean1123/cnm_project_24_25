@@ -35,11 +35,7 @@ export class UserService {
     const regex = new RegExp(keyword, 'i'); // 'i' for case-insensitive
     return await this.userModel.find({
       _id: { $ne: userPayload._id }, // Exclude the current user
-      $or: [
-        { firstName: regex },
-        { lastName: regex },
-        { email: regex },
-      ],
+      $or: [{ firstName: regex }, { lastName: regex }, { email: regex }],
     });
   }
 

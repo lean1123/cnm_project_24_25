@@ -7,7 +7,6 @@ import {
   Post,
   Put,
   Query,
-  Request,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -20,6 +19,7 @@ import { Message } from './schema/messege.chema';
 import { AuthGuard } from '@nestjs/passport';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 
 @Controller('message')
 export class MessageController {
@@ -93,10 +93,20 @@ export class MessageController {
    */
   @UseGuards(AuthGuard('jwt'))
   @Patch(':messageId/revoke-self')
-  async revokeMessage(@Param('messageId') messageId: string, @Request() req) {
-    const userId = req.user._id;
-    console.log('userId', userId);
-    return await this.messageService.revokeMessage(messageId, userId);
+  async revokeMessage(
+    @Param('messageId') messageId: string,
+    @UserDecorator() req: JwtPayload,
+  ) {
+    const userId = req._id;
+
+    const seltHidationMessage = await this.messageService.revokeMessage(
+      messageId,
+      userId,
+    );
+
+    this.chatGateway.handleDeleteMessage(seltHidationMessage);
+
+    return seltHidationMessage;
   }
 
   /**
@@ -110,14 +120,17 @@ export class MessageController {
   async revokeMessageBoth(
     @Param('messageId') messageId: string,
     @Param('conversationId') conversationId: string,
-    @Request() req,
+    @UserDecorator() req: JwtPayload,
   ) {
-    const userId = req.user._id;
-    return await this.messageService.revokeMessageBoth(
+    const userId = req._id;
+    const revorkedMessage = await this.messageService.revokeMessageBoth(
       messageId,
       conversationId,
       userId,
     );
+
+    this.chatGateway.handleRevokeMessage(revorkedMessage);
+    return revorkedMessage;
   }
 
   /**
@@ -131,18 +144,17 @@ export class MessageController {
   @Patch('/forward')
   async forwardMessage(
     @Body()
-    body: {
-      originalMessageId: string;
-      newConversationIds: string[];
-    },
-    @Request() req,
+    body: MessageForwardationRequest,
+    @UserDecorator() userPayload: JwtPayload,
   ): Promise<Message[]> {
-    const userId = req.user._id;
+    const messageForwardations =
+      await this.messageService.forwardMessageToMultipleConversations(
+        body,
+        userPayload,
+      );
 
-    return this.messageService.forwardMessageToMultipleConversations(
-      body.originalMessageId,
-      body.newConversationIds,
-      userId,
-    );
+    this.chatGateway.handleForwardMessage(messageForwardations);
+
+    return messageForwardations;
   }
 }

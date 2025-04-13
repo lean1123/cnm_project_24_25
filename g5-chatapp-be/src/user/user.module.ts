@@ -4,8 +4,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserSchema } from './schema/user.schema';
 import { UsersController } from './user.controller';
 import { AuthModule } from 'src/auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard } from '@nestjs/throttler';
+// import { APP_GUARD } from '@nestjs/core';
+// import { ThrottlerGuard } from '@nestjs/throttler';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 
 @Module({

@@ -129,7 +129,10 @@ export class ContactService {
       throw new NotFoundException('User not found in get my contact');
     }
     const contacts = await this.contactModel
-      .find({$or: [{userId: user._id}, {contactId: user._id}], status: Status.ACTIVE })
+      .find({
+        $or: [{ userId: user._id }, { contactId: user._id }],
+        status: Status.ACTIVE,
+      })
       .exec();
     return contacts || [];
   }
@@ -208,7 +211,7 @@ export class ContactService {
       throw new Error("Can't cancel this contact or contact already cancelled");
     }
 
-    if (contact.userId.toString() !== cancelByUser._id.toString()) {
+    if (!contact.userId.equals(cancelByUser._id as Types.ObjectId)) {
       throw new Error("You don't have permission to cancel this contact");
     }
 

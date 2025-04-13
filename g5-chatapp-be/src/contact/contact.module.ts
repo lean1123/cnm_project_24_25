@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+// import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ThrottlerGuard } from '@nestjs/throttler';
+// import { ThrottlerGuard } from '@nestjs/throttler';
 import { ConversationModule } from 'src/conversation/conversation.module';
 import { MessageModule } from 'src/message/message.module';
 import { UserModule } from 'src/user/user.module';

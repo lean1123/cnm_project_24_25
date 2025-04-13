@@ -11,10 +11,12 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { ContactResponseDto } from 'src/contact/dto/contactResponse.dto';
-import { Contact } from 'src/contact/schema/contact.schema';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { MessageService } from 'src/message/message.service';
+import { Message } from '../schema/messege.chema';
+import { TypinationRequest } from '../dtos/requests/typination.request';
+import { UserService } from 'src/user/user.service';
 
 @WebSocketGateway({
   cors: {
@@ -36,6 +38,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly chatService: MessageService,
     private readonly conversationService: ConversationService,
+    private readonly userService: UserService,
   ) {}
 
   private activeUsers = new Map<string, string>();
@@ -105,7 +108,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`User ${userId} connected with socket ${client.id}`);
   }
 
-  @SubscribeMessage('sendMessage')
   async handleMessage(
     @MessageBody()
     {
@@ -129,8 +131,53 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(conversationId).emit('newMessage', message);
   }
 
+  handleForwardMessage(@MessageBody() messageForwarded: Message[]) {
+    for (const message of messageForwarded) {
+      const conversationId = message.conversation?.toString();
+      if (conversationId) {
+        this.server.to(conversationId).emit('newMessage', message);
+      }
+    }
+  }
+
+  handleDeleteMessage(@MessageBody() message: Message) {
+    const conversationId = message.conversation?.toString();
+    if (conversationId) {
+      this.server.to(conversationId).emit('deleteMessage', message);
+    }
+  }
+
+  handleRevokeMessage(@MessageBody() message: Message) {
+    const conversationId = message.conversation?.toString();
+    if (conversationId) {
+      this.server.to(conversationId).emit('revokeMessage', message);
+    }
+  }
+
+  @SubscribeMessage('typing')
+  async handleTyping(
+    @MessageBody() typinationDto: TypinationRequest,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { userId, conversationId } = typinationDto;
+
+    const user = await this.userService.findById(userId);
+    const fullName = `${user.firstName} ${user.lastName}`;
+
+    client.to(conversationId).emit('typing', fullName);
+  }
+
+  @SubscribeMessage('stopTyping')
+  handleStopTyping(
+    @MessageBody() data: TypinationRequest,
+    @ConnectedSocket() client: Socket,
+  ) {
+    client.to(data.conversationId).emit('stopTyping', {
+      userId: data.userId,
+    });
+  }
   @SubscribeMessage('sendRequestContact')
-  async handleRequestContact(
+  handleRequestContact(
     @MessageBody()
     {
       receiverId,
@@ -141,40 +188,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
   ) {
     // Log receiverId và kiểm tra activeUsers
-  this.logger.log(`[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`);
+    this.logger.log(
+      `[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`,
+    );
 
-  // Kiểm tra người nhận có online không
-  if (!this.activeUsers.has(receiverId)) {
-    this.logger.error(`[Contact] User ${receiverId} is offline`);
-    return;
-  }
+    // Kiểm tra người nhận có online không
+    if (!this.activeUsers.has(receiverId)) {
+      this.logger.error(`[Contact] User ${receiverId} is offline`);
+      return;
+    }
 
-  // Kiểm tra phòng receiverId có tồn tại không
-  const receiverRoom = this.server.sockets.adapter.rooms.get(receiverId);
-  this.logger.log(`[Contact] Receiver room exists: ${!!receiverRoom}`);
+    // Kiểm tra phòng receiverId có tồn tại không
+    const receiverRoom = this.server.sockets.adapter.rooms.get(receiverId);
+    this.logger.log(`[Contact] Receiver room exists: ${!!receiverRoom}`);
 
-  // Gửi sự kiện
-  this.server.to(receiverId).emit('newRequestContact', contact);
-  this.logger.log(`[Contact] Event sent to ${receiverId}`);
+    // Gửi sự kiện
+    this.server.to(receiverId).emit('newRequestContact', contact);
+    this.logger.log(`[Contact] Event sent to ${receiverId}`);
   }
 
   @SubscribeMessage('cancelRequestContact')
-  async handleCancelRequestContact(
+  handleCancelRequestContact(
     @MessageBody()
-    {
-      receiverId,
-      contactId,
-    }: {
-      receiverId: string;
-      contactId: string;
-    },
+    { receiverId, contactId }: { receiverId: string; contactId: string },
   ) {
     // Log receiverId và kiểm tra activeUsers
-    this.logger.log(`[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`);
+    this.logger.log(
+      `[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`,
+    );
     this.server.to(receiverId).emit('cancelRequestContact', contactId);
   }
   @SubscribeMessage('rejectRequestContact')
-  async handleRejectRequestContact(
+  handleRejectRequestContact(
     @MessageBody()
     {
       receiverId,

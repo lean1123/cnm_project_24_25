@@ -1,4 +1,3 @@
-import { Convensation } from './../conversation/schema/convensation.schema';
 import {
   forwardRef,
   Inject,
@@ -8,13 +7,13 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConversationService } from 'src/conversation/conversation.service';
-// import { UploadService } from 'src/upload/upload.service';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { UploadService } from 'src/upload/upload.service';
 import { UserService } from 'src/user/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
-import { Message } from './schema/messege.chema';
-import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 import { MessageType } from './schema/messageType.enum';
+import { Message } from './schema/messege.chema';
 
 @Injectable()
 export class MessageService {
@@ -157,7 +156,6 @@ export class MessageService {
   async deleteMessage(messageId: string): Promise<Message> {
     return await this.messageModel.findByIdAndDelete(messageId);
   }
-
   // xoa msg -> an tin nhan o 1 ben
   async revokeMessage(messageId: string, userId: string): Promise<Message> {
     const message = await this.messageModel.findById(messageId);
@@ -226,35 +224,57 @@ export class MessageService {
   }
 
   async forwardMessageToMultipleConversations(
-    originalMessageId: string,
-    newConversationIds: string[], // Mảng các ID của cuộc trò chuyện cần forward tới
-    userRequestId: string, // ID người yêu cầu forward
+    messageForwardationDto: MessageForwardationRequest,
+    userPayload: JwtPayload,
   ): Promise<Message[]> {
     // Tìm tin nhắn gốc
-    const originalMessage = await this.messageModel.findById(originalMessageId);
+    const originalMessage = await this.messageModel.findById(
+      messageForwardationDto.originalMessageId,
+    );
     if (!originalMessage) {
       throw new NotFoundException('Original message not found');
     }
 
+    const sender = await this.userService.findById(userPayload._id);
+
     // Duyệt qua tất cả các cuộc trò chuyện và forward tin nhắn
     const forwardedMessages = [];
 
-    for (const newConversationId of newConversationIds) {
+    for (const newConversationId of messageForwardationDto.conversationIds) {
+      // Kiểm tra xem cuộc trò chuyện có tồn tại không
+      const conversation =
+        await this.conversationService.getConvensationById(newConversationId);
+      if (!conversation) {
+        throw new NotFoundException(
+          `Conversation with ID ${newConversationId} not found`,
+        );
+      }
+
       // Tạo bản sao của tin nhắn gốc cho mỗi cuộc trò chuyện
       const forwardedMessage = await this.messageModel.create({
         conversation: new Types.ObjectId(newConversationId),
-        sender: originalMessage.sender,
+        sender: {
+          userId: userPayload._id,
+          fullName: `${sender.firstName} ${sender.lastName}`,
+        },
         content: originalMessage.content,
         files: originalMessage.files,
         type: originalMessage.type,
-        forwardFrom: originalMessageId, // Đánh dấu tin nhắn gốc
+        forwardFrom: originalMessage._id, // Đánh dấu tin nhắn gốc
       });
 
       // Lưu tin nhắn đã forward vào mảng để trả về sau
       forwardedMessages.push(forwardedMessage);
+
+      // Cập nhật trường lastMessageId của cuộc trò chuyện
+
+      await this.conversationService.updateLastMessageField(
+        newConversationId,
+        forwardedMessage._id as string,
+      );
     }
 
     // Trả về tất cả các tin nhắn đã được forward
-    return forwardedMessages;
+    return forwardedMessages as Message[];
   }
 }

@@ -38,7 +38,10 @@ export class UsersController {
   }
   @Get('search')
   @UseGuards(AuthGuard('jwt'))
-  async search(@Query('keyword') keyword: string, @UserDecorator() user: JwtPayload): Promise<User[]> {
+  async search(
+    @Query('keyword') keyword: string,
+    @UserDecorator() user: JwtPayload,
+  ): Promise<User[]> {
     return await this.UserService.search(keyword, user);
   }
 
@@ -69,5 +72,4 @@ export class UsersController {
   ): Promise<User> {
     return await this.UserService.changeAvatar(user, file);
   }
-
 }
