@@ -155,7 +155,9 @@ export class ConversationService {
 
   async updateLastMessageField(conversationId: string, messageId: string) {
     const message = await this.messageService.getMessageById(messageId);
-    const sender = await this.userService.findById(message.sender.toString());
+    const sender = await this.userService.findById(
+      message.sender._id.toString(),
+    );
     if (!sender) {
       throw new Error('Sender not found in updateLastMessageField');
     }
