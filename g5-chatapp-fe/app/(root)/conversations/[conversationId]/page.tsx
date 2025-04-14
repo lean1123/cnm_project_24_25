@@ -32,7 +32,7 @@ function ConversationPage({ params }: Props) {
 
   const { conversationId } = use(params);
 
-  const { selectedConversation, getConversation, userSelected, fetchingUser } = useConversationStore();
+  const { selectedConversation, getConversation } = useConversationStore();
 
   const {user} = useAuthStore()
 
@@ -43,17 +43,10 @@ function ConversationPage({ params }: Props) {
     }
   }, [conversationId]);
 
-  useEffect(() => {
-    if (selectedConversation) {
-      console.log("Selected conversation:", selectedConversation);
-      if (user?.id !== selectedConversation.members[0].userId) {
-        fetchingUser(selectedConversation.members[0].userId);
-      } else {
-        fetchingUser(selectedConversation.members[1].userId);
-      }
-    }
-  }
-  , [selectedConversation]);
+  const userSelected = selectedConversation?.members.find(
+    (member) => member._id !== user?.id
+  );
+
 
   const [removeFriendDialogOpen, setRemoveFriendDialogOpen] = useState(false);
   const [deleteGroupDialogOpen, setDeleteGroupDialogOpen] = useState(false);

@@ -32,8 +32,8 @@ const ConversationItem = ({
       <Card className={`p-2 flex flex-row items-center gap-4 truncate ${isActive ? "bg-secondary/65" : ""}`}>
         <div className="flex flex-row items-center gap-4 truncate">
           <Avatar>
-            <AvatarImage src={imageUrl} alt={name} />
-            <AvatarFallback>{getInitials(name)}</AvatarFallback>
+            <AvatarImage src={imageUrl || "/avatar.png"} alt={name} />
+            {/* <AvatarFallback>{getInitials(name)}</AvatarFallback> */}
           </Avatar>
           <div className="flex flex-col truncate">
             <h4 className="truncate">{name}</h4>

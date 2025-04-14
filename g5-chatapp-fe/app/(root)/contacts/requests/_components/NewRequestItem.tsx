@@ -10,24 +10,16 @@ import { useEffect, useState } from "react";
 
 type Props = {
   _id: string;
-  userId: string;
-  contactId: string;
+  user: User;
+  contact: User;
   createdAt: string;
 };
 
-function RequestItem({ _id, userId, contactId, createdAt }: Props) {
+function RequestItem({ _id, user, contact, createdAt }: Props) {
   const { getUserById } = useUserStore();
   const {acceptContact, rejectContact} = useContactStore();
-  const [user, setUser] = useState<User | null>(null);
   const userLogin = useAuthStore((state) => state.user);
-  const userSendRequestId = userLogin?._id === userId ? contactId : userId;
-  useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await getUserById(userSendRequestId);
-      setUser(userData);
-    };
-    fetchUser();
-  }, [_id, getUserById]);
+  const userItem = userLogin?._id === user._id ? contact : user;
   return (
     <div
       key={_id}
@@ -36,16 +28,16 @@ function RequestItem({ _id, userId, contactId, createdAt }: Props) {
       <div className="flex items-center gap-2">
         <Avatar>
           <AvatarImage
-            src={user?.avatar || ""}
-            alt={user?.firstName + " " + user?.lastName}
+            src={userItem?.avatar || "/avatar.png"}
+            alt={userItem?.firstName + " " + userItem?.lastName}
           />
           <AvatarFallback>
-            {getNameFallBack(user?.firstName || "", user?.lastName || "")}
+            {getNameFallBack(userItem?.firstName || "", userItem?.lastName || "")}
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
           <span className="font-semibold">
-            {user?.firstName + " " + user?.lastName}
+            {userItem?.firstName + " " + userItem?.lastName}
           </span>
           <span className="text-sm text-gray-500">{createdAt}</span>
         </div>

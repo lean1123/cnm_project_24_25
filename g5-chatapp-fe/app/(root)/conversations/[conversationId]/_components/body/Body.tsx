@@ -80,15 +80,15 @@ const Body = (props: Props) => {
         {messages &&
           messages?.map((message, index) => {
             const lastByUser =
-              messages[index - 1]?.sender.userId === message.sender.userId;
-            const isCurrentUser = message.sender.userId === user?.id;
+              messages[index - 1]?.sender._id === message.sender._id;
+            const isCurrentUser = message.sender._id === user?.id;
             return (
               <Message
                 key={index}
                 fromCurrentUser={isCurrentUser}
-                senderImage={message.sender.fullName || ""}
+                senderImage={message.sender._id || ""}
                 file={message?.files || []}
-                senderName={message.sender.fullName || ""}
+                senderName={message.sender.firstName || ""}
                 lastByUser={lastByUser}
                 content={message.content}
                 createdAt={message.createdAt}
