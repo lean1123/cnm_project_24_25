@@ -33,21 +33,19 @@ const SignInScreen = ({ navigation }) => {
 
     try {
       const result = await signIn(email, password);
-      // console.log("Sign in result:", result);
+      console.log("Sign in result:", result);
 
-      if (result.ok) {
+      if (result.ok && result.user && result.user._id) {
         // Lưu thông tin người dùng và token vào AsyncStorage
         await AsyncStorage.setItem("user", JSON.stringify(result.user));
         await AsyncStorage.setItem("userToken", result.token);
-        await AsyncStorage.setItem("userId", result.user.id);
-        // console.log("User data saved to AsyncStorage");
+        await AsyncStorage.setItem("userId", result.user._id);
 
         setModalMessage("Login successful!");
         setModalVisible(true);
         
         // Chuyển hướng sau khi hiển thị modal
         setTimeout(() => {
-          // console.log("Attempting to navigate to Home_Chat...");
           setModalVisible(false);
           navigation.dispatch(
             CommonActions.reset({

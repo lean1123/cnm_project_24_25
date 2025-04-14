@@ -5,15 +5,54 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    SafeAreaView
+    SafeAreaView,
+    Alert,
+    ActivityIndicator
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { contactService } from "../../services/contact.service";
 
 const AddFriendScreen = ({ navigation }) => {
     const [friendId, setFriendId] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleAddFriend = () => {
-        console.log("Sending friend request to:", friendId);
+    const handleAddFriend = async () => {
+        if (!friendId.trim()) {
+            Alert.alert("Error", "Please enter a friend ID");
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const response = await contactService.createContact(friendId);
+            if (response.success) {
+                Alert.alert(
+                    "Success", 
+                    "Friend request sent successfully",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => navigation.goBack()
+                        }
+                    ]
+                );
+            } else {
+                const errorMessage = Array.isArray(response.message) 
+                    ? response.message[0] 
+                    : (response.message || "Failed to send friend request");
+                Alert.alert("Error", errorMessage);
+            }
+        } catch (error) {
+            console.log('Error details:', error);
+            const errorMessage = error.message;
+            if (Array.isArray(errorMessage)) {
+                Alert.alert("Error", errorMessage[0] || "Something went wrong");
+            } else {
+                Alert.alert("Error", errorMessage || "Something went wrong");
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -36,13 +75,21 @@ const AddFriendScreen = ({ navigation }) => {
                     onChangeText={setFriendId}
                 />
                 <TouchableOpacity>
-                    <Icon name="magnify" size={28} color="#135CAF" />
+                    <Icon name="account-plus" size={28} color="#135CAF" />
                 </TouchableOpacity>
             </View>
 
-            {/* Search Button */}
-            <TouchableOpacity style={styles.button} onPress={handleAddFriend}>
-                <Text style={styles.buttonText}>Search</Text>
+            {/* Add Friend Button */}
+            <TouchableOpacity 
+                style={[styles.button, isLoading && styles.buttonDisabled]} 
+                onPress={handleAddFriend}
+                disabled={isLoading}
+            >
+                {isLoading ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={styles.buttonText}>Add Friend</Text>
+                )}
             </TouchableOpacity>
         </SafeAreaView>
     );
@@ -97,9 +144,13 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginHorizontal: 20,
     },
+    buttonDisabled: {
+        backgroundColor: "#ccc",
+    },
     buttonText: {
         color: "#fff",
         fontWeight: "bold",
+        fontSize: 16,
     },
 });
 

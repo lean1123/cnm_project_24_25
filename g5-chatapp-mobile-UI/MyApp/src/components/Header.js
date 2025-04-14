@@ -96,6 +96,17 @@ const Header = () => {
                 style={styles.modalOption}
                 onPress={() => {
                   setIsModalVisible(false);
+                  setTimeout(() => navigation.navigate("ContactRequests"), 300);
+                }}
+              >
+                <Icon name="account-clock" size={20} color="#000" />
+                <Text style={styles.modalText}>Contact Requests</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={() => {
+                  setIsModalVisible(false);
                   setTimeout(() => navigation.navigate("AddGroupScreen"), 300);
                 }}
               >

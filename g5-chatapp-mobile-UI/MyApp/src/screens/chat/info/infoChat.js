@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,37 +8,79 @@ import {
   Switch,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import styles from "./styles";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UserInfoScreen = ({ navigation, route }) => {
   const [muted, setMuted] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [callAlerts, setCallAlerts] = useState(true);
-
-  const mockUser = {
-    avatar: require("../../../../assets/chat/man.png"),
-    name: "Nguyen Duc Nhat",
-    phone: "(+84) 123 456 789",
-    commonGroups: ["Nhóm bạn thân", "Công việc", "Dự án React Native"],
-    sharedMedia: [
-      require("../../../../assets/chat/OIP.jpg"),
-      require("../../../../assets/chat/messenger.png"),
-      require("../../../../assets/chat/man2.png"),
-      require("../../../../assets/chat/OIP.jpg"),
-      require("../../../../assets/chat/OIP.jpg"),
-      require("../../../../assets/chat/man.png"),
-    ],
-    sharedFiles: [
-      { name: "Báo cáo tài chính.pdf", size: "3.2MB" },
-      { name: "Hợp đồng.docx", size: "1.8MB" },
-    ],
-    sharedLinks: [
-      { title: "React Native Docs", url: "https://reactnative.dev/" },
-      { title: "Figma UI Kit", url: "https://figma.com/community/file/123" },
-    ],
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState(null);
+  const [userInfo, setUserInfo] = useState(null);
+  
+  // Lấy thông tin người dùng từ route params
+  const friend = route.params?.friend;
+  
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const id = await AsyncStorage.getItem('userId');
+        if (id) {
+          setUserId(id);
+        }
+      } catch (error) {
+        console.error('Error getting userId:', error);
+      }
+    };
+    getUserId();
+    
+    // Xử lý thông tin người dùng từ conversation
+    if (friend) {
+      processUserInfo(friend);
+    }
+  }, [friend]);
+  
+  const processUserInfo = (conversation) => {
+    if (!conversation) return;
+    
+    let userData = {
+      avatar: require("../../../../assets/chat/man.png"),
+      name: "Unknown",
+      phone: "N/A",
+      commonGroups: [],
+      sharedMedia: [],
+      sharedFiles: [],
+      sharedLinks: [],
+    };
+    
+    // Nếu là cuộc trò chuyện nhóm
+    if (conversation.isGroup) {
+      userData.name = conversation.name || "Unknown Group";
+      userData.avatar = conversation.avatar 
+        ? { uri: conversation.avatar } 
+        : require("../../../../assets/chat/man.png");
+    } 
+    // Nếu là cuộc trò chuyện 1-1
+    else if (Array.isArray(conversation.members)) {
+      // Tìm người dùng khác (không phải người dùng hiện tại)
+      const otherMember = conversation.members.find(member => member?.userId !== userId);
+      
+      if (otherMember) {
+        userData.name = otherMember.fullName || "Unknown";
+        userData.phone = otherMember.phone || "N/A";
+        userData.avatar = otherMember.avatar 
+          ? { uri: otherMember.avatar } 
+          : require("../../../../assets/chat/man.png");
+      }
+    }
+    
+    setUserInfo(userData);
+    setLoading(false);
   };
 
   //   hanlde gim tin nhăn
@@ -58,6 +100,14 @@ const UserInfoScreen = ({ navigation, route }) => {
     Alert.alert("Tắt thông báo", "Chức năng này chưa được triển khai.");
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#135CAF" />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.header}>
@@ -68,9 +118,9 @@ const UserInfoScreen = ({ navigation, route }) => {
       </View>
       <ScrollView style={styles.container}>
         <View style={styles.avatarSection}>
-          <Image source={mockUser.avatar} style={styles.avatarLarge} />
-          <Text style={styles.name}>{mockUser.name}</Text>
-          <Text style={styles.phone}>{mockUser.phone}</Text>
+          <Image source={userInfo.avatar} style={styles.avatarLarge} />
+          <Text style={styles.name}>{userInfo.name}</Text>
+          <Text style={styles.phone}>{userInfo.phone}</Text>
         </View>
 
         <View style={styles.quickActions}>
@@ -120,18 +170,22 @@ const UserInfoScreen = ({ navigation, route }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ảnh, file, link</Text>
           <ScrollView horizontal>
-            {mockUser.sharedMedia.map((media, index) => (
-              <Image key={index} source={media} style={styles.mediaThumbnail} />
-            ))}
+            {userInfo.sharedMedia.length > 0 ? (
+              userInfo.sharedMedia.map((media, index) => (
+                <Image key={index} source={media} style={styles.mediaThumbnail} />
+              ))
+            ) : (
+              <Text style={{ padding: 10 }}>Không có ảnh, file hoặc link nào</Text>
+            )}
           </ScrollView>
         </View>
 
         <View style={styles.optionsSection}>
           <TouchableOpacity style={styles.optionRow}>
-            <Text>Tạo nhóm với {mockUser.name}</Text>
+            <Text>Tạo nhóm với {userInfo.name}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.optionRow}>
-            <Text>Thêm {mockUser.name} vào nhóm</Text>
+            <Text>Thêm {userInfo.name} vào nhóm</Text>
           </TouchableOpacity>
           <View style={styles.optionRow}>
             <Text>Ghim trò chuyện</Text>

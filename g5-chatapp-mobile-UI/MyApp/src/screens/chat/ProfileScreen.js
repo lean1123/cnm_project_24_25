@@ -52,6 +52,8 @@ const ProfileScreen = ({ navigation }) => {
 
       // Lấy token từ AsyncStorage
       const token = await AsyncStorage.getItem("userToken");
+      const userId = await AsyncStorage.getItem("userId");
+      console.log("userId:", userId);
       console.log("Token:", token);
       if (!token) {
         showNotification("Please login again");

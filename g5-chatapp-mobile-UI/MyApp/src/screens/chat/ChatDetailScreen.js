@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,10 @@ import {
   Keyboard,
   Linking,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, Feather } from "@expo/vector-icons"; // Cài bằng: npm install @expo/vector-icons
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -22,10 +25,463 @@ import * as Sharing from "expo-sharing"; // mở tệp
 import * as Location from "expo-location";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { chatService } from "../../services/chat.service";
+import { io } from "socket.io-client";
+import { API_URL } from "../../config/constants";
+
 const ChatDetailScreen = ({ navigation, route }) => {
-  const { friend } = route.params;
+  const conversation = route.params?.conversation;
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const socket = useRef(null);
+  const [userId, setUserId] = useState(null);
+  const [isSending, setIsSending] = useState(false);
+  const flatListRef = useRef(null);
+
+  // Get the display name for the conversation
+  const getDisplayName = () => {
+    if (!conversation) return 'Unknown';
+    if (conversation?.name) return conversation.name;
+    if (!conversation?.isGroup && Array.isArray(conversation?.members)) {
+      // For non-group chats, find the other member
+      const otherMember = conversation.members.find(member => member?.userId !== userId);
+      return otherMember?.fullName || 'Unknown';
+    }
+    return 'Unknown';
+  };
+
+  // Get the avatar URL for the conversation
+  const getAvatarUrl = () => {
+    if (!conversation) return require("../../../assets/chat/man.png");
+    if (conversation?.avatar) return { uri: conversation.avatar };
+    if (!conversation?.isGroup && Array.isArray(conversation?.members)) {
+      const otherMember = conversation.members.find(member => member?.userId !== userId);
+      return otherMember?.avatar ? { uri: otherMember.avatar } : require("../../../assets/chat/man.png");
+    }
+    return require("../../../assets/chat/man.png");
+  };
+
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const id = await AsyncStorage.getItem('userId');
+        if (id) {
+          setUserId(id);
+        }
+      } catch (error) {
+        console.error('Error getting userId:', error);
+      }
+    };
+    getUserId();
+  }, []);
+
+  // Reset messages and page when entering the screen
+  useEffect(() => {
+    if (conversation?._id) {
+      setMessages([]);
+      setPage(1);
+      setHasMore(true);
+      fetchMessages();
+    }
+  }, [conversation?._id]);
+
+  useEffect(() => {
+    if (!conversation?._id || !userId) return;
+
+    setupSocket();
+
+    // Thêm interval để kiểm tra tin nhắn mới định kỳ
+    const messageCheckInterval = setInterval(() => {
+      if (socket.current?.connected) {
+        fetchMessages();
+      }
+    }, 5000); // Kiểm tra mỗi 5 giây
+
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+      }
+      clearInterval(messageCheckInterval);
+    };
+  }, [userId, conversation?._id]);
+
+  const setupSocket = () => {
+    if (!conversation?._id) return;
+    
+    if (socket.current) {
+      socket.current.disconnect();
+    }
+
+    socket.current = io(API_URL, {
+      transports: ["websocket"],
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+    });
+  
+    socket.current.on("connect", () => {
+      socket.current.emit("joinConversation", conversation._id);
+      
+      // Thêm sự kiện lắng nghe tin nhắn mới khi kết nối
+      socket.current.emit("getNewMessages", conversation._id);
+    });
+  
+    socket.current.on("newMessage", (message) => {
+      // Check if message is for current conversation
+      if (message?.conversation === conversation._id || message?.conversationId === conversation._id) {
+        setMessages(prev => {
+          // Check if message already exists to avoid duplicates
+          const exists = prev.some(m => m._id === message._id);
+          if (!exists) {
+            // Format the message to match our message structure
+            const formattedMessage = {
+              _id: message._id,
+              content: message.content,
+              type: message.type || "TEXT",
+              sender: message.sender,
+              createdAt: message.createdAt || new Date().toISOString(),
+              conversation: message.conversation || message.conversationId
+            };
+            
+            // Scroll to top when new message arrives
+            setTimeout(() => {
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            }, 100);
+            
+            return [formattedMessage, ...prev];
+          }
+          return prev;
+        });
+      }
+    });
+
+    // Thêm sự kiện lắng nghe tin nhắn mới từ server
+    socket.current.on("message", (message) => {
+      if (message?.conversation === conversation._id || message?.conversationId === conversation._id) {
+        setMessages(prev => {
+          const exists = prev.some(m => m._id === message._id);
+          if (!exists) {
+            const formattedMessage = {
+              _id: message._id,
+              content: message.content,
+              type: message.type || "TEXT",
+              sender: message.sender,
+              createdAt: message.createdAt || new Date().toISOString(),
+              conversation: message.conversation || message.conversationId
+            };
+            
+            setTimeout(() => {
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            }, 100);
+            
+            return [formattedMessage, ...prev];
+          }
+          return prev;
+        });
+      }
+    });
+
+    // Thêm sự kiện lắng nghe tin nhắn mới từ server
+    socket.current.on("messages", (messages) => {
+      if (Array.isArray(messages)) {
+        const newMessages = messages.filter(msg => 
+          (msg?.conversation === conversation._id || msg?.conversationId === conversation._id) &&
+          !messages.some(m => m._id === msg._id)
+        );
+        
+        if (newMessages.length > 0) {
+          setMessages(prev => {
+            const formattedMessages = newMessages.map(msg => ({
+              _id: msg._id,
+              content: msg.content,
+              type: msg.type || "TEXT",
+              sender: msg.sender,
+              createdAt: msg.createdAt || new Date().toISOString(),
+              conversation: msg.conversation || msg.conversationId
+            }));
+            
+            setTimeout(() => {
+              flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            }, 100);
+            
+            return [...formattedMessages, ...prev];
+          });
+        }
+      }
+    });
+
+    socket.current.on("messageReceived", (messageId) => {
+      // Update message status if needed
+    });
+  
+    socket.current.on("error", (error) => {
+      console.error("Socket error:", error);
+      // Try to reconnect on error after a delay
+      setTimeout(() => {
+        setupSocket();
+      }, 3000);
+    });
+
+    socket.current.on("disconnect", (reason) => {
+      if (reason === "io server disconnect" || reason === "io client disconnect") {
+        // Don't reconnect for intentional disconnects
+        return;
+      }
+      // Try to reconnect for other disconnect reasons
+      setTimeout(() => {
+        setupSocket();
+      }, 3000);
+    });
+
+    socket.current.on("reconnect", (attemptNumber) => {
+      if (conversation?._id) {
+        socket.current.emit("joinConversation", conversation._id);
+        socket.current.emit("getNewMessages", conversation._id);
+        fetchMessages();
+      }
+    });
+
+    // Ping to keep connection alive
+    const pingInterval = setInterval(() => {
+      if (socket.current?.connected) {
+        socket.current.emit("ping");
+      }
+    }, 30000);
+
+    return () => clearInterval(pingInterval);
+  };
+
+  const fetchMessages = async () => {
+    if (!conversation?._id) return;
+    
+    try {
+      setLoading(true);
+      const response = await chatService.getMessagesByConversation(conversation._id, 1, 50);
+
+      if (response?.success) {
+        const newMessages = response.data?.data || [];
+        setMessages(newMessages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+        setHasMore(response.data?.currentPage < response.data?.totalPages);
+      } else {
+        console.error("Failed to fetch messages:", response);
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMoreMessages = async () => {
+    if (!hasMore || loading || !conversation?._id) return;
+    
+    try {
+      const nextPage = page + 1;
+      const response = await chatService.getMessagesByConversation(conversation._id, nextPage, 50);
+
+      if (response?.success) {
+        const newMessages = response.data?.data || [];
+        setMessages(prev => {
+          const combined = [...prev, ...newMessages];
+          return combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        });
+        setPage(nextPage);
+        setHasMore(response.data?.currentPage < response.data?.totalPages);
+      }
+    } catch (error) {
+      console.error("Error loading more messages:", error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (newMessage.trim() === "" || isSending) return;
+
+    try {
+      setIsSending(true);
+      const messageData = {
+        content: newMessage.trim(),
+        type: "TEXT",
+      };
+
+      const response = await chatService.sendMessage(conversation._id, messageData);
+      
+      if (response?.success) {
+        setNewMessage("");
+        Keyboard.dismiss();
+        
+        // Add message immediately to local state
+        const sentMessage = {
+          _id: response.data?._id || Date.now().toString(),
+          content: newMessage.trim(),
+          type: "TEXT",
+          sender: {
+            userId: userId,
+            fullName: conversation.members.find(m => m.userId === userId)?.fullName || "Me"
+          },
+          createdAt: new Date().toISOString(),
+          conversation: conversation._id
+        };
+        
+        setMessages(prev => [sentMessage, ...prev]);
+
+        // Emit the message through socket immediately
+        if (socket.current?.connected) {
+          socket.current.emit("newMessage", {
+            ...sentMessage,
+            conversationId: conversation._id,
+            sender: {
+              userId: userId,
+              fullName: conversation.members.find(m => m.userId === userId)?.fullName || "Me"
+            }
+          });
+          
+          // Thêm sự kiện emit message để đảm bảo server nhận được
+          socket.current.emit("message", {
+            ...sentMessage,
+            conversationId: conversation._id,
+            sender: {
+              userId: userId,
+              fullName: conversation.members.find(m => m.userId === userId)?.fullName || "Me"
+            }
+          });
+        } else {
+          setupSocket();
+        }
+      } else {
+        Alert.alert("Error", "Failed to send message. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send message. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const sendImage = async (imageUri) => {
+    if (isSending) return;
+    
+    try {
+      setIsSending(true);
+      const messageData = {
+        content: "Image",
+        type: "image",
+      };
+
+      const file = {
+        uri: imageUri,
+        type: "image/jpeg",
+        name: "image.jpg",
+      };
+
+      // Send image to server
+      const response = await chatService.sendMessage(conversation._id, messageData, [file]);
+      
+      if (!response?.success) {
+        Alert.alert("Error", "Failed to send image. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error sending image:", error);
+      Alert.alert("Error", "Failed to send image. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const sendFile = async (fileUri) => {
+    if (isSending) return;
+    
+    try {
+      setIsSending(true);
+      const messageData = {
+        content: "File",
+        type: "file",
+      };
+
+      const file = {
+        uri: fileUri,
+        type: "application/octet-stream",
+        name: "file",
+      };
+
+      // Send file to server
+      const response = await chatService.sendMessage(conversation._id, messageData, [file]);
+      
+      if (!response?.success) {
+        Alert.alert("Error", "Failed to send file. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error sending file:", error);
+      Alert.alert("Error", "Failed to send file. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const renderMessage = ({ item }) => {
+    if (!item) return null;
+    
+    const isMyMessage = item?.sender?.userId === userId;
+
+    return (
+      <View
+        style={[
+          styles.messageContainer,
+          isMyMessage ? styles.userMessage : styles.friendMessage,
+        ]}
+      >
+        {!isMyMessage && (
+          <Text style={styles.senderName}>
+            {item?.sender?.fullName || "Unknown"}
+          </Text>
+        )}
+        {(item.type === "text" || item.type === "TEXT") && (
+          <Text style={[
+            styles.messageText,
+            !isMyMessage && { color: 'black' }
+          ]}>
+            {item.content}
+          </Text>
+        )}
+        {(item.type === "image" || item.type === "IMAGE") && (
+          <TouchableOpacity onPress={() => Linking.openURL(item.content)}>
+            <Image
+              source={{ uri: item.content }}
+              style={{
+                width: 200,
+                height: 200,
+                borderRadius: 10,
+              }}
+            />
+          </TouchableOpacity>
+        )}
+        {(item.type === "file" || item.type === "FILE") && (
+          <TouchableOpacity onPress={() => openDocument(item.content)}>
+            <Text style={[
+              styles.messageText,
+              !isMyMessage && { color: 'black' }
+            ]}>
+              {item.content}
+            </Text>
+          </TouchableOpacity>
+        )}
+        <Text style={[
+          styles.messageTime,
+          !isMyMessage && { color: 'gray' }
+        ]}>
+          {new Date(item.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </Text>
+      </View>
+    );
+  };
 
   //mở modal option
   const handleOptionPress = () => {
@@ -52,17 +508,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
     });
 
     if (!result.canceled) {
-      const capturedImageUri = result.assets[0].uri;
-      const newImageMessage = {
-        id: Date.now().toString(),
-        type: "image",
-        uri: capturedImageUri,
-        text: "📷 Image",
-        time: new Date().toLocaleTimeString().slice(0, 5),
-        sentByUser: true,
-      };
-
-      setMessages((prevMessages) => [...prevMessages, newImageMessage]);
+      await sendImage(result.assets[0].uri);
     }
     closeModal();
   };
@@ -85,84 +531,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
     });
 
     if (!result.canceled) {
-      const selectedImageUri = result.assets[0].uri;
-
-      const newImageMessage = {
-        id: Date.now().toString(),
-        type: "image",
-        uri: selectedImageUri,
-        text: "📷 Image",
-        time: new Date().toLocaleTimeString().slice(0, 5),
-        sentByUser: true,
-      };
-
-      setMessages((prevMessages) => [...prevMessages, newImageMessage]);
+      await sendImage(result.assets[0].uri);
     }
     closeModal();
-  };
-
-  //
-  const [messages, setMessages] = useState([
-    {
-      id: "1",
-      type: "text",
-      text: "This is your delivery driver from Speedy Chow. I'm just around the corner from your place. 😊",
-      time: "10:10",
-      sentByUser: false,
-    },
-    { id: "2", type: "text", text: "Hi!", time: "10:10", sentByUser: true },
-  ]);
-
-  const sendMessage = () => {
-    if (newMessage.trim() === "") return;
-
-    const newMessageObject = {
-      id: Date.now().toString(),
-      type: "text",
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      sentByUser: true,
-    };
-
-    setMessages((prevMessages) => [...prevMessages, newMessageObject]);
-    setNewMessage(""); // Xóa nội dung sau khi gửi
-    Keyboard.dismiss(); // Ẩn bàn phím
-  };
-
-  // hàm chọn tài liệu mới
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*", // Chấp nhận tất cả các loại tệp
-        copyToCacheDirectory: true, // Lưu vào cache tạm thời
-      });
-
-      if (result.canceled) {
-        console.log("Người dùng đã huỷ");
-        return;
-      }
-
-      const capturedFileUri = await saveFileLocally(result.assets[0]);
-
-      console.log(`file đã chọn ${result.assets[0].name}`);
-
-      const newFileMessage = {
-        id: Date.now().toString(),
-        type: "document",
-        src: capturedFileUri,
-        text: `${capturedFileUri}`,
-        time: new Date().toLocaleTimeString().slice(0, 5),
-        sentByUser: true,
-      };
-      setMessages((prevMessages) => [...prevMessages, newFileMessage]);
-      closeModal();
-      return capturedFileUri; // Trả về tệp đã chọn
-    } catch (error) {
-      console.error("Lỗi chọn tệp:", error);
-    }
   };
 
   const openDocument = async (fileUri) => {
@@ -173,105 +544,22 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
-  // lưu file vừa upload vào cache
-  const saveFileLocally = async (file) => {
+  const pickDocument = async () => {
     try {
-      const localUri = FileSystem.documentDirectory + file.name;
-
-      await FileSystem.copyAsync({
-        from: file.uri,
-        to: localUri,
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
       });
 
-      console.log(`Tệp đã lưu tại: ${localUri}`);
+      if (result.canceled) {
+        console.log("Người dùng đã huỷ");
+        return;
+      }
 
-      return localUri; // Trả về đường dẫn tệp đã lưu
+      await sendFile(result.assets[0].uri);
+      closeModal();
     } catch (error) {
-      console.error("Lỗi lưu tệp:", error);
-    }
-  };
-
-  const renderMessage = ({ item }) => {
-    switch (item.type) {
-      case "text":
-        return (
-          // Thêm return để trả về JSX
-          <View
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-          >
-            <Text>{item.text}</Text>
-            <Text style={styles.messageTime}>{item.time}</Text>
-          </View>
-        );
-      case "image":
-        return (
-          <View
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-          >
-            <TouchableOpacity onPress={() => Linking.openURL(item.uri)}>
-              <Image
-                source={{ uri: item.uri }}
-                style={{
-                  width: 200,
-                  height: 200,
-                  borderRadius: 10,
-                }}
-              />
-            </TouchableOpacity>
-            <Text style={styles.messageTime}>{item.time}</Text>
-          </View>
-        );
-      case "document":
-        return (
-          <View
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-          >
-            <TouchableOpacity onPress={() => openDocument(item.src)}>
-              <Text>{item.src}</Text>
-            </TouchableOpacity>
-            <Text style={styles.messageTime}>{item.time}</Text>
-          </View>
-        );
-      case "location":
-        return (
-          <TouchableOpacity
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-            onPress={pickLocation}
-          >
-            <Image
-              source={require("../../../assets/chat/OIP.jpg")} // Thêm hình ảnh mặc định
-              style={{
-                width: 250,
-                height: 200,
-                borderRadius: 10,
-              }}
-              resizeMode="contain"
-            />
-            <Text
-              style={{
-                color: "#fff",
-                fontWeight: "bold",
-                fontSize: 20,
-              }}
-            >
-              Vị trí của bạn 🗺️
-            </Text>
-          </TouchableOpacity>
-        );
-      default:
-        return <Text>message chưa có định dạng</Text>; // Thêm return ở đây cho trường hợp mặc định
+      console.error("Lỗi chọn tệp:", error);
     }
   };
 
@@ -282,61 +570,78 @@ const ChatDetailScreen = ({ navigation, route }) => {
       console.log("Permission to access location was denied");
       return;
     }
-    const newImageMessage = {
-      id: Date.now().toString(),
+
+    const location = await Location.getCurrentPositionAsync({});
+    const messageData = {
+      content: JSON.stringify({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      }),
       type: "location",
-      uri: "../../assets/chat/OIP.jpg",
-      text: "📷 Image",
-      time: new Date().toLocaleTimeString().slice(0, 5),
-      sentByUser: true,
     };
-    setMessages((prevMessages) => [...prevMessages, newImageMessage]);
+
+    await chatService.sendMessage(conversation._id, messageData);
     closeModal();
   };
 
-  // lưu file vừa upload vào cache
   const pickLocation = () => {
     navigation.navigate("LocationScreen");
   };
 
   {/* Handle when click button 3dot */}
   const hanldeMoreOption = () => {
-    navigation.navigate("UserInfoScreen", {
-      friend: friend,
+    navigation.navigate("UserInfo", {
+      friend: conversation,
     });
   }
   {/* Handle when click button call */}
   const handleCall = () => {
-    navigation.navigate("CallScreen", {
-      friend: friend,
+    navigation.navigate("Call", {
+      friend: conversation,
     });
   }
   {/* Handle when click button call video */}
   const handleCallVideo = () => {
-    navigation.navigate("CallScreen", {
-      friend: friend,
+    navigation.navigate("Call", {
+      friend: conversation,
     });
   }
 
+  // Update FlatList to show loading indicator when loading more messages
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={styles.loadingMore}>
+        <ActivityIndicator size="small" color="#135CAF" />
+      </View>
+    );
+  };
 
-  return (
+  // Add cleanup function to component unmount
+  useEffect(() => {
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+        socket.current = null;
+      }
+    };
+  }, []);
+
+  return conversation ? (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-
       <View style={styles.header}>
-        {/* arrow back */}
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="chevron-left" size={30} color="white" />
         </TouchableOpacity>
-        {/* avt */}
-        <Image source={friend.avatar} style={styles.avatar} />
-        {/* name + phoneNumber */}
+        <Image 
+          source={getAvatarUrl()} 
+          style={styles.avatar} 
+        />
         <View style={{ flex: 1 }}>
-          <Text style={styles.friendName}>{friend.name}</Text>
-          {/* <Text style={styles.phoneNumber}>+44 50 9285 3022</Text> */}
+          <Text style={styles.friendName}>{getDisplayName()}</Text>
           <Text style={styles.statusUser}>Online</Text>
         </View>
-        {/* icon call + 3dot */}
         <View style={styles.actionIcons}>
           <TouchableOpacity style={styles.iconButton}>
             <AntDesign name="videocamera" size={24} color="white" onPress={handleCallVideo}/>
@@ -350,23 +655,40 @@ const ChatDetailScreen = ({ navigation, route }) => {
               name="more-horizontal"
               size={24}
               color="white"
-              onPress={() => hanldeMoreOption()} //more screen
+              onPress={() => hanldeMoreOption()}
             />
           </TouchableOpacity>
         </View>
       </View>
       {/* Header */}
       {/* Message List */}
-      <FlatList
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        style={styles.messageList}
-      />
+      {loading && messages.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#135CAF" />
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item._id}
+          style={styles.messageList}
+          inverted
+          onEndReached={loadMoreMessages}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+          refreshing={loading}
+          onRefresh={fetchMessages}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10
+          }}
+        />
+      )}
 
       {/* Input Box */}
       <View style={styles.inputContainer}>
-        <TouchableOpacity onPress={handleOptionPress}>
+        <TouchableOpacity onPress={handleOptionPress} disabled={isSending}>
           <View
             style={{
               position: "relative",
@@ -374,6 +696,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
               height: 32,
               alignItems: "center",
               justifyContent: "center",
+              opacity: isSending ? 0.5 : 1,
             }}
           >
             <Ionicons name="add-circle" size={32} color="#0099ff" />
@@ -391,9 +714,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
           value={newMessage}
           onChangeText={setNewMessage}
           onSubmitEditing={sendMessage}
+          editable={!isSending}
         />
-        <TouchableOpacity onPress={sendMessage}>
-          <Ionicons name="send" size={28} color="#0099ff" />
+        <TouchableOpacity onPress={sendMessage} disabled={isSending}>
+          {isSending ? (
+            <ActivityIndicator size="small" color="#0099ff" />
+          ) : (
+            <Ionicons name="send" size={28} color="#0099ff" />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -498,11 +826,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
-
-      
-    
     </SafeAreaView>
-  );
+  ) : null;
 };
 
 const styles = StyleSheet.create({
@@ -572,12 +897,6 @@ const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: "white",
   },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 5,
-    backgroundColor: "white",
-  },
   input: {
     flex: 1,
     paddingHorizontal: 10,
@@ -629,6 +948,20 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 13,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingMore: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  senderName: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
   },
 });
 
