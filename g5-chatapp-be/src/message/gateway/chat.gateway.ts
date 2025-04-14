@@ -131,6 +131,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       messageDto,
       files,
     );
+
+    console.log('Message return: ', message);
+
     this.server.to(conversationId).emit('newMessage', message);
   }
 
