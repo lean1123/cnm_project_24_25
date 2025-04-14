@@ -18,21 +18,10 @@ type Props = {
 };
 
 function ConversationPage({ params }: Props) {
-  const header = {
-    name: "John Doe",
-    imageUrl: "https://randomuser.me/api/port.jpg",
-  };
-  const conversation = {
-    id: "1a2b3c",
-    senderId: "4d5e6f",
-    content: "Hello, how are you?",
-    createdAt: "2021-12-31T23:59:59Z",
-    isGroup: false,
-  };
 
   const { conversationId } = use(params);
 
-  const { selectedConversation, getConversation, userSelected, fetchingUser } = useConversationStore();
+  const { selectedConversation, getConversation } = useConversationStore();
 
   const {user} = useAuthStore()
 
@@ -43,17 +32,10 @@ function ConversationPage({ params }: Props) {
     }
   }, [conversationId]);
 
-  useEffect(() => {
-    if (selectedConversation) {
-      console.log("Selected conversation:", selectedConversation);
-      if (user?.id !== selectedConversation.members[0].userId) {
-        fetchingUser(selectedConversation.members[0].userId);
-      } else {
-        fetchingUser(selectedConversation.members[1].userId);
-      }
-    }
-  }
-  , [selectedConversation]);
+  const userSelected = selectedConversation?.members.find(
+    (member) => member._id !== user?.id
+  );
+
 
   const [removeFriendDialogOpen, setRemoveFriendDialogOpen] = useState(false);
   const [deleteGroupDialogOpen, setDeleteGroupDialogOpen] = useState(false);
@@ -83,9 +65,10 @@ function ConversationPage({ params }: Props) {
         }`}
       >
         <Header
+          userId={userSelected?._id || ""}
           firstName={userSelected?.firstName || ""}
           lastName={userSelected?.lastName || ""}
-          imageUrl={header.imageUrl}
+          imageUrl={userSelected?.avatar || ""}
           options={[
             {
               label: "Voice call",

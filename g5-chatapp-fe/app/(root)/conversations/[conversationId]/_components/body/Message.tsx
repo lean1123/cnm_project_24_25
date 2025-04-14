@@ -295,7 +295,7 @@ const Message = ({
           invisible: lastByUser,
         })}
       >
-        <AvatarImage src={senderImage} alt={senderName} />
+        <AvatarImage src={senderImage || "/avatar.png"} alt={senderName} />
         <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
       </Avatar>
     </div>
