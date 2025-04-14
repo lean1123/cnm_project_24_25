@@ -19,13 +19,9 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
     // Handle connection events
     const handleConnect = () => {
       console.log('Socket connected, joining room:', conversation._id);
-      socket.emit('joinRoom', {
-        conversationId: conversation._id,
-        userId: userId
-      });
-      socket.emit('userOnline', {
-        conversationId: conversation._id,
-        userId: userId
+      socket.emit('join', {
+        userId: userId,
+        conversationId: conversation._id
       });
     };
 
@@ -83,7 +79,7 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
     // Setup listeners
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
-    socket.on('receive_message', handleReceiveMessage);  // Lắng nghe event 'receive_message' từ server
+    socket.on('newMessage', handleReceiveMessage);  // Lắng nghe event 'newMessage' từ server
     socket.on('userOnline', handleOnlineStatus);
     socket.on('userOffline', handleOnlineStatus);
 
@@ -98,22 +94,16 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
       
       if (socket.connected) {
         // Leave room
-        socket.emit('leaveRoom', {
-          conversationId: conversation._id,
-          userId: userId
-        });
-
-        // Update offline status
-        socket.emit('userOffline', {
-          conversationId: conversation._id,
-          userId: userId
+        socket.emit('leave', {
+          userId: userId,
+          conversationId: conversation._id
         });
       }
 
       // Remove listeners
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-      socket.off('receive_message', handleReceiveMessage);
+      socket.off('newMessage', handleReceiveMessage);
       socket.off('userOnline', handleOnlineStatus);
       socket.off('userOffline', handleOnlineStatus);
     };
