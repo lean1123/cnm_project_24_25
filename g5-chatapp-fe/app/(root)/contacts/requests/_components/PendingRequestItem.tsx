@@ -11,24 +11,16 @@ import { useContactStore } from "@/store/useContactStore";
 
 type Props = {
   _id: string;
-  userId: string;
-  contactId: string;
+  user: User;
+  contact: User;
   createdAt: string;
 };
 
-const PendingRequestItem = ({ _id, userId, contactId, createdAt }: Props) => {
-  const { cancelContact} = useContactStore();
+const PendingRequestItem = ({ _id, user, contact, createdAt }: Props) => {
+  const { cancelContact } = useContactStore();
   const { getUserById } = useUserStore();
-  const [user, setUser] = useState<User | null>(null);
   const userLogin = useAuthStore((state) => state.user);
-  const userReceivedRequestId = userLogin?._id === userId ? contactId : userId;
-  useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await getUserById(userReceivedRequestId);
-      setUser(userData);
-    };
-    fetchUser();
-  }, [_id, getUserById]);
+  const userItem = userLogin?._id === user._id ? contact : user;
   return (
     <div
       key={_id}
@@ -37,23 +29,27 @@ const PendingRequestItem = ({ _id, userId, contactId, createdAt }: Props) => {
       <div className="flex items-center gap-2">
         <Avatar>
           <AvatarImage
-            src={user?.avatar || ""}
-            alt={user?.firstName + " " + user?.lastName}
+            src={userItem?.avatar || "/avatar.png"}
+            alt={userItem?.firstName + " " + userItem?.lastName}
           />
           <AvatarFallback>
-            {getNameFallBack(user?.firstName || "", user?.lastName || "")}
+            {getNameFallBack(
+              userItem?.firstName || "",
+              userItem?.lastName || ""
+            )}
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
           <span className="font-semibold">
-            {user?.firstName + " " + user?.lastName}
+            {userItem?.firstName + " " + userItem?.lastName}
           </span>
           <span className="text-sm text-gray-500">{createdAt}</span>
         </div>
       </div>
       {/* button */}
       <div className="flex items-center gap-2">
-        <Button className="bg-background hover:bg-orange-500 text-orange-500 hover:text-white"
+        <Button
+          className="bg-background hover:bg-orange-500 text-orange-500 hover:text-white"
           onClick={async () => {
             await cancelContact(_id);
           }}

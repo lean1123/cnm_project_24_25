@@ -69,8 +69,12 @@ const ChatInput = (props: Props) => {
     return {
       _id: "temp",
       sender: {
-        fullName: user?.firstName + " " + user?.lastName,
-        userId: user?.id || "",
+        _id: user?.id || "",
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+        avatar: user?.avatar || "",
+        id: user?.id || "",
+        email: user?.email || "",
       },
       conversation: selectedConversation?._id || "",
       content: form.getValues("content") || "",
@@ -125,6 +129,7 @@ const ChatInput = (props: Props) => {
       );
 
       addTempMessage(tempMessage);
+      console.log("Sent message:", tempMessage);
     } else {
       otherFiles.forEach((file, index) => {
         sendMessage({ content: "", files: [file] });

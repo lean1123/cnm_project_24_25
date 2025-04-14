@@ -18,9 +18,9 @@ export type User = {
     firstName: string;
     lastName: string;
     email: string;
-    gender: string;
-    role: string[];
-    dob: string;
+    gender?: string;
+    role?: string[];
+    dob?: string;
     refreshToken?: string;
     _id?: string;
     avatar?: string | null;
@@ -37,7 +37,7 @@ export type Conversation = {
     profilePicture?: string | null;
     isGroup: boolean;
     admin?: string;
-    members: Member [];
+    members: User [];
     lastMessage: LastMessage | null;
     createdAt: string;
     updatedAt: string;
@@ -45,8 +45,10 @@ export type Conversation = {
 
 export type LastMessage = {
     _id: string;
-    sender: string;
-    message: string;
+    sender: User;
+    content: string;
+    type: string;
+    files: MessageFile[] | null;
 }
 
 export type Member = {
@@ -57,7 +59,7 @@ export type Member = {
 export type Message = {
     _id: string;
     conversation: string;
-    sender: Member;
+    sender: User;
     content: string;
     files: MessageFile[] | null;
     deletedFor: any[];
@@ -84,8 +86,8 @@ export type MessageFile = {
 
 export type Contact = {
     _id: string;
-    userId: string;
-    contactId: string;
+    user: User;
+    contact: User;
     status: string;
     createdAt: string;
     updatedAt: string;
