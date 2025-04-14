@@ -7,7 +7,8 @@ import {
     FlatList,
     TouchableOpacity,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    Image
 } from 'react-native';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { contactService } from "../../services/contact.service";
@@ -20,11 +21,16 @@ const ContactRequestsScreen = ({ navigation }) => {
     const fetchPendingRequests = async () => {
         try {
             const response = await contactService.getMyRequestContacts();
+            console.log('Pending requests response:', response);
             if (response.success) {
+                // Log the received data for debugging
+                console.log('Received requests data:', response.data);
                 setPendingRequests(response.data);
+            } else {
+                console.warn('Failed to get requests:', response.message);
             }
         } catch (error) {
-            console.log('Error fetching requests:', error);
+            console.error('Error fetching requests:', error);
             Alert.alert('Error', 'Failed to load contact requests');
         } finally {
             setLoading(false);
@@ -36,15 +42,27 @@ const ContactRequestsScreen = ({ navigation }) => {
         try {
             const response = await contactService.acceptContact(contactId);
             if (response.success) {
+                // Thông báo thành công
                 Alert.alert('Success', 'Contact request accepted');
-                // Refresh the list
+                
+                // Refresh lại danh sách request
                 fetchPendingRequests();
-                // Navigate back to chat screen to see new conversation
-                navigation.goBack();
+                
+                // Đợi 1 chút để server tạo conversation
+                setTimeout(() => {
+                    // Gọi event để home_chat refresh conversations
+                    if (navigation.getParent()) {
+                        navigation.getParent().setParams({ refreshConversations: Date.now() });
+                    }
+                    // Quay về màn home_chat
+                    navigation.goBack();
+                }, 500);
+            } else {
+                throw new Error(response.message || 'Failed to accept contact');
             }
         } catch (error) {
-            console.log('Error accepting request:', error);
-            Alert.alert('Error', 'Failed to accept contact request');
+            console.error('Error accepting request:', error);
+            Alert.alert('Error', error.message || 'Failed to accept contact request');
         }
     };
 
@@ -53,12 +71,13 @@ const ContactRequestsScreen = ({ navigation }) => {
             const response = await contactService.rejectContact(contactId);
             if (response.success) {
                 Alert.alert('Success', 'Contact request rejected');
-                // Refresh the list
                 fetchPendingRequests();
+            } else {
+                throw new Error(response.message || 'Failed to reject contact');
             }
         } catch (error) {
-            console.log('Error rejecting request:', error);
-            Alert.alert('Error', 'Failed to reject contact request');
+            console.error('Error rejecting request:', error);
+            Alert.alert('Error', error.message || 'Failed to reject contact request');
         }
     };
 
@@ -66,31 +85,52 @@ const ContactRequestsScreen = ({ navigation }) => {
         fetchPendingRequests();
     }, []);
 
-    const renderItem = ({ item }) => (
-        <View style={styles.requestItem}>
-            <View style={styles.userInfo}>
-                <Icon name="account-circle" size={40} color="#135CAF" />
-                <View style={styles.textContainer}>
-                    <Text style={styles.userName}>{item.sender?.firstName} {item.sender?.lastName}</Text>
-                    <Text style={styles.userEmail}>{item.sender?.email}</Text>
+    const renderItem = ({ item }) => {
+        // Log the item data for debugging
+        console.log('Rendering request item:', item);
+        
+        // Lấy thông tin từ user thay vì sender
+        const senderName = item.user 
+            ? `${item.user.firstName || ''} ${item.user.lastName || ''}`.trim() 
+            : 'Unknown User';
+            
+        return (
+            <View style={styles.requestItem}>
+                <View style={styles.userInfo}>
+                    {item.user?.avatar ? (
+                        <Image 
+                            source={{ uri: item.user.avatar }}
+                            style={styles.avatar}
+                            defaultSource={require("../../../assets/chat/man.png")}
+                        />
+                    ) : (
+                        <Icon name="account-circle" size={40} color="#135CAF" />
+                    )}
+                    <View style={styles.textContainer}>
+                        <Text style={styles.userName}>{senderName}</Text>
+                        <Text style={styles.userEmail}>{item.user?.email || 'No email'}</Text>
+                        {item.user?.phone && (
+                            <Text style={styles.userPhone}>{item.user.phone}</Text>
+                        )}
+                    </View>
+                </View>
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity 
+                        style={[styles.actionButton, styles.acceptButton]}
+                        onPress={() => handleAccept(item._id)}
+                    >
+                        <Icon name="check" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.actionButton, styles.rejectButton]}
+                        onPress={() => handleReject(item._id)}
+                    >
+                        <Icon name="close" size={24} color="#fff" />
+                    </TouchableOpacity>
                 </View>
             </View>
-            <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                    style={[styles.actionButton, styles.acceptButton]}
-                    onPress={() => handleAccept(item._id)}
-                >
-                    <Icon name="check" size={24} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                    style={[styles.actionButton, styles.rejectButton]}
-                    onPress={() => handleReject(item._id)}
-                >
-                    <Icon name="close" size={24} color="#fff" />
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
+        );
+    };
 
     if (loading) {
         return (
@@ -178,6 +218,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flex: 1,
     },
+    avatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f0f0f0',
+    },
     textContainer: {
         marginLeft: 10,
         flex: 1,
@@ -185,8 +231,14 @@ const styles = StyleSheet.create({
     userName: {
         fontSize: 16,
         fontWeight: '600',
+        marginBottom: 2,
     },
     userEmail: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 2,
+    },
+    userPhone: {
         fontSize: 14,
         color: '#666',
     },

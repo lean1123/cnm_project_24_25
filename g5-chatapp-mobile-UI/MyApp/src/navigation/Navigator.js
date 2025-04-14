@@ -45,7 +45,7 @@ const MainNavigator = () => {
 
   return (
     <Stack.Navigator 
-      initialRouteName={user ? "Home_Chat" : "SignInScreen"}
+      initialRouteName={"SignInScreen"}
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,

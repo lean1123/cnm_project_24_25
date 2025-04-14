@@ -1,39 +1,98 @@
 import axios from 'axios';
 import { API_URL } from '../config/api';
 import axiosInstance from "../config/axiosInstance";
+import { getSocket } from "../config/socket";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const chatService = {
   // Get messages for a conversation
   getMessages: async (conversationId) => {
     try {
-      const response = await axios.get(`${API_URL}/chat/messages/${conversationId}`);
-      return {
-        success: true,
-        data: response.data
-      };
+      const response = await axiosInstance.get(`/message/${conversationId}`);
+      if (!response.data) {
+        throw new Error('Invalid response format');
+      }
+      return response.data;
     } catch (error) {
       console.error('Error fetching messages:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Failed to fetch messages');
+      } else if (error.request) {
+        throw new Error('Network error. Please check your connection.');
+      } else {
+        throw new Error(error.message || 'Failed to fetch messages');
+      }
     }
   },
 
   // Send a new message
-  sendMessage: async (conversationId, messageData) => {
+  sendMessage: async (conversationId, message) => {
     try {
-      const response = await axios.post(`${API_URL}/chat/messages/${conversationId}`, messageData);
-      return {
-        success: true,
-        data: response.data
-      };
+      const formData = new FormData();
+      
+      // Clean conversationId
+      const cleanConversationId = String(conversationId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
+      formData.append("conversationId", cleanConversationId);
+      
+      // Clean content and type
+      formData.append("content", message.content || "");
+      formData.append("type", message.type || "TEXT");
+
+      // Get user data from AsyncStorage
+      const userData = await AsyncStorage.getItem('userData');
+      if (!userData) {
+        throw new Error('User data not found');
+      }
+      const parsedUserData = JSON.parse(userData);
+      const userId = parsedUserData?._id || parsedUserData?.id;
+      
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      // Clean and append sender ID
+      formData.append("sender", userId);
+
+      // Handle file upload
+      if (message.file) {
+        formData.append("file", message.file);
+      }
+
+      // Send message via API
+      const response = await axiosInstance.post(`/message/send-message/${cleanConversationId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (!response.data) {
+        throw new Error('Invalid response format');
+      }
+
+      // Emit socket event for real-time update
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('privateMessage', {
+          conversationId: cleanConversationId,
+          message: response.data,
+          senderId: userId
+        });
+      }
+
+      return response.data;
     } catch (error) {
-      console.error('Error sending message:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      console.error("Error in sendMessage:", {
+        error: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Failed to send message');
+      } else if (error.request) {
+        throw new Error('Network error. Please check your connection.');
+      } else {
+        throw new Error(error.message || 'Failed to send message');
+      }
     }
   },
 
@@ -79,17 +138,47 @@ const chatService = {
   // Get conversation list
   getConversations: async () => {
     try {
-      const response = await axios.get(`${API_URL}/chat/conversations`);
-      return {
-        success: true,
-        data: response.data
-      };
+      // Get user data from AsyncStorage
+      const userData = await AsyncStorage.getItem('userData');
+      if (!userData) {
+        throw new Error('User data not found');
+      }
+      const parsedUserData = JSON.parse(userData);
+      const userId = parsedUserData?._id || parsedUserData?.id;
+      
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      console.log('Fetching conversations for user ID:', userId);
+      
+      const response = await axiosInstance.get("/conversation/my-conversation");
+      if (!response.data) {
+        throw new Error('Invalid response format');
+      }
+
+      // Process and normalize conversation data
+      const conversations = response.data.data.map(conv => ({
+        _id: conv._id,
+        name: conv.name || 'Unknown',
+        avatar: conv.avatar || null,
+        lastMessage: conv.lastMessage || null,
+        participants: conv.participants || [],
+        unread: conv.unread || false,
+        updatedAt: conv.updatedAt || new Date().toISOString(),
+        type: conv.type || 'private'
+      }));
+
+      return conversations;
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Failed to fetch conversations');
+      } else if (error.request) {
+        throw new Error('Network error. Please check your connection.');
+      } else {
+        throw new Error(error.message || 'Failed to fetch conversations');
+      }
     }
   },
 
@@ -168,48 +257,6 @@ const chatService = {
     }
   },
 
-  // Gửi tin nhắn
-  sendMessage: async (conversationId, message) => {
-    try {
-      const formData = new FormData();
-      
-      // Clean conversationId
-      const cleanConversationId = String(conversationId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
-      formData.append("conversationId", cleanConversationId);
-      
-      // Clean content and type
-      formData.append("content", message.content || "");
-      formData.append("type", message.type || "TEXT");
-
-      // Clean and append sender ID
-      if (message.sender) {
-        const cleanSenderId = String(message.sender).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
-        formData.append("sender", cleanSenderId);
-      }
-
-      // Handle file upload
-      if (message.file) {
-        formData.append("file", message.file);
-      }
-
-      const response = await axiosInstance.post(`/message/send-message/${cleanConversationId}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      // BE luôn trả về message object trong response.data
-      return response.data;
-    } catch (error) {
-      console.error("Error in sendMessage:", {
-        error: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      throw error;
-    }
-  },
-
   // Cập nhật tin nhắn
   updateMessage: async (messageId, message) => {
     try {
@@ -222,15 +269,54 @@ const chatService = {
     }
   },
 
-  // Lấy tin nhắn mới nhất
+  // Get newest messages for a conversation
   getNewestMessages: async (conversationId) => {
     try {
       const cleanConversationId = String(conversationId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
       const response = await axiosInstance.get(`/message/newest/${cleanConversationId}`);
+      if (!response.data) {
+        throw new Error('Invalid response format');
+      }
       return response.data;
     } catch (error) {
-      console.error("Error in getNewestMessages:", error.response?.data || error.message);
-      throw error;
+      console.error("Error in getNewestMessages:", error);
+      if (error.response) {
+        throw new Error(error.response.data.message || 'Failed to fetch newest messages');
+      } else if (error.request) {
+        throw new Error('Network error. Please check your connection.');
+      } else {
+        throw new Error(error.message || 'Failed to fetch newest messages');
+      }
+    }
+  },
+
+  // Mark message as read
+  markMessageAsRead: async (conversationId) => {
+    try {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit('markRead', {
+          conversationId,
+          userId: await AsyncStorage.getItem('userId')
+        });
+      }
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+    }
+  },
+
+  // Send typing indicator
+  sendTypingIndicator: async (conversationId, isTyping) => {
+    try {
+      const socket = getSocket();
+      if (socket) {
+        socket.emit(isTyping ? 'typing' : 'stopTyping', {
+          conversationId,
+          userId: await AsyncStorage.getItem('userId')
+        });
+      }
+    } catch (error) {
+      console.error('Error sending typing indicator:', error);
     }
   }
 };

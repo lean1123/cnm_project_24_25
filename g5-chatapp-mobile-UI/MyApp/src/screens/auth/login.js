@@ -15,6 +15,7 @@ import NotificationModal from "../../components/CustomModal";
 import { signIn } from "../../services/auth/authService";
 import { validateSignIn } from "../../utils/validators";
 import { CommonActions } from "@react-navigation/native";
+import { initSocket } from '../../services/socket';
 
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -36,15 +37,27 @@ const SignInScreen = ({ navigation }) => {
       console.log("Sign in result:", result);
 
       if (result.ok && result.user && result.user._id) {
-        // Lưu thông tin người dùng và token vào AsyncStorage
-        await AsyncStorage.setItem("user", JSON.stringify(result.user));
+        // Store user data in AsyncStorage
+        await AsyncStorage.setItem("userData", JSON.stringify(result.user));
         await AsyncStorage.setItem("userToken", result.token);
         await AsyncStorage.setItem("userId", result.user._id);
 
+        // Verify data was stored correctly
+        const storedUserData = await AsyncStorage.getItem("userData");
+        const storedToken = await AsyncStorage.getItem("userToken");
+        const storedUserId = await AsyncStorage.getItem("userId");
+
+        if (!storedUserData || !storedToken || !storedUserId) {
+          throw new Error("Failed to store user data");
+        }
+
+        console.log("User data stored successfully");
         setModalMessage("Login successful!");
         setModalVisible(true);
+        // Khởi tạo socket sau khi login thành công
+        initSocket(result.user._id); // Gọi hàm khởi tạo socket với user ID
         
-        // Chuyển hướng sau khi hiển thị modal
+        // Navigate after showing modal
         setTimeout(() => {
           setModalVisible(false);
           navigation.dispatch(

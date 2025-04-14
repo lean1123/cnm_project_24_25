@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { chatService } from '../services/chat.service';
-import { socket } from '../config/socket';
+import { getSocket, initSocket } from '../config/socket';
 
-export const useChatStore = create((set, get) => ({
+const useChatStore = create((set, get) => ({
   // State
   messages: [],
   tempMessages: [],
@@ -21,33 +21,29 @@ export const useChatStore = create((set, get) => ({
 
   // Message Actions
   addMessage: (message) => {
-    set((state) => ({
-      messages: [message, ...state.messages],
-    }));
+    const messages = get().messages;
+    // Check if message already exists
+    const exists = messages.some(m => m._id === message._id);
+    if (!exists) {
+      set(state => ({ messages: [...state.messages, message] }));
+    }
   },
 
   addTempMessage: (message) => {
-    set((state) => ({
-      messages: [message, ...state.messages],
-      tempMessages: [message, ...state.tempMessages],
-    }));
+    set(state => ({ tempMessages: [...state.tempMessages, message] }));
   },
 
   removeTempMessage: (messageId) => {
-    set((state) => ({
-      messages: state.messages.filter((msg) => msg._id !== messageId),
-      tempMessages: state.tempMessages.filter((msg) => msg._id !== messageId),
+    set(state => ({
+      tempMessages: state.tempMessages.filter(m => m._id !== messageId)
     }));
   },
 
   markMessageAsError: (messageId) => {
-    set((state) => ({
-      messages: state.messages.map((msg) =>
-        msg._id === messageId ? { ...msg, isError: true } : msg
-      ),
-      tempMessages: state.tempMessages.map((msg) =>
-        msg._id === messageId ? { ...msg, isError: true } : msg
-      ),
+    set(state => ({
+      tempMessages: state.tempMessages.map(m => 
+        m._id === messageId ? { ...m, status: 'error' } : m
+      )
     }));
   },
 
@@ -62,19 +58,21 @@ export const useChatStore = create((set, get) => ({
 
   // Online Status
   setIsOnline: (isOnline) => {
-    set({ isOnline });
+    set({ isOnline: isOnline });
   },
 
-  // Reset State
-  resetState: () => {
-    set({
-      messages: [],
-      tempMessages: [],
-      isLoadingMessages: false,
-      isSendingMessage: false,
-      isOnline: false,
-    });
-  },
+  // Clear actions
+  clearMessages: () => set({ messages: [] }),
+  clearTempMessages: () => set({ tempMessages: [] }),
+
+  // Reset entire store
+  reset: () => set({
+    messages: [],
+    tempMessages: [],
+    isLoadingMessages: false,
+    isSendingMessage: false,
+    isOnline: false
+  }),
 
   // API Actions
   fetchMessages: async (conversationId) => {
@@ -128,11 +126,18 @@ export const useChatStore = create((set, get) => ({
         });
 
         // Emit socket event
-        socket.emit('new-message', {
-          message: response.data,
-          conversationId,
-          sender: currentUserId
-        });
+        try {
+          const socket = getSocket();
+          if (socket) {
+            socket.emit('new-message', {
+              message: response.data,
+              conversationId,
+              sender: currentUserId
+            });
+          }
+        } catch (error) {
+          console.error('Error emitting socket event:', error);
+        }
       } else {
         throw new Error('Failed to send message');
       }
@@ -208,4 +213,6 @@ export const useChatStore = create((set, get) => ({
     socket.off('user-online', get().handleOnlineStatus);
     socket.off('user-offline', get().handleOnlineStatus);
   }
-})); 
+}));
+
+export { useChatStore };

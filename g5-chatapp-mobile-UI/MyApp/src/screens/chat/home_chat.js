@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -8,303 +8,140 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import { useNavigation, useIsFocused } from "@react-navigation/native";
-import { chatService } from "../../services/chat.service";
+import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from "../../config/constants";
-import { io } from "socket.io-client";
+import axiosInstance from "../../config/axiosInstance";
+import { formatDistanceToNow } from 'date-fns';
+import { getSocket } from "../../services/socket";
 
 const HomeScreen = () => {
-  const navigation = useNavigation();
-  const isFocused = useIsFocused();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
-  const socket = useRef(null);
+  const navigation = useNavigation();
 
-  useEffect(() => {
-    getUserId();
-  }, []);
-
-  useEffect(() => {
-    if (userId) {
-      console.log("Setting up socket and fetching conversations for userId:", userId);
-      setupSocket();
-      fetchConversations();
-    }
-
-    return () => {
-      if (socket.current) {
-        socket.current.disconnect();
-        socket.current = null;
-      }
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    if (isFocused && userId) {
-      console.log("Screen focused, fetching conversations for userId:", userId);
-      fetchConversations();
-    }
-  }, [isFocused]);
-
-  const setupSocket = () => {
-    if (socket.current) {
-      socket.current.disconnect();
-    }
-
-    console.log("Setting up socket with userId:", userId);
-
-    socket.current = io(API_URL, {
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-      query: { userId }
-    });
-
-    socket.current.on("connect", () => {
-      console.log("Socket connected successfully");
-      socket.current.emit("join", { userId });
-      fetchConversations();
-    });
-
-    socket.current.on("newMessage", (data) => {
-      console.log("Received new message:", data);
-      setConversations(prev => {
-        const newConversations = [...prev];
-        const conversationIndex = newConversations.findIndex(
-          conv => conv._id === data.conversationId
-        );
-
-        if (conversationIndex !== -1) {
-          const updatedConversation = {
-            ...newConversations[conversationIndex],
-            lastMessage: {
-              content: `${data.senderName}: ${data.message}`,
-              createdAt: data.createdAt || new Date().toISOString(),
-              sender: data.senderId,
-              senderName: data.senderName
-            },
-            unread: data.senderId !== userId
-          };
-
-          newConversations.splice(conversationIndex, 1);
-          newConversations.unshift(updatedConversation);
-        }
-
-        return newConversations;
-      });
-    });
-
-    socket.current.on("message", (data) => {
-      console.log("Message received:", data);
-      setConversations(prev => {
-        const newConversations = [...prev];
-        const conversationIndex = newConversations.findIndex(
-          conv => conv._id === data.conversationId
-        );
-
-        if (conversationIndex !== -1) {
-          const updatedConversation = {
-            ...newConversations[conversationIndex],
-            lastMessage: {
-              content: `${data.senderName}: ${data.message}`,
-              createdAt: data.createdAt || new Date().toISOString(),
-              sender: data.senderId,
-              senderName: data.senderName
-            },
-            unread: data.senderId !== userId
-          };
-
-          newConversations.splice(conversationIndex, 1);
-          newConversations.unshift(updatedConversation);
-        }
-
-        return newConversations;
-      });
-    });
-
-    socket.current.on("messageSent", (data) => {
-      console.log("Message sent successfully:", data);
-      setConversations(prev => {
-        const newConversations = [...prev];
-        const conversationIndex = newConversations.findIndex(
-          conv => conv._id === data.conversationId
-        );
-
-        if (conversationIndex !== -1) {
-          const updatedConversation = {
-            ...newConversations[conversationIndex],
-            lastMessage: {
-              content: `Bạn: ${data.message}`,
-              createdAt: data.createdAt || new Date().toISOString(),
-              sender: userId
-            }
-          };
-
-          newConversations.splice(conversationIndex, 1);
-          newConversations.unshift(updatedConversation);
-        }
-
-        return newConversations;
-      });
-    });
-
-    socket.current.on("messageRead", (data) => {
-      console.log("Message marked as read:", data);
-      if (data.conversationId) {
-        setConversations(prev => 
-          prev.map(conv => 
-            conv._id === data.conversationId 
-              ? { ...conv, unread: false }
-              : conv
-          )
-        );
-      }
-    });
-
-    socket.current.on("disconnect", () => {
-      console.log("Socket disconnected, attempting to reconnect...");
-    });
-
-    socket.current.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
-  };
-
-  const getUserId = async () => {
-    try {
-      const id = await AsyncStorage.getItem('userId');
-      if (id) {
-        setUserId(id);
-      }
-    } catch (error) {
-      console.error('Error getting userId:', error);
-    }
-  };
-
+  // Hàm lấy danh sách conversations
   const fetchConversations = async () => {
     try {
-      console.log("Fetching conversations for userId:", userId);
-      const response = await chatService.getMyConversations();
-      console.log("Conversations response:", response);
+      const response = await axiosInstance.get("/conversation/my-conversation");
       
-      if (response.success) {
-        console.log("Conversations data:", response.data);
-        setConversations(response.data);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      setLoading(false);
-    }
-  };
-
-  const handleConversationPress = (conversation) => {
-    if (conversation && (conversation._id || conversation.id)) {
-      setConversations(prev => prev.map(conv => {
-        if (conv._id === conversation._id) {
-          return { ...conv, unread: false };
-        }
-        return conv;
-      }));
-
-      if (socket.current) {
-        socket.current.emit("markRead", {
-          conversationId: conversation._id,
-          userId: userId
-        });
+      if (!response.data || !response.data.data) {
+        throw new Error('Invalid response format');
       }
 
-      navigation.navigate("ChatDetail", { 
-        conversation: {
-          _id: conversation._id || conversation.id,
-          name: conversation.name,
-          avatar: conversation.avatar,
-          members: conversation.members,
-          isGroup: conversation.type === 'group'
-        }
+      const userData = await AsyncStorage.getItem('userData');
+      const currentUser = userData ? JSON.parse(userData) : null;
+      const currentUserId = currentUser?._id || currentUser?.id;
+
+      const processedConversations = response.data.data.map((conv) => {
+        const otherUser = conv.members.find(member => member._id !== currentUserId);
+        
+        return {
+          _id: conv._id,
+          name: otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'Unknown User',
+          avatar: otherUser?.avatar,
+          lastMessage: conv.lastMessage?.content || 'No messages yet',
+          lastMessageTime: conv.lastMessage?.createdAt,
+          unreadCount: conv.unreadCount || 0,
+          members: conv.members,
+          isGroup: conv.isGroup || false
+        };
       });
-    } else {
-      console.error('Invalid conversation data:', conversation);
+
+      setConversations(processedConversations);
+      setLoading(false);
+      setRefreshing(false);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      Alert.alert('Error', 'Failed to load conversations');
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleNavigate = (screen) => {
-    switch(screen) {
-      case 'Contacts':
-        navigation.navigate('Contacts');
-        break;
-      case 'Profile':
-        navigation.navigate('Profile');
-        break;
-      case 'More':
-        navigation.navigate('More');
-        break;
-      default:
-        break;
-    }
-  };
+  // Khởi tạo và lấy dữ liệu
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserId(user._id || user.id);
+        }
 
-  const renderConversation = ({ item }) => {
-    // Tìm thông tin người đối diện trong members
-    const otherUser = item.members.find(member => member._id !== userId);
-    const displayName = otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'Unknown User';
-    
-    return (
-      <TouchableOpacity
-        style={[
-          styles.friendItem,
-          item.unread && styles.unreadItem
-        ]}
-        onPress={() => handleConversationPress({
-          ...item,
-          name: displayName, // Sử dụng tên của người đối diện
-          avatar: otherUser?.avatar
-        })}
-      >
-        <Image 
-          source={
-            otherUser?.avatar 
-              ? { uri: otherUser.avatar } 
-              : require("../../../assets/chat/man.png")
-          } 
-          style={styles.avatar}
-          defaultSource={require("../../../assets/chat/man.png")} 
-        />
-        <View style={styles.conversationInfo}>
-          <Text style={[
-            styles.friendName,
-            item.unread && styles.unreadText
-          ]}>
-            {displayName}
-          </Text>
-          <Text style={[
-            styles.lastMessage,
-            item.unread && styles.unreadText
-          ]} numberOfLines={1}>
-            {item.lastMessage?.content || 'No messages yet'}
-          </Text>
-          {item.lastMessage?.createdAt && (
-            <Text style={[
-              styles.messageTime,
-              item.unread && styles.unreadText
-            ]}>
-              {new Date(item.lastMessage.createdAt).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
+        await fetchConversations();
+      } catch (error) {
+        console.error('Error initializing:', error);
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+  }, []);
+
+  // Lắng nghe sự kiện cập nhật conversation
+  useEffect(() => {
+    const socket = getSocket(); // Lấy socket đã được khởi tạo
+    if (socket) {
+      const handleConversationUpdate = (updatedConversation) => {
+        setConversations(prevConversations => 
+          prevConversations.map(conv => 
+            conv._id === updatedConversation._id ? updatedConversation : conv
+          )
+        );
+      };
+
+      const handleNewMessage = async () => {
+        await fetchConversations();
+      };
+
+      socket.on('conversationUpdate', handleConversationUpdate);
+      socket.on('newMessage', handleNewMessage);
+
+      // Cleanup function
+      return () => {
+        socket.off('conversationUpdate', handleConversationUpdate);
+        socket.off('newMessage', handleNewMessage);
+      };
+    }
+  }, []);
+
+  const renderConversation = ({ item }) => (
+    <TouchableOpacity
+      style={styles.friendItem}
+      onPress={() => navigation.navigate("ChatDetail", { conversation: item })}
+    >
+      <Image 
+        source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/man.png")}
+        style={styles.avatar} 
+      />
+      <View style={styles.conversationInfo}>
+        <View style={styles.conversationHeader}>
+          <Text style={styles.friendName}>{item.name}</Text>
+          {item.lastMessageTime && (
+            <Text style={styles.timeText}>
+              {formatDistanceToNow(new Date(item.lastMessageTime), { addSuffix: true })}
             </Text>
           )}
-          {item.unread && <View style={styles.unreadDot} />}
         </View>
-      </TouchableOpacity>
-    );
-  };
+        <View style={styles.messageRow}>
+          <Text style={styles.lastMessage} numberOfLines={1}>
+            {item.lastMessage}
+          </Text>
+          {item.unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadText}>{item.unreadCount}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   if (loading) {
     return (
@@ -326,8 +163,16 @@ const HomeScreen = () => {
         renderItem={renderConversation}
         keyExtractor={(item) => item._id}
         style={styles.friendList}
-        onRefresh={fetchConversations}
-        refreshing={loading}
+        refreshing={refreshing}
+        onRefresh={() => {
+          setRefreshing(true);
+          fetchConversations();
+        }}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No conversations yet</Text>
+          </View>
+        )}
       />
       <Footer />
     </SafeAreaView>
@@ -341,8 +186,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   friendList: {
     flex: 1,
@@ -350,54 +195,69 @@ const styles = StyleSheet.create({
   friendItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
+    padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
+    borderBottomColor: "#e0e0e0",
+    backgroundColor: "white",
   },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginRight: 10,
-    backgroundColor: '#f0f0f0',
+    marginRight: 15,
   },
   conversationInfo: {
     flex: 1,
-    position: 'relative',
+  },
+  conversationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
   },
   friendName: {
-    fontWeight: "500",
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  lastMessage: {
-    color: "gray",
-    fontSize: 14,
-  },
-  messageTime: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    fontSize: 12,
-    color: 'gray',
-  },
-  unreadItem: {
-    backgroundColor: '#f0f9ff',
-  },
-  unreadText: {
     fontWeight: "bold",
+    fontSize: 16,
     color: "#000",
   },
-  unreadDot: {
-    position: 'absolute',
-    right: 0,
-    top: '50%',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0084ff',
-    marginTop: -4,
-  }
+  timeText: {
+    fontSize: 12,
+    color: "#666",
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lastMessage: {
+    color: "#666",
+    flex: 1,
+    marginRight: 10,
+  },
+  unreadBadge: {
+    backgroundColor: "#135CAF",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
 });
 
 export default HomeScreen;
