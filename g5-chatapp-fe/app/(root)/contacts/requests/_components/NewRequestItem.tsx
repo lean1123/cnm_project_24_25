@@ -16,7 +16,6 @@ type Props = {
 };
 
 function RequestItem({ _id, user, contact, createdAt }: Props) {
-  const { getUserById } = useUserStore();
   const {acceptContact, rejectContact} = useContactStore();
   const userLogin = useAuthStore((state) => state.user);
   const userItem = userLogin?._id === user._id ? contact : user;

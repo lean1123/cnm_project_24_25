@@ -129,6 +129,7 @@ const ChatInput = (props: Props) => {
       );
 
       addTempMessage(tempMessage);
+      console.log("Sent message:", tempMessage);
     } else {
       otherFiles.forEach((file, index) => {
         sendMessage({ content: "", files: [file] });

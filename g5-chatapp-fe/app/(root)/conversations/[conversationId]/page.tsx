@@ -18,17 +18,6 @@ type Props = {
 };
 
 function ConversationPage({ params }: Props) {
-  const header = {
-    name: "John Doe",
-    imageUrl: "https://randomuser.me/api/port.jpg",
-  };
-  const conversation = {
-    id: "1a2b3c",
-    senderId: "4d5e6f",
-    content: "Hello, how are you?",
-    createdAt: "2021-12-31T23:59:59Z",
-    isGroup: false,
-  };
 
   const { conversationId } = use(params);
 
@@ -76,9 +65,10 @@ function ConversationPage({ params }: Props) {
         }`}
       >
         <Header
+          userId={userSelected?._id || ""}
           firstName={userSelected?.firstName || ""}
           lastName={userSelected?.lastName || ""}
-          imageUrl={header.imageUrl}
+          imageUrl={userSelected?.avatar || ""}
           options={[
             {
               label: "Voice call",

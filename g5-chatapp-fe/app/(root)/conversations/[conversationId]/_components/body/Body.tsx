@@ -86,7 +86,7 @@ const Body = (props: Props) => {
               <Message
                 key={index}
                 fromCurrentUser={isCurrentUser}
-                senderImage={message.sender._id || ""}
+                senderImage={message.sender.avatar || ""}
                 file={message?.files || []}
                 senderName={message.sender.firstName || ""}
                 lastByUser={lastByUser}

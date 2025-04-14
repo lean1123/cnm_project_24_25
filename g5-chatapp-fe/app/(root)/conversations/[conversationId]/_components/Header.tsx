@@ -15,6 +15,7 @@ import Link from "next/link";
 import React, { useEffect } from "react";
 
 type Props = {
+  userId: string;
   imageUrl?: string;
   firstName: string;
   lastName: string;
@@ -25,18 +26,17 @@ type Props = {
   }[];
 };
 
-const Header = ({ imageUrl, firstName, lastName, options }: Props) => {
+const Header = ({userId, imageUrl, firstName, lastName, options }: Props) => {
   const { activeUsers } = useAuthStore();
-  const { userSelected } = useConversationStore();
   const [isOnline, setIsOnline] = React.useState(false);
   useEffect(() => {
-    console.log("userSelected", userSelected);
-    if (!userSelected?._id) return;
+    console.log("userSelected", userId);
+    if (!userId) return;
     console.log("activeUsers", activeUsers);
-    const isUserOnline = activeUsers.includes(userSelected._id);
+    const isUserOnline = activeUsers.includes(userId);
     console.log("isUserOnline", isUserOnline);
     setIsOnline(isUserOnline);
-  }, [activeUsers, userSelected?._id]);
+  }, [activeUsers, userId]);
 
   return (
     <Card className="w-full flex rounded-lg items-center p-2 justify-between">
@@ -45,7 +45,7 @@ const Header = ({ imageUrl, firstName, lastName, options }: Props) => {
           <CircleArrowLeft />
         </Link>
         <Avatar className="h-8 w-8">
-          <AvatarImage src={imageUrl} alt={firstName} />
+          <AvatarImage src={imageUrl || "/avatar.png"} alt={firstName} />
           <AvatarFallback>
             {getNameFallBack(firstName, lastName)}
           </AvatarFallback>

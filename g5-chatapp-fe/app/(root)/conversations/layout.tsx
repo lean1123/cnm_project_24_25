@@ -62,6 +62,13 @@ const ConversationsLayout = ({ children }: Props) => {
     }
     return conversation.members[1].firstName + " " + conversation.members[1].lastName;
   }
+
+  const getAvatarUrl = (conversation: Conversation) => {
+    if (conversation.members[0]._id !== user?.id) {
+      return conversation.members[0].avatar;
+    }
+    return conversation.members[1].avatar;
+  }
   return (
     <>
       <ItemList title="Conversations">
@@ -87,10 +94,9 @@ const ConversationsLayout = ({ children }: Props) => {
                 <ConversationItem
                   key={conversation._id}
                   id={conversation._id}
-                  imageUrl={conversation.profilePicture || ""}
+                  imageUrl={getAvatarUrl(conversation) || ""}
                   name={getMemberName(conversation)}
-                  lastMessageContent={conversation.lastMessage?.content || ""}
-                  lastMessageSender={conversation.lastMessage?.sender._id || ""}
+                  lastMessage={conversation.lastMessage}
                   onClick={() => {
                     setSelectedConversation(conversation);
                     console.log("Selected conversation:", conversation._id);

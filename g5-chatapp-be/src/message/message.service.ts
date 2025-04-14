@@ -90,11 +90,15 @@ export class MessageService {
       type,
     };
 
-    const messageSaved = await this.messageModel.create(messageSchema);
+    const messageSaved = await (await this.messageModel.create(messageSchema)).populate(
+      'sender',
+      'firstName lastName email avatar',
+    );
     await this.conversationService.updateLastMessageField(
       convensationId,
       messageSaved._id as string,
     );
+    console.log('messageSaved', messageSaved);
     return messageSaved;
   }
 
