@@ -1,7 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+// import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ThrottlerGuard } from '@nestjs/throttler';
+// import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from 'src/auth/auth.module';
 import { MessageModule } from 'src/message/message.module';
 import { UserModule } from 'src/user/user.module';
@@ -20,10 +20,10 @@ import { ConvensationSchema } from './schema/convensation.schema';
   ],
   providers: [
     ConversationService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
   controllers: [ConvensationController],
   exports: [ConversationService, MongooseModule],

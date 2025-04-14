@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -18,6 +19,7 @@ import { Message } from './schema/messege.chema';
 import { AuthGuard } from '@nestjs/passport';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 
 @Controller('message')
 export class MessageController {
@@ -81,5 +83,78 @@ export class MessageController {
   @Get(':messageId')
   async getMessageById(@Param('messageId') messageId: string) {
     return await this.messageService.getMessageById(messageId);
+  }
+
+  /**
+   * del message for self (user logged in) -> soft delete -> update deleteFor and isRevoked message
+   * @param messageId
+   * @param req -> userId
+   * @returns message
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch(':messageId/revoke-self')
+  async revokeMessage(
+    @Param('messageId') messageId: string,
+    @UserDecorator() req: JwtPayload,
+  ) {
+    const userId = req._id;
+
+    const seltHidationMessage = await this.messageService.revokeMessage(
+      messageId,
+      userId,
+    );
+
+    this.chatGateway.handleDeleteMessage(seltHidationMessage);
+
+    return seltHidationMessage;
+  }
+
+  /**
+   * revoke message for both or all user into gr  (only sender has permission del) -> soft delete -> update deleteFor and isRevoked message
+   * @param messageId -> messageId
+   * @param conversationId -> conversationId -> check senderId and receiverId in conversationId
+   * @returns message
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch(':messageId/revoke-both/:conversationId')
+  async revokeMessageBoth(
+    @Param('messageId') messageId: string,
+    @Param('conversationId') conversationId: string,
+    @UserDecorator() req: JwtPayload,
+  ) {
+    const userId = req._id;
+    const revorkedMessage = await this.messageService.revokeMessageBoth(
+      messageId,
+      conversationId,
+      userId,
+    );
+
+    this.chatGateway.handleRevokeMessage(revorkedMessage);
+    return revorkedMessage;
+  }
+
+  /**
+   * forward message to other conversationId (only sender has permission forward)
+   * @param messageId
+   * @param conversationIds
+   * @param req
+   * @returns message
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('/forward')
+  async forwardMessage(
+    @Body()
+    body: MessageForwardationRequest,
+    @UserDecorator() userPayload: JwtPayload,
+  ): Promise<Message[]> {
+    const messageForwardations =
+      await this.messageService.forwardMessageToMultipleConversations(
+        body,
+        userPayload,
+      );
+
+    this.chatGateway.handleForwardMessage(messageForwardations);
+
+    return messageForwardations;
   }
 }

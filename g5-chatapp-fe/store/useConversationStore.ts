@@ -178,6 +178,19 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
             ...state.messages.filter((m) => m._id !== "temp"),
           ],
           messagesTemp: state.messagesTemp.filter((m) => m._id !== "temp"),
+          conversations: state.conversations.map((conversation) => {
+            if (conversation._id === message.conversation) {
+              return {
+                ...conversation,
+                lastMessage: {
+                  _id: message._id,
+                  sender: message.sender.userId,
+                  message: message.content,
+                },
+              };
+            }
+            return conversation;
+          }),
         }));
       });
     }

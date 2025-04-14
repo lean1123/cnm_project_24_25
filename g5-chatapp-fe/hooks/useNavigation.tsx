@@ -22,7 +22,7 @@ export const useNavigation = () => {
       },
       {
         name: "Contacts",
-        href: "/contacts",
+        href: "/contacts/friends",
         icon: <UsersRound />,
         active: pathname.startsWith("/contacts"),
         count: 2,

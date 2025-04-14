@@ -66,7 +66,7 @@ const ConversationsLayout = ({ children }: Props) => {
       <ItemList title="Conversations">
         {/* search */}
         {/* Search Input */}
-        <div className="relative mb-4 w-full">
+        {/* <div className="relative mb-4 w-full">
           <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
           <input
             type="text"
@@ -75,7 +75,7 @@ const ConversationsLayout = ({ children }: Props) => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-300"
           />
-        </div>
+        </div> */}
 
         {conversations ? (
           conversations.length === 0 ? (
@@ -88,8 +88,8 @@ const ConversationsLayout = ({ children }: Props) => {
                   id={conversation._id}
                   imageUrl={conversation.profilePicture || ""}
                   name={getMemberName(conversation)}
-                  lastMessageContent={conversation.lastMessage || ""}
-                  lastMessageSender="1a2b3c"
+                  lastMessageContent={conversation.lastMessage?.message || ""}
+                  lastMessageSender={conversation.lastMessage?.sender || ""}
                   onClick={() => {
                     setSelectedConversation(conversation);
                     console.log("Selected conversation:", conversation._id);

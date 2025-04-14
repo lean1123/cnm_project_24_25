@@ -7,13 +7,13 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConversationService } from 'src/conversation/conversation.service';
-// import { UploadService } from 'src/upload/upload.service';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { UploadService } from 'src/upload/upload.service';
 import { UserService } from 'src/user/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
-import { Message } from './schema/messege.chema';
-import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 import { MessageType } from './schema/messageType.enum';
+import { Message } from './schema/messege.chema';
 
 @Injectable()
 export class MessageService {
@@ -45,8 +45,8 @@ export class MessageService {
     }
 
     // Kiểm tra người gửi có tồn tại trong participant không
-    const isParticipant = conversation.members.some(
-      (member) => member.userId.toString() === user._id.toString(),
+    const isParticipant = conversation.members.some((member) =>
+      member._id.equals(user._id),
     );
 
     if (!isParticipant) {
@@ -84,10 +84,7 @@ export class MessageService {
 
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
-      sender: {
-        userId: user._id,
-        fullName: `${sender.firstName} ${sender.lastName}`,
-      },
+      sender: user._id,
       content: dto.content,
       files: fileUrls || [],
       type,
@@ -114,6 +111,7 @@ export class MessageService {
     const [data, total] = await Promise.all([
       this.messageModel
         .find({ conversation: new Types.ObjectId(conversationId) })
+        .populate('sender', 'firstName lastName email avatar')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -135,13 +133,16 @@ export class MessageService {
   ): Promise<Message[]> {
     return await this.messageModel
       .find({ conversation: new Types.ObjectId(conversationId) })
+      .populate('sender', 'firstName lastName email avatar')
       .sort({ createdAt: 1 }) // Sắp xếp mới nhất trước
       .limit(20) // Giới hạn 20 tin nhắn
       .exec();
   }
 
   async getMessageById(messageId: string): Promise<Message> {
-    return await this.messageModel.findById(messageId);
+    return await this.messageModel
+      .findById(messageId)
+      .populate('sender', 'firstName lastName email avatar');
   }
 
   async updateMessage(
@@ -155,5 +156,124 @@ export class MessageService {
 
   async deleteMessage(messageId: string): Promise<Message> {
     return await this.messageModel.findByIdAndDelete(messageId);
+  }
+  // xoa msg -> an tin nhan o 1 ben
+  async revokeMessage(messageId: string, userId: string): Promise<Message> {
+    const message = await this.messageModel.findById(messageId);
+
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    return await this.messageModel.findByIdAndUpdate(
+      messageId,
+      {
+        $set: {
+          isRevoked: true,
+          updatedAt: new Date(),
+        },
+        $addToSet: {
+          deletedFor: userId,
+        },
+      },
+      { new: true },
+    );
+  }
+
+  // xoa msg -> an tin nhan o ca 2 ben
+  async revokeMessageBoth(
+    messageId: string,
+    conversationId: string,
+    userRequestId: string,
+  ): Promise<Message> {
+    const conversation =
+      await this.conversationService.getConvensationById(conversationId);
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    // ✅ Lấy tất cả userId từ members
+    const memberIds = conversation.members.map((m) => m._id);
+
+    const updatedMessage = await this.messageModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(messageId),
+        sender: new Types.ObjectId(userRequestId), // Chỉ cho phép sender thu hồi
+      },
+      {
+        $set: {
+          isRevoked: true,
+          updatedAt: new Date(),
+        },
+        $addToSet: {
+          deletedFor: { $each: memberIds }, // ✅ Thêm toàn bộ userId
+        },
+      },
+      { new: true },
+    );
+
+    if (!updatedMessage) {
+      throw new NotFoundException(
+        'Message not found or you are not the sender',
+      );
+    }
+
+    return updatedMessage;
+  }
+
+  async forwardMessageToMultipleConversations(
+    messageForwardationDto: MessageForwardationRequest,
+    userPayload: JwtPayload,
+  ): Promise<Message[]> {
+    // Tìm tin nhắn gốc
+    const originalMessage = await this.messageModel.findById(
+      messageForwardationDto.originalMessageId,
+    );
+    if (!originalMessage) {
+      throw new NotFoundException('Original message not found');
+    }
+
+    const sender = await this.userService.findById(userPayload._id);
+
+    // Duyệt qua tất cả các cuộc trò chuyện và forward tin nhắn
+    const forwardedMessages = [];
+
+    for (const newConversationId of messageForwardationDto.conversationIds) {
+      // Kiểm tra xem cuộc trò chuyện có tồn tại không
+      const conversation =
+        await this.conversationService.getConvensationById(newConversationId);
+      if (!conversation) {
+        throw new NotFoundException(
+          `Conversation with ID ${newConversationId} not found`,
+        );
+      }
+
+      // Tạo bản sao của tin nhắn gốc cho mỗi cuộc trò chuyện
+      const forwardedMessage = await this.messageModel.create({
+        conversation: new Types.ObjectId(newConversationId),
+        sender: {
+          userId: userPayload._id,
+          fullName: `${sender.firstName} ${sender.lastName}`,
+        },
+        content: originalMessage.content,
+        files: originalMessage.files,
+        type: originalMessage.type,
+        forwardFrom: originalMessage._id, // Đánh dấu tin nhắn gốc
+      });
+
+      // Lưu tin nhắn đã forward vào mảng để trả về sau
+      forwardedMessages.push(forwardedMessage);
+
+      // Cập nhật trường lastMessageId của cuộc trò chuyện
+
+      await this.conversationService.updateLastMessageField(
+        newConversationId,
+        forwardedMessage._id as string,
+      );
+    }
+
+    // Trả về tất cả các tin nhắn đã được forward
+    return forwardedMessages as Message[];
   }
 }

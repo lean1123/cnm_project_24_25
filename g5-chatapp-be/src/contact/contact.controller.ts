@@ -19,8 +19,12 @@ export class ContactController {
   }
 
   @Post('/accept/:contactId')
-  async acceptContact(@Param('contactId') contactId: string) {
-    return await this.contactService.acceptContact(contactId);
+  @UseGuards(AuthGuard('jwt'))
+  async acceptContact(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('contactId') contactId: string,
+  ) {
+    return await this.contactService.acceptContact(userPayload, contactId);
   }
 
   @Get('my-contact')
