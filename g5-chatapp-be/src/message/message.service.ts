@@ -46,7 +46,7 @@ export class MessageService {
 
     // Kiểm tra người gửi có tồn tại trong participant không
     const isParticipant = conversation.members.some((member) =>
-      member._id.equals(user._id),
+      member._id.equals(sender._id as Types.ObjectId),
     );
 
     if (!isParticipant) {
@@ -84,7 +84,7 @@ export class MessageService {
 
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
-      sender: user._id,
+      sender: sender._id,
       content: dto.content,
       files: fileUrls || [],
       type,
