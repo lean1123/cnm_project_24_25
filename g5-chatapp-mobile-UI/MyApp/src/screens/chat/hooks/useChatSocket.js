@@ -1,103 +1,121 @@
-import { useRef, useEffect } from 'react';
-import { io } from "socket.io-client";
-import { API_URL } from "../../../config/constants";
+import { useEffect, useCallback } from 'react';
+import { socket } from '../../../config/socket';
 
-export const useChatSocket = (conversation, userId, onNewMessage, setIsOnline) => {
-  const socket = useRef(null);
-
-  const setupSocket = () => {
-    if (!conversation?._id) return;
-    
-    if (socket.current) {
-      console.log("Socket already exists, disconnecting...");
-      socket.current.disconnect();
+export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline }) => {
+  useEffect(() => {
+    if (!conversation?._id || !userId) {
+      console.log('Missing required data:', { conversationId: conversation?._id, userId });
+      return;
     }
 
-    console.log("Setting up new socket connection");
-    socket.current = io(API_URL, {
-      transports: ["websocket"],
-      forceNew: true,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    });
-  
-    socket.current.on("connect", () => {
-      console.log("Socket connected, joining conversation:", conversation._id);
-      socket.current.emit("joinConversation", conversation._id);
-    });
-  
-    socket.current.on("newMessage", (message) => {
-      console.log("New message received via socket:", message);
-      if (message?.conversation === conversation._id || message?.conversationId === conversation._id) {
-        onNewMessage(message);
-      }
-    });
+    console.log('Setting up socket listeners for conversation:', conversation._id);
 
-    socket.current.on("userOnline", (data) => {
-      if (data.userId && data.userId !== userId) {
-        setIsOnline(true);
-      }
-    });
+    // Ensure socket is connected
+    if (!socket.connected) {
+      console.log('Socket not connected, connecting...');
+      socket.connect();
+    }
 
-    socket.current.on("userOffline", (data) => {
-      if (data.userId && data.userId !== userId) {
-        setIsOnline(false);
-      }
-    });
+    // Handle connection events
+    const handleConnect = () => {
+      console.log('Socket connected, joining room:', conversation._id);
+      socket.emit('joinRoom', {
+        conversationId: conversation._id,
+        userId: userId
+      });
+      socket.emit('userOnline', {
+        conversationId: conversation._id,
+        userId: userId
+      });
+    };
 
-    socket.current.on("messageReceived", (messageId) => {
-      console.log("Message received confirmation:", messageId);
-    });
-  
-    socket.current.on("error", (error) => {
-      console.error("Socket error:", error);
+    const handleDisconnect = (reason) => {
+      console.log('Socket disconnected:', reason);
+      setIsOnline(false);
+      // Attempt to reconnect
       setTimeout(() => {
-        console.log("Attempting to reconnect after error...");
-        setupSocket();
-      }, 3000);
-    });
+        if (!socket.connected) {
+          console.log('Attempting to reconnect...');
+          socket.connect();
+        }
+      }, 1000);
+    };
 
-    socket.current.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
-      if (reason === "io server disconnect" || reason === "io client disconnect") {
+    // Listen for new messages
+    const handleReceiveMessage = (data) => {
+      console.log('Received message data in socket hook:', data);
+      
+      // Extract message from data
+      const messageData = data?.message || data;
+      
+      // Validate message data
+      if (!messageData || (!messageData.content && !messageData.file)) {
+        console.log('Invalid message data received:', data);
         return;
       }
-      setTimeout(() => {
-        console.log("Attempting to reconnect...");
-        setupSocket();
-      }, 3000);
-    });
 
-    socket.current.on("reconnect", (attemptNumber) => {
-      console.log("Socket reconnected after", attemptNumber, "attempts");
-      if (conversation?._id) {
-        socket.current.emit("joinConversation", conversation._id);
-      }
-    });
+      // Ensure message has required fields
+      const validMessage = {
+        ...messageData,
+        _id: messageData._id || `temp-${Date.now()}`,
+        conversation: messageData.conversation || conversation._id,
+        createdAt: messageData.createdAt || new Date().toISOString()
+      };
 
-    const pingInterval = setInterval(() => {
-      if (socket.current?.connected) {
-        socket.current.emit("ping");
-      }
-    }, 30000);
-
-    return () => clearInterval(pingInterval);
-  };
-
-  useEffect(() => {
-    if (!conversation?._id || !userId) return;
-
-    console.log("Setting up socket for conversation:", conversation._id);
-    setupSocket();
-
-    return () => {
-      if (socket.current) {
-        console.log("Disconnecting socket");
-        socket.current.disconnect();
+      console.log('Processing message in socket hook:', validMessage);
+      
+      // Chỉ xử lý tin nhắn thuộc về conversation hiện tại
+      if (validMessage.conversation === conversation._id) {
+        onNewMessage(validMessage);
+      } else {
+        console.log('Message belongs to different conversation:', validMessage.conversation);
       }
     };
-  }, [userId, conversation?._id]);
 
-  return socket;
+    // Listen for online status
+    const handleOnlineStatus = (data) => {
+      console.log('Online status update:', data);
+      if (data?.userId && data.userId !== userId) {
+        setIsOnline(!!data.isOnline);
+      }
+    };
+
+    // Setup listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('receive_message', handleReceiveMessage);  // Lắng nghe event 'receive_message' từ server
+    socket.on('userOnline', handleOnlineStatus);
+    socket.on('userOffline', handleOnlineStatus);
+
+    // Initial connection if socket is already connected
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    // Cleanup function
+    return () => {
+      console.log('Cleaning up socket listeners for conversation:', conversation._id);
+      
+      if (socket.connected) {
+        // Leave room
+        socket.emit('leaveRoom', {
+          conversationId: conversation._id,
+          userId: userId
+        });
+
+        // Update offline status
+        socket.emit('userOffline', {
+          conversationId: conversation._id,
+          userId: userId
+        });
+      }
+
+      // Remove listeners
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('receive_message', handleReceiveMessage);
+      socket.off('userOnline', handleOnlineStatus);
+      socket.off('userOffline', handleOnlineStatus);
+    };
+  }, [conversation?._id, userId, onNewMessage, setIsOnline]);
 }; 

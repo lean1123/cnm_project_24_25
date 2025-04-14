@@ -36,13 +36,11 @@ export const chatService = {
       
       // Clean content and type
       formData.append("content", message.content || "");
-      formData.append("type", message.type || "text");
+      formData.append("type", message.type || "TEXT");
 
       // Clean and append sender ID
       if (message.sender) {
-        // Đảm bảo sender là string ID sạch
         const cleanSenderId = String(message.sender).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
-        console.log("Clean sender ID before sending:", cleanSenderId);
         formData.append("sender", cleanSenderId);
       }
 
@@ -57,17 +55,8 @@ export const chatService = {
         },
       });
 
-      // Nếu có response.data và có _id, return data
-      if (response?.data?._id) {
-        return response.data;
-      }
-      
-      // Nếu response có _id, return response
-      if (response?._id) {
-        return response;
-      }
-
-      throw new Error('Invalid message response from server');
+      // BE luôn trả về message object trong response.data
+      return response.data;
     } catch (error) {
       console.error("Error in sendMessage:", {
         error: error.message,
@@ -81,7 +70,7 @@ export const chatService = {
   // Cập nhật tin nhắn
   updateMessage: async (messageId, message) => {
     try {
-      const cleanMessageId = String(messageId).replace(/ObjectId\(['"](.+)['"]\)/, '$1');
+      const cleanMessageId = String(messageId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
       const response = await axiosInstance.put(`/message/${cleanMessageId}`, message);
       return response.data;
     } catch (error) {
@@ -93,7 +82,7 @@ export const chatService = {
   // Lấy tin nhắn mới nhất
   getNewestMessages: async (conversationId) => {
     try {
-      const cleanConversationId = String(conversationId).replace(/ObjectId\(['"](.+)['"]\)/, '$1');
+      const cleanConversationId = String(conversationId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
       const response = await axiosInstance.get(`/message/newest/${cleanConversationId}`);
       return response.data;
     } catch (error) {

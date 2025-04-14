@@ -20,6 +20,7 @@ import ChatInput from './components/ChatInput';
 import ChatOptions from './components/ChatOptions';
 import { styles } from './styles/ChatDetailStyles';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { socket } from '../../config/socket';
 
 const ChatDetailScreen = () => {
   const [newMessage, setNewMessage] = useState('');
@@ -68,167 +69,142 @@ const ChatDetailScreen = () => {
     getUserData();
   }, []);
 
-  useChatSocket({
-    conversation,
-    userId,
-    onNewMessage: (message) => {
-      if (message.conversation === conversation._id) {
-        addMessage(message);
-      }
-    },
-    setIsOnline
-  });
-
-  useEffect(() => {
-    fetchMessages();
-  }, [conversation._id]);
-
   const handleSendMessage = async () => {
     const content = newMessage.trim();
     if (!content || !userId) return;
 
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-    const tempMessage = {
+    const now = new Date().toISOString();
+    
+    // Tạo message object
+    const messageData = {
       _id: tempId,
       content,
       type: MessageType.TEXT,
       sender: userId,
-      createdAt: new Date().toISOString(),
       conversation: conversation._id,
-      isTemp: true,
+      createdAt: now,
+      isTemp: true
     };
 
+    // Reset input và thêm tin nhắn tạm thời ngay lập tức
     setNewMessage('');
-    addTempMessage(tempMessage);
-    setIsSending(true);
-
+    addTempMessage(messageData);
+    
     try {
-      // Đảm bảo chỉ gửi ID string
       const cleanUserId = String(userId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
-      console.log("Sending message with user ID:", cleanUserId);
+      console.log('Sending message:', { content, sender: cleanUserId, conversation: conversation._id });
 
+      // Emit socket event trước khi gọi API
+      socket.emit('send_message', {
+        message: messageData,
+        conversationId: conversation._id,
+        sender: cleanUserId
+      });
+
+      // Gọi API để lưu tin nhắn
       const response = await chatService.sendMessage(conversation._id, {
         content,
         type: MessageType.TEXT,
         sender: cleanUserId
       });
 
-      removeTempMessage(tempId);
-      
-      // Nếu response có _id, đây là message object hợp lệ
-      if (response && response._id) {
-        console.log("Adding new message:", response);
-        addMessage(response);
+      console.log('Server response:', response);
+
+      if (response?.success) {
+        // Create final message object if response doesn't include data
+        const finalMessage = response.data || {
+          _id: tempId,
+          content,
+          type: MessageType.TEXT,
+          sender: cleanUserId,
+          conversation: conversation._id,
+          createdAt: now
+        };
+
+        console.log('Using message data:', finalMessage);
+        
+        // Xóa tin nhắn tạm và thêm tin nhắn thật
+        removeTempMessage(tempId);
+        addMessage(finalMessage);
+      } else {
+        console.error('Server returned error:', response);
+        markMessageAsError(tempId);
+        Alert.alert('Error', 'Failed to send message. Please try again.');
       }
     } catch (error) {
       console.error('Error sending message:', error);
       markMessageAsError(tempId);
-    } finally {
-      setIsSending(false);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };
 
-  const handleSendImage = async (imageUri) => {
-    if (!imageUri || !userId) return;
+  // Xử lý tin nhắn mới từ socket
+  const handleNewMessage = React.useCallback((data) => {
+    console.log('New message received in ChatDetailScreen:', data);
+    
+    // Safely access message data
+    const messageData = data?.message || data;
+    if (!messageData || !messageData._id) {
+      console.log('Invalid message data received:', data);
+      return;
+    }
+    
+    // Kiểm tra xem tin nhắn đã tồn tại chưa và thuộc về conversation hiện tại
+    const messageExists = messages.some(msg => msg?._id === messageData._id) ||
+                         tempMessages.some(msg => msg?._id === messageData._id);
+    
+    if (!messageExists && messageData.conversation === conversation._id) {
+      console.log('Adding new message to conversation:', messageData);
+      addMessage(messageData);
 
-    const tempId = `img-${Date.now()}`;
-    const tempMessage = {
-      _id: tempId,
-      content: imageUri,
-      type: MessageType.IMAGE,
-      sender: userId,
-      createdAt: new Date().toISOString(),
-      conversation: conversation._id,
-      isTemp: true
-    };
-
-    addTempMessage(tempMessage);
-    setIsSending(true);
-
-    try {
-      const response = await chatService.sendMessage(conversation._id, {
-        content: "",
-        type: MessageType.IMAGE,
-        sender: userId, // Đã là clean ID
-        file: {
-          uri: imageUri,
-          type: "image/jpeg",
-          name: "image.jpg"
-        }
-      });
-
-      removeTempMessage(tempId);
-      
-      if (response?._id) {
-        addMessage(response);
-      } else if (response?.data?._id) {
-        addMessage(response.data);
-      } else {
-        throw new Error('Invalid message response');
+      // Cuộn xuống tin nhắn mới
+      if (flatListRef.current) {
+        setTimeout(() => {
+          flatListRef.current.scrollToEnd({ animated: true });
+        }, 100);
       }
-    } catch (error) {
-      console.error('Error sending image:', error);
-      markMessageAsError(tempId);
-      Alert.alert('Error', 'Failed to send image. Please try again.');
-    } finally {
-      setIsSending(false);
     }
-  };
+  }, [messages, tempMessages, addMessage, conversation._id]);
 
-  const handleSendFile = async (fileUri) => {
-    if (!fileUri || !userId) return;
+  // Sử dụng socket hook
+  useChatSocket({
+    conversation,
+    userId,
+    onNewMessage: handleNewMessage,
+    setIsOnline
+  });
 
-    const tempId = `file-${Date.now()}`;
-    const tempMessage = {
-      _id: tempId,
-      content: fileUri,
-      type: MessageType.FILE,
-      sender: userId,
-      createdAt: new Date().toISOString(),
-      conversation: conversation._id,
-      isTemp: true
-    };
+  // Sắp xếp và kết hợp tin nhắn
+  const combinedMessages = React.useMemo(() => {
+    const validMessages = messages.filter(msg => msg && msg._id);
+    const validTempMessages = tempMessages.filter(
+      tempMsg => tempMsg && tempMsg._id && !validMessages.find(msg => msg?._id === tempMsg._id)
+    );
 
-    addTempMessage(tempMessage);
-    setIsSending(true);
+    return [...validTempMessages, ...validMessages]
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .map(msg => ({
+        ...msg,
+        key: msg._id || `temp-${msg.createdAt}`
+      }));
+  }, [messages, tempMessages]);
 
-    try {
-      const response = await chatService.sendMessage(conversation._id, {
-        content: "",
-        type: MessageType.FILE,
-        sender: userId, // Đã là clean ID
-        file: {
-          uri: fileUri,
-          type: "application/octet-stream",
-          name: fileUri.split('/').pop()
-        }
-      });
-
-      removeTempMessage(tempId);
-      
-      if (response?._id) {
-        addMessage(response);
-      } else if (response?.data?._id) {
-        addMessage(response.data);
-      } else {
-        throw new Error('Invalid message response');
-      }
-    } catch (error) {
-      console.error('Error sending file:', error);
-      markMessageAsError(tempId);
-      Alert.alert('Error', 'Failed to send file. Please try again.');
-    } finally {
-      setIsSending(false);
+  // Tự động cuộn xuống khi có tin nhắn mới
+  const flatListRef = React.useRef(null);
+  
+  useEffect(() => {
+    if (flatListRef.current && combinedMessages.length > 0) {
+      console.log('Scrolling to new message');
+      setTimeout(() => {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }, 100);
     }
-  };
-
-  const handleSendLocation = async () => {
-    // Implement location sharing functionality
-    Alert.alert('Coming Soon', 'Location sharing will be available soon!');
-  };
+  }, [combinedMessages.length]);
 
   const renderMessage = ({ item }) => (
     <ChatMessage
+      key={item._id || `temp-${item.createdAt}`}
       message={item}
       userId={userId}
       onOpenDocument={(url) => {
@@ -242,18 +218,120 @@ const ChatDetailScreen = () => {
     />
   );
 
-  // Sắp xếp tin nhắn mới nhất ở dưới
-  const combinedMessages = [
-    ...tempMessages.filter(
-      (tempMsg) => !messages.find((msg) => msg._id === tempMsg._id)
-    ),
-    ...messages
-  ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Sắp xếp theo thời gian tăng dần
+  const handleSendImage = async (imageUri) => {
+    if (!imageUri || !userId) return;
+
+    const tempId = `img-${Date.now()}`;
+    const now = new Date().toISOString();
+    const tempMessage = {
+      _id: tempId,
+      content: imageUri,
+      type: MessageType.IMAGE,
+      sender: userId,
+      createdAt: now,
+      conversation: conversation._id,
+      isTemp: true
+    };
+
+    addTempMessage(tempMessage);
+
+    try {
+      const cleanUserId = String(userId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
+      
+      // Emit socket event trước
+      socket.emit('send_message', {
+        message: tempMessage,
+        conversationId: conversation._id,
+        sender: cleanUserId
+      });
+
+      const response = await chatService.sendMessage(conversation._id, {
+        content: "",
+        type: MessageType.IMAGE,
+        sender: cleanUserId,
+        file: {
+          uri: imageUri,
+          type: "image/jpeg",
+          name: "image.jpg"
+        }
+      });
+
+      removeTempMessage(tempId);
+      
+      if (response) {
+        addMessage(response);
+      }
+    } catch (error) {
+      console.error('Error sending image:', error);
+      markMessageAsError(tempId);
+      Alert.alert('Error', 'Failed to send image. Please try again.');
+    }
+  };
+
+  const handleSendFile = async (fileUri) => {
+    if (!fileUri || !userId) return;
+
+    const tempId = `file-${Date.now()}`;
+    const now = new Date().toISOString();
+    const tempMessage = {
+      _id: tempId,
+      content: fileUri,
+      type: MessageType.FILE,
+      sender: userId,
+      createdAt: now,
+      conversation: conversation._id,
+      isTemp: true
+    };
+
+    addTempMessage(tempMessage);
+
+    try {
+      const cleanUserId = String(userId).replace(/ObjectId\(['"](.+)['"]\)/, '$1').trim();
+      
+      // Emit socket event trước
+      socket.emit('send_message', {
+        message: tempMessage,
+        conversationId: conversation._id,
+        sender: cleanUserId
+      });
+
+      const response = await chatService.sendMessage(conversation._id, {
+        content: "",
+        type: MessageType.FILE,
+        sender: cleanUserId,
+        file: {
+          uri: fileUri,
+          type: "application/octet-stream",
+          name: fileUri.split('/').pop()
+        }
+      });
+
+      removeTempMessage(tempId);
+      
+      if (response) {
+        addMessage(response);
+      }
+    } catch (error) {
+      console.error('Error sending file:', error);
+      markMessageAsError(tempId);
+      Alert.alert('Error', 'Failed to send file. Please try again.');
+    }
+  };
+
+  const handleSendLocation = async () => {
+    Alert.alert('Coming Soon', 'Location sharing will be available soon!');
+  };
+
+  // Thêm useEffect để fetch messages khi conversation thay đổi
+  useEffect(() => {
+    fetchMessages();
+  }, [conversation._id]);
 
   return (
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ChatHeader
         navigation={navigation}
@@ -266,16 +344,26 @@ const ChatDetailScreen = () => {
       />
 
       <FlatList
+        ref={flatListRef}
         style={styles.messageList}
         data={combinedMessages}
         renderItem={renderMessage}
-        keyExtractor={(item) => item._id}
-        inverted={false} // Không đảo ngược danh sách
+        keyExtractor={item => item.key || item._id}
+        inverted={false}
         onEndReached={loadMoreMessages}
         onEndReachedThreshold={0.5}
         initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={false}
         refreshing={loading}
         onRefresh={fetchMessages}
+        maintainVisibleContentPosition={{
+          minIndexForVisible: 0,
+          autoscrollToTopThreshold: 10
+        }}
+        contentContainerStyle={styles.messageListContent}
+        extraData={[messages.length, tempMessages.length]}
       />
 
       <ChatInput
