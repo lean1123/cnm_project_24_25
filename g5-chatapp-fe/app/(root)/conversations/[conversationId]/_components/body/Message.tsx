@@ -132,17 +132,42 @@ const Message = ({
   }
 
   const isDeleted = checkDeletedMessage(message);
+  // const [isHovered, setIsHovered] = useState(false);
+const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+const handleMouseEnter = () => setIsHovered(true);
+const handleMouseLeave = () => {
+  if (!isDropdownOpen) setIsHovered(false);
+};
+
 
   return (
-    <div className={cn("flex items-end", { "justify-end": fromCurrentUser })}>
-      {/* chat content */}
-      <div
-        className={cn("relative inline-flex flex-col mx-2 max-w-[70%]", {
-          "order-1 items-end": fromCurrentUser,
-          "order-2 items-start": !fromCurrentUser,
+    <div className={cn("flex items-end gap-2", { "flex-row-reverse": fromCurrentUser })}>
+            <Avatar
+        className={cn("relative w-8 h-8 flex-shrink-0", {
+          // "order-2": fromCurrentUser,
+          // "order-1": !fromCurrentUser,
+          invisible: lastByUser,
         })}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+      >
+        <AvatarImage src={senderImage || "/avatar.png"} alt={senderName} />
+        <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
+      </Avatar>
+      {/* chat content */}
+      <div className="relative group"
+              // onMouseEnter={() => setIsHovered(true)}
+              // onMouseLeave={() => setIsHovered(false)}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+      >
+
+
+      <div
+        className={cn("group", {
+          // "order-1 items-end": fromCurrentUser,
+          // "order-2 items-start": !fromCurrentUser,
+        })}
+
       >
         {message && message.forwardFrom && (
           <div
@@ -154,50 +179,9 @@ const Message = ({
             <Forward className="size-4" /> Message is forwarded
           </div>
         )}
-        {isHovered && (
-          <div
-            className={cn(
-              " flex gap-2 z-10",
-              fromCurrentUser ? "-top-8 right-0" : "-top-8 left-0"
-            )}
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
-              onClick={(e) => {
-                e.stopPropagation();
-                // Handle reply logic
-              }}
-            >
-              <MessageSquareText className="size-4" />
-            </Button>
-            <ForwardMessageDialog messageToForward={message} />
-            {/* Thêm nút More (ba chấm) */}
-            {/* <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Handle more options logic
-                }}
-              >
-                <svg
-                  className="size-4"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <circle cx="12" cy="12" r="2" />
-                  <circle cx="6" cy="12" r="2" />
-                  <circle cx="18" cy="12" r="2" />
-                </svg>
-              </Button> */}
-            <MessageOption message={message!} />
-          </div>
-        )}
+
         <div
-          className={cn("relative px-4 py-2 rounded-lg w-full", {
+          className={cn("relative px-4 py-2 rounded-lg", {
             "bg-secondary text-secondary-foreground": fromCurrentUser,
             "bg-muted text-mute-foreground": !fromCurrentUser,
             "rounded-br-none": !lastByUser && fromCurrentUser,
@@ -370,16 +354,31 @@ const Message = ({
         )}
       </div>
 
-      <Avatar
-        className={cn("relative w-8 h-8", {
-          "order-2": fromCurrentUser,
-          "order-1": !fromCurrentUser,
-          invisible: lastByUser,
-        })}
-      >
-        <AvatarImage src={senderImage || "/avatar.png"} alt={senderName} />
-        <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
-      </Avatar>
+      {isHovered && (
+          <div
+          className={cn(
+            "absolute -right-[110px] bottom-0 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+            {
+              "right-auto -left-[110px]": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
+            }
+          )}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Handle reply logic
+              }}
+            >
+              <MessageSquareText className="size-4" />
+            </Button>
+            <ForwardMessageDialog messageToForward={message} />
+            <MessageOption message={message!} setIsDropdownOpen={setIsDropdownOpen} setIsHovered={setIsHovered}/>
+          </div>
+        )}
+              </div>
     </div>
   );
 };

@@ -12,15 +12,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useConversationStore } from "@/store/useConversationStore";
 import { Message } from "@/types";
+import { Separator } from "@/components/ui/separator";
 
 type Props = {
-    message: Message
+    message: Message;
+    setIsDropdownOpen: (isOpen: boolean) => void;
+    setIsHovered: (isHovered: boolean) => void;
 };
 
-export function MessageOption({message} : Props) {
+export function MessageOption({message, setIsDropdownOpen, setIsHovered} : Props) {
     const {deleteMessage, revokeMessage} = useConversationStore();
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => {
+        setIsDropdownOpen(open);
+        if (!open) {
+            setIsHovered(false);
+        }
+    }}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -34,15 +42,16 @@ export function MessageOption({message} : Props) {
           </svg>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
+      <DropdownMenuContent className="w-56 z-[999]">
         <DropdownMenuItem>
-          <Button variant={"link"} className="flex items-center gap-2 text-red-500" onClick={() => revokeMessage(message)}>
+          <Button variant={"link"} className="flex items-center gap-2 text-red-500 p-2" onClick={() => revokeMessage(message)}>
             <MessageCircleX className="size-4" />
             <span>Recall</span>
           </Button>
         </DropdownMenuItem>
+        <Separator/>
         <DropdownMenuItem>
-        <Button variant={"link"} className="flex items-center gap-2 text-red-500" onClick={() => deleteMessage(message)}>
+        <Button variant={"link"} className="flex items-center gap-2 text-red-500 p-2" onClick={() => deleteMessage(message)}>
             <Trash2 className="size-4" />
             <span>Delete for me only</span>
           </Button>
