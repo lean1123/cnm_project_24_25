@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import ConversationItem from "./_components/ConversationItem";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
+import { Conversation } from "@/types";
 
 type Props = React.PropsWithChildren<{}>;
 
@@ -55,11 +56,18 @@ const ConversationsLayout = ({ children }: Props) => {
     fetchConversations();
   }, [user]);
 
-  const getMemberName = (conversation: any) => {
-    if (conversation.members[0].userId !== user?.id) {
-      return conversation.members[0].fullName;
+  const getMemberName = (conversation: Conversation) => {
+    if (conversation.members[0]._id !== user?.id) {
+      return conversation.members[0].firstName + " " + conversation.members[0].lastName;
     }
-    return conversation.members[1].fullName;
+    return conversation.members[1].firstName + " " + conversation.members[1].lastName;
+  }
+
+  const getAvatarUrl = (conversation: Conversation) => {
+    if (conversation.members[0]._id !== user?.id) {
+      return conversation.members[0].avatar;
+    }
+    return conversation.members[1].avatar;
   }
   return (
     <>
@@ -86,10 +94,9 @@ const ConversationsLayout = ({ children }: Props) => {
                 <ConversationItem
                   key={conversation._id}
                   id={conversation._id}
-                  imageUrl={conversation.profilePicture || ""}
+                  imageUrl={getAvatarUrl(conversation) || ""}
                   name={getMemberName(conversation)}
-                  lastMessageContent={conversation.lastMessage?.message || ""}
-                  lastMessageSender={conversation.lastMessage?.sender || ""}
+                  lastMessage={conversation.lastMessage}
                   onClick={() => {
                     setSelectedConversation(conversation);
                     console.log("Selected conversation:", conversation._id);

@@ -15,41 +15,29 @@ import { MoreHorizontal } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 type Props = {
-  id: string;
-  // name: string;
-  // avatar: string;
-  // state: string;
+  info: User;
 };
 
-const FriendItem = ({ id }: Props) => {
-  const {getUserById} = useUserStore();
-  const [user, setUser] = useState<User | null>(null);
+const FriendItem = ({ info }: Props) => {
   const {activeUsers} = useAuthStore();
-  const isOnline = activeUsers.find((user) => user === id);
-  useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await getUserById(id);
-      setUser(userData);
-    };
-    fetchUser();
-  }
-  , [id, getUserById]);
+  const isOnline = activeUsers.find((user) => user === info._id) ? true : false;
+
   return (
     <div
-      key={id}
+      key={info._id}
       className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 cursor-pointer"
     >
       <div className="flex items-center gap-2">
         <Avatar>
           <AvatarImage
-            src={user?.avatar || ""}
-            alt={user?.firstName + " " + user?.lastName}
+            src={info?.avatar || "/avatar.png"}
+            alt={info?.firstName + " " + info?.lastName}
             // className="w-12 h-12 rounded-full"
           />
-          <AvatarFallback>{getNameFallBack(user?.firstName || "", user?.lastName || "")}</AvatarFallback>
+          <AvatarFallback>{getNameFallBack(info?.firstName || "", info?.lastName || "")}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
-          <span className="font-semibold">{user?.firstName + " " + user?.lastName}</span>
+          <span className="font-semibold">{info?.firstName + " " + info?.lastName}</span>
           <p className="text-sm text-muted-foreground flex items-center gap-1">
             {isOnline ? (
               <span className="h-2 w-2 rounded-full bg-green-500" />

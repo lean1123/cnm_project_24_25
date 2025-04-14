@@ -98,6 +98,7 @@ export class MessageService {
       convensationId,
       messageSaved._id as string,
     );
+    console.log('messageSaved', messageSaved);
     return messageSaved;
   }
 

@@ -199,7 +199,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
         set((state) => ({
           myRequestContact: [...state.myRequestContact, data],
         }));
-        toast.success(`You have a new contact request from ${data.userId}`);
+        toast.success(`You have a new contact request from ${data.user.firstName} ${data.user.lastName}!`);
       });
     }
   },

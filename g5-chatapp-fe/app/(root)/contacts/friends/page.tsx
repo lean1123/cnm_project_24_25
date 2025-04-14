@@ -52,8 +52,8 @@ const FriendsPage = (props: Props) => {
       {/* list contact */}
       <div className="mt-4 flex flex-col w-full">
         {contacts.map((contact) => (
-          <FriendItem key={contact._id} id={
-            contact.contactId === user?._id ? contact.userId : contact.contactId
+          <FriendItem key={contact._id} info={
+            contact.contact._id === user?._id ? contact.user : contact.contact
           } />
         ))}
       </div>
