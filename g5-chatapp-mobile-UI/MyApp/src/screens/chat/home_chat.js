@@ -31,6 +31,7 @@ const HomeScreen = () => {
 
   useEffect(() => {
     if (userId) {
+      console.log("Setting up socket and fetching conversations for userId:", userId);
       setupSocket();
       fetchConversations();
     }
@@ -45,6 +46,7 @@ const HomeScreen = () => {
 
   useEffect(() => {
     if (isFocused && userId) {
+      console.log("Screen focused, fetching conversations for userId:", userId);
       fetchConversations();
     }
   }, [isFocused]);
@@ -66,11 +68,40 @@ const HomeScreen = () => {
 
     socket.current.on("connect", () => {
       console.log("Socket connected successfully");
+      socket.current.emit("join", { userId });
       fetchConversations();
     });
 
-    socket.current.on("receiveMessage", (data) => {
+    socket.current.on("newMessage", (data) => {
       console.log("Received new message:", data);
+      setConversations(prev => {
+        const newConversations = [...prev];
+        const conversationIndex = newConversations.findIndex(
+          conv => conv._id === data.conversationId
+        );
+
+        if (conversationIndex !== -1) {
+          const updatedConversation = {
+            ...newConversations[conversationIndex],
+            lastMessage: {
+              content: `${data.senderName}: ${data.message}`,
+              createdAt: data.createdAt || new Date().toISOString(),
+              sender: data.senderId,
+              senderName: data.senderName
+            },
+            unread: data.senderId !== userId
+          };
+
+          newConversations.splice(conversationIndex, 1);
+          newConversations.unshift(updatedConversation);
+        }
+
+        return newConversations;
+      });
+    });
+
+    socket.current.on("message", (data) => {
+      console.log("Message received:", data);
       setConversations(prev => {
         const newConversations = [...prev];
         const conversationIndex = newConversations.findIndex(
@@ -158,65 +189,17 @@ const HomeScreen = () => {
 
   const fetchConversations = async () => {
     try {
-      setLoading(true);
+      console.log("Fetching conversations for userId:", userId);
       const response = await chatService.getMyConversations();
+      console.log("Conversations response:", response);
       
-      if (response.success && Array.isArray(response.data)) {
-        const validConversations = response.data.map(conv => {
-          let displayName = 'Unknown';
-          let displayAvatar = null;
-          
-          if (conv.isGroup) {
-            displayName = conv.name || 'Unknown Group';
-            displayAvatar = conv.profilePicture ? `${API_URL}/uploads/${conv.profilePicture}` : null;
-          } else if (Array.isArray(conv.members)) {
-            const otherMember = conv.members.find(member => member?.userId !== userId);
-            
-            if (otherMember) {
-              displayName = otherMember.fullName || 'Unknown';
-              if (otherMember.profilePicture) {
-                displayAvatar = `${API_URL}/uploads/${otherMember.profilePicture}`;
-              }
-            }
-          }
-
-          let lastMessageContent = "No messages yet";
-          let lastMessageTime = null;
-          let lastMessageSender = null;
-          
-          if (conv.lastMessage) {
-            lastMessageTime = conv.lastMessage.createdAt;
-            lastMessageSender = conv.lastMessage.sender;
-            const isMyMessage = conv.lastMessage.sender === userId;
-            
-            lastMessageContent = conv.lastMessage.message || "No messages yet";
-            if (lastMessageContent !== "No messages yet") {
-              lastMessageContent = isMyMessage ? `Bạn: ${lastMessageContent}` : `${conv.lastMessage.senderName || 'Unknown'}: ${lastMessageContent}`;
-            }
-          }
-
-          return {
-            _id: conv._id || conv.id,
-            name: displayName,
-            avatar: displayAvatar,
-            lastMessage: {
-              content: lastMessageContent,
-              createdAt: lastMessageTime,
-              sender: lastMessageSender
-            },
-            members: conv.members,
-            isGroup: conv.isGroup,
-            profilePicture: conv.profilePicture,
-            unread: conv.unread
-          };
-        });
-        setConversations(validConversations);
-      } else {
-        console.error('Invalid conversations data:', response);
+      if (response.success) {
+        console.log("Conversations data:", response.data);
+        setConversations(response.data);
       }
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching conversations:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -243,7 +226,7 @@ const HomeScreen = () => {
           name: conversation.name,
           avatar: conversation.avatar,
           members: conversation.members,
-          isGroup: conversation.isGroup
+          isGroup: conversation.type === 'group'
         }
       });
     } else {
@@ -267,51 +250,61 @@ const HomeScreen = () => {
     }
   };
 
-  const renderConversation = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.friendItem,
-        item.unread && styles.unreadItem
-      ]}
-      onPress={() => handleConversationPress(item)}
-    >
-      <Image 
-        source={
-          item.avatar 
-            ? { uri: item.avatar } 
-            : require("../../../assets/chat/man.png")
-        } 
-        style={styles.avatar}
-        defaultSource={require("../../../assets/chat/man.png")} 
-      />
-      <View style={styles.conversationInfo}>
-        <Text style={[
-          styles.friendName,
-          item.unread && styles.unreadText
-        ]}>
-          {item.name}
-        </Text>
-        <Text style={[
-          styles.lastMessage,
-          item.unread && styles.unreadText
-        ]} numberOfLines={1}>
-          {item.lastMessage?.content}
-        </Text>
-        {item.lastMessage?.createdAt && (
+  const renderConversation = ({ item }) => {
+    // Tìm thông tin người đối diện trong members
+    const otherUser = item.members.find(member => member._id !== userId);
+    const displayName = otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'Unknown User';
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.friendItem,
+          item.unread && styles.unreadItem
+        ]}
+        onPress={() => handleConversationPress({
+          ...item,
+          name: displayName, // Sử dụng tên của người đối diện
+          avatar: otherUser?.avatar
+        })}
+      >
+        <Image 
+          source={
+            otherUser?.avatar 
+              ? { uri: otherUser.avatar } 
+              : require("../../../assets/chat/man.png")
+          } 
+          style={styles.avatar}
+          defaultSource={require("../../../assets/chat/man.png")} 
+        />
+        <View style={styles.conversationInfo}>
           <Text style={[
-            styles.messageTime,
+            styles.friendName,
             item.unread && styles.unreadText
           ]}>
-            {new Date(item.lastMessage.createdAt).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
+            {displayName}
           </Text>
-        )}
-        {item.unread && <View style={styles.unreadDot} />}
-      </View>
-    </TouchableOpacity>
-  );
+          <Text style={[
+            styles.lastMessage,
+            item.unread && styles.unreadText
+          ]} numberOfLines={1}>
+            {item.lastMessage?.content || 'No messages yet'}
+          </Text>
+          {item.lastMessage?.createdAt && (
+            <Text style={[
+              styles.messageTime,
+              item.unread && styles.unreadText
+            ]}>
+              {new Date(item.lastMessage.createdAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </Text>
+          )}
+          {item.unread && <View style={styles.unreadDot} />}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (

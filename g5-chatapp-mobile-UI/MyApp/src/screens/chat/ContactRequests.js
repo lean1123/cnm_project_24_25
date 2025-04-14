@@ -19,7 +19,7 @@ const ContactRequestsScreen = ({ navigation }) => {
 
     const fetchPendingRequests = async () => {
         try {
-            const response = await contactService.getMyPendingContacts();
+            const response = await contactService.getMyRequestContacts();
             if (response.success) {
                 setPendingRequests(response.data);
             }
@@ -39,6 +39,8 @@ const ContactRequestsScreen = ({ navigation }) => {
                 Alert.alert('Success', 'Contact request accepted');
                 // Refresh the list
                 fetchPendingRequests();
+                // Navigate back to chat screen to see new conversation
+                navigation.goBack();
             }
         } catch (error) {
             console.log('Error accepting request:', error);
