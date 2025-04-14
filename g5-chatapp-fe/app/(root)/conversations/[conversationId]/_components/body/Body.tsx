@@ -59,6 +59,10 @@ const Body = (props: Props) => {
     fetchMessages,
     subscribeToNewMessages,
     unsubscribeFromNewMessages,
+    subscribeToDeleteMessage,
+    unsubscribeFromDeleteMessage,
+    subscribeToRevokeMessage,
+    unsubscribeFromRevokeMessage,
   } = useConversationStore();
   const { user } = useAuthStore();
   useEffect(() => {
@@ -69,22 +73,37 @@ const Body = (props: Props) => {
 
   useEffect(() => {
     subscribeToNewMessages();
+    subscribeToDeleteMessage();
+    subscribeToRevokeMessage();
     return () => {
       unsubscribeFromNewMessages();
+      unsubscribeFromDeleteMessage();
+      unsubscribeFromRevokeMessage();
     };
-  }, [subscribeToNewMessages, unsubscribeFromNewMessages]);
+  }, [subscribeToNewMessages, unsubscribeFromNewMessages, subscribeToDeleteMessage, unsubscribeFromDeleteMessage, subscribeToRevokeMessage, unsubscribeFromRevokeMessage]);
+
+    const checkDeletedMessage = (message: Message | null) => {
+      if (!message) return false;
+      if (message.deletedFor && message.deletedFor.length > 0) {
+        return message.deletedFor.includes(user?._id);
+      }
+      return false;
+    }
 
   return (
-    <div className="h-[calc(100vh-335px)] w-full flex flex-col">
+    <div className="h-[calc(100vh-14rem)] w-full flex flex-col">
       <div className="flex-1 w-full flex overflow-y-scroll flex-col-reverse gap-2 p-3 no-scrollbar">
         {messages &&
           messages?.map((message, index) => {
             const lastByUser =
               messages[index - 1]?.sender._id === message.sender._id;
             const isCurrentUser = message.sender._id === user?.id;
+            const isDeleted = checkDeletedMessage(message);
+            if (isDeleted) return null; // Bỏ qua tin nhắn đã bị xóa
             return (
               <Message
                 key={index}
+                message={message}
                 fromCurrentUser={isCurrentUser}
                 senderImage={message.sender.avatar || ""}
                 file={message?.files || []}

@@ -17,11 +17,13 @@ import { useUserStore } from "@/store/useUserStore";
 import { useContactStore } from "@/store/useContactStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getNameFallBack } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export function AddFriendDialog() {
   const [inputValue, setInputValue] = useState("");
   const { searchUsers, searchResults, isSearching } = useUserStore();
   const { contacts, getMyContact, createContact } = useContactStore();
+  const router = useRouter();
 
   const handleSearch = async () => {
     await searchUsers(inputValue);
@@ -30,7 +32,7 @@ export function AddFriendDialog() {
   const checkIsFriend = (userId: string) => {
     if (!contacts) return false;
     return contacts.some(
-      (contact) => contact.userId === userId || contact.contactId === userId
+      (contact) => contact.user._id === userId || contact.contact._id === userId
     );
   };
 
@@ -40,6 +42,7 @@ export function AddFriendDialog() {
     console.log("Receiver name: ", receiverName);
     await createContact(receiverId, receiverName);
   };
+
 
   useEffect(() => {
     getMyContact();

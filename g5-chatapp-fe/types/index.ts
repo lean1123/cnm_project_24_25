@@ -64,7 +64,7 @@ export type Message = {
     files: MessageFile[] | null;
     deletedFor: any[];
     isRevoked: boolean;
-    forwardFrom: string | null;
+    forwardFrom?: string | null;
     type: string;
     createdAt: string;
     updatedAt: string;

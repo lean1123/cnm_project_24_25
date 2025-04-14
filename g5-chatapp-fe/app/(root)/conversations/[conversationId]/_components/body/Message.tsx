@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, getInitials } from "@/lib/utils";
-import { MessageFile } from "@/types";
+import type { Message, MessageFile } from "@/types";
 import { timeStamp } from "console";
 import React, { useEffect, useState } from "react";
 import {
@@ -15,13 +15,19 @@ import {
   FileType,
   Download,
   Repeat,
+  MessageSquareText,
+  Forward,
 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import ImageGallery from "./ImageGallery";
+import ForwardMessageDialog from "@/components/common/dialog/ForwardMessageDialog";
+import { MessageOption } from "./MessageOption";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type Props = {
+  message: Message | null;
   fromCurrentUser: boolean;
   senderImage: string;
   file?: MessageFile[];
@@ -45,6 +51,7 @@ const Message = ({
   type,
   isTemp,
   isError,
+  message,
 }: Props) => {
   const formatTime = (timeStamp: number) => {
     const date = new Date(timeStamp);
@@ -110,31 +117,102 @@ const Message = ({
       });
     }
   }, [file, type]);
+
+  const [isHovered, setIsHovered] = useState(false);
+
+  // check message is deleted
+  const {user} = useAuthStore();
+
+  const checkDeletedMessage = (message: Message | null) => {
+    if (!message) return false;
+    if (message.deletedFor && message.deletedFor.length > 0) {
+      return message.deletedFor.includes(user?._id);
+    }
+    return false;
+  }
+
+  const isDeleted = checkDeletedMessage(message);
+
   return (
     <div className={cn("flex items-end", { "justify-end": fromCurrentUser })}>
+      {/* chat content */}
       <div
-        className={cn("flex flex-col w-full mx-2", {
+        className={cn("relative inline-flex flex-col mx-2 max-w-[70%]", {
           "order-1 items-end": fromCurrentUser,
           "order-2 items-start": !fromCurrentUser,
         })}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
+        {message && message.forwardFrom && (
+          <div
+            className={cn(
+              "absolute flex gap-2 z-10 text-foreground text-xs",
+              fromCurrentUser ? "-top-8 right-1" : "-top-8 left-1"
+            )}
+          >
+            <Forward className="size-4" /> Message is forwarded
+          </div>
+        )}
+        {isHovered && (
+          <div
+            className={cn(
+              " flex gap-2 z-10",
+              fromCurrentUser ? "-top-8 right-0" : "-top-8 left-0"
+            )}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Handle reply logic
+              }}
+            >
+              <MessageSquareText className="size-4" />
+            </Button>
+            <ForwardMessageDialog messageToForward={message} />
+            {/* Thêm nút More (ba chấm) */}
+            {/* <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Handle more options logic
+                }}
+              >
+                <svg
+                  className="size-4"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="6" cy="12" r="2" />
+                  <circle cx="18" cy="12" r="2" />
+                </svg>
+              </Button> */}
+            <MessageOption message={message!} />
+          </div>
+        )}
         <div
-          className={cn("px-4 py-2 rounded-lg max-w-[70%]", {
+          className={cn("relative px-4 py-2 rounded-lg w-full", {
             "bg-secondary text-secondary-foreground": fromCurrentUser,
             "bg-muted text-mute-foreground": !fromCurrentUser,
             "rounded-br-none": !lastByUser && fromCurrentUser,
             "rounded-bl-none": !lastByUser && !fromCurrentUser,
           })}
         >
-          {type === "TEXT" ? (
+          {!message?.isRevoked && type === "TEXT" ? (
             <p className="text-wrap break-words whitespace-pre-wrap">
               {content}
             </p>
           ) : null}
-          {type === "IMAGE" && file && (
+          {!message?.isRevoked && type === "IMAGE" && file && (
             <ImageGallery images={file} sizes={imageSizes} content={content} />
           )}
-          {type === "FILE" && file && (
+          {!message?.isRevoked && type === "FILE" && file && (
             <div className="flex flex-col gap-2">
               {file.map((file, index) => (
                 <div key={index} className="flex items-center gap-2">
@@ -200,7 +278,7 @@ const Message = ({
               )}
             </div>
           )}
-          {type === "VIDEO" && file && (
+          {!message?.isRevoked && type === "VIDEO" && file && (
             <div className="flex flex-col gap-2">
               {file.map((video, index) => (
                 <div key={index} className="">
@@ -260,7 +338,11 @@ const Message = ({
               )}
             </div>
           )}
-
+          {message && message?.isRevoked && (
+            <div className="flex gap-2 text-gray-600">
+               Message is recalled
+            </div>
+          )}
           <p
             className={cn("text-xs flex w-full my-1", {
               "text-secondary-foreground justify-end": fromCurrentUser,

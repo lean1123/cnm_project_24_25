@@ -190,6 +190,7 @@ const ChatInput = (props: Props) => {
 
     const items = e.clipboardData.items;
     const files: File[] = [];
+    let pasteText = "";
 
     for (const item of items) {
       // Xử lý ảnh từ Snip & Sketch
@@ -214,10 +215,18 @@ const ChatInput = (props: Props) => {
           files.push(file);
         }
       }
+      else if (item.kind === "string" && item.type === "text/plain") {
+        pasteText = await new Promise<string>((resolve) =>
+          item.getAsString(resolve)
+        );
+      }
     }
 
     if (files.length > 0) {
       await addFilesWithPreview(files);
+    }
+    if (pasteText) {
+      form.setValue("content", pasteText);
     }
   };
 
@@ -389,7 +398,7 @@ const ChatInput = (props: Props) => {
               name="content"
               render={({ field }) => {
                 return (
-                  <FormItem className="h-full w-full">
+                  <FormItem className="w-full">
                     <FormControl>
                       <TextareaAutosize
                         onKeyDown={async (e) => {
@@ -405,7 +414,7 @@ const ChatInput = (props: Props) => {
                         onChange={handleInputChange}
                         onClick={handleInputChange}
                         placeholder="Type a message..."
-                        className="min-h-full w-full resize-none border-0 outline-0 placeholder:text-muted-foreground p-1.5"
+                        className="min-h-[36px] w-full resize-none border-0 outline-0 placeholder:text-muted-foreground p-1.5"
                       />
                     </FormControl>
                     <FormMessage />
@@ -451,7 +460,7 @@ const ChatInput = (props: Props) => {
         )}
 
         {filePreviews.length > 0 && (
-          <div className="flex flex-wrap gap-2 w-full">
+          <div className="flex flex-wrap gap-2 w-full absolute -top-24 left-0 p-2 bg-white rounded-lg shadow-lg ">
             {filePreviews.map((file, index) => {
               const isImage = file.file.type.startsWith("image/");
               const isVideo = file.file.type.startsWith("video/");

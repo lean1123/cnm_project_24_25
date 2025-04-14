@@ -1,7 +1,9 @@
 import api from "@/api/api";
 import { getSocket } from "@/lib/socket";
 import { Conversation, Message, MessageRequest, User } from "@/types";
+import { toast } from "sonner";
 import { create } from "zustand";
+import { useAuthStore } from "./useAuthStore";
 
 interface iConversationStore {
   conversations: Conversation[];
@@ -28,6 +30,13 @@ interface iConversationStore {
   removeTempMessage: (messageId: string) => void;
   subscribeToNewMessages: () => void;
   unsubscribeFromNewMessages: () => void;
+  forwardMessage: (originalMessageId: string, conversationIds: string[]) => void;
+  deleteMessage: (message: Message) => void;
+  revokeMessage: (message: Message) => void;
+  subscribeToDeleteMessage: () => void;
+  unsubscribeFromDeleteMessage: () => void;
+  subscribeToRevokeMessage: () => void;
+  unsubscribeFromRevokeMessage: () => void;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -215,6 +224,95 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     const socket = getSocket(); // Ensure socket is initialized
     if (socket) {
       socket.off("newMessage");
+    }
+  },
+  forwardMessage: async (originalMessageId: string, conversationIds: string[]) => {
+    try {
+      const response = await api.patch("/message/forward", {
+        originalMessageId,
+        conversationIds,
+      });
+      toast.success("Message forwarded successfully!");
+      console.log("Forwarded message:", response.data);
+    } catch (error) {
+      console.error("Failed to forward message:", error);
+      toast.error("Failed to forward message");
+    }
+  },
+  deleteMessage: async (message: Message) => {
+    try {
+      const response = await api.patch(`/message/${message._id}/revoke-self`);
+      // toast.success("Message deleted successfully!");
+      const user = useAuthStore.getState().user;
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === message._id ? { ...m, deletedFor: [user?._id] } : m
+        ),
+      }));
+      console.log("Deleted message:", response.data);
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+      toast.error("Failed to delete message");
+    }
+  },
+  revokeMessage: async (message: Message) => {
+    try {
+      const response = await api.patch(
+        `/message/${message._id}/revoke-both`
+      );
+      // toast.success("Message revoked successfully!");
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === message._id ? { ...m, isRevoked: true } : m
+        ),
+      }));
+      console.log("Revoked message:", response.data);
+    } catch (error) {
+      console.error("Failed to revoke message:", error);
+      toast.error("Failed to revoke message");
+    }
+  },
+  subscribeToDeleteMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.on("deleteMessage", (message: Message) => {
+        set((state) => ({
+          // messages: state.messages.filter((m) => m._id !== message._id),
+          // conversations: state.conversations.map((conversation) => {
+          //   if (conversation._id === message.conversation) {
+          //     return {
+          //       ...conversation,
+          //       lastMessage: null,
+          //     };
+          //   }
+          //   return conversation;
+          // }),
+        }));
+      });
+    }
+  },
+  unsubscribeFromDeleteMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.off("deleteMessage");
+    }
+  },
+  subscribeToRevokeMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.on("revokeMessage", (message: Message) => {
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m._id === message._id ? { ...m, isRevoked: true } : m
+          ),
+        }));
+      });
+    }
+  },
+  unsubscribeFromRevokeMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.off("revokeMessage");
     }
   },
 }));
