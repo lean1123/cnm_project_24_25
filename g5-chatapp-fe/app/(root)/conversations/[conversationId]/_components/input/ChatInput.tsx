@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useConversationStore } from "@/store/useConversationStore";
 import EmojiPicker from "emoji-picker-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { toast } from "sonner";
 
 type Props = {};
 
@@ -60,7 +61,7 @@ const ChatInput = (props: Props) => {
   const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const { user } = useAuthStore();
-  const { selectedConversation, addTempMessage, sendMessage } =
+  const { selectedConversation, addTempMessage, sendMessage, typing } =
     useConversationStore();
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -149,6 +150,7 @@ const ChatInput = (props: Props) => {
     const { value, selectionStart } = event.target;
     if (selectionStart !== null) {
       form.setValue("content", value);
+      typing(selectedConversation?._id || "");
     }
   };
 
@@ -160,6 +162,7 @@ const ChatInput = (props: Props) => {
         resolve(reader.result as string);
       };
       reader.readAsDataURL(file);
+      typing(selectedConversation?._id || "");
     });
   };
 
@@ -181,7 +184,7 @@ const ChatInput = (props: Props) => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      addFilesWithPreview(Array.from(files));
+      addFilesWithPreview(Array.from(files)).then(() => typing(selectedConversation?._id || ""));
     }
   };
 
@@ -277,7 +280,7 @@ const ChatInput = (props: Props) => {
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      addFilesWithPreview(Array.from(files));
+      addFilesWithPreview(Array.from(files)).then(() => typing(selectedConversation?._id || ""));
     }
   };
 

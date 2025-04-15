@@ -33,11 +33,14 @@ export class ContactService {
     });
 
     if (matchedContact && matchedContact.status !== Status.ACTIVE) {
-      return this.contactModel.findByIdAndUpdate(
-        matchedContact._id,
-        { status: Status.PENDING },
-        { new: true },
-      );
+      return this.contactModel
+        .findByIdAndUpdate(
+          matchedContact._id,
+          { status: Status.PENDING },
+          { new: true },
+        )
+        .populate('user', 'firstName lastName email avatar')
+        .populate('contact', 'firstName lastName email avatar');
     }
 
     const contactSchema = {
@@ -48,7 +51,7 @@ export class ContactService {
 
     const savedContact = await this.contactModel.create(contactSchema);
 
-    return savedContact;
+    return this.getContactById(savedContact._id as string);
   }
 
   async acceptContact(

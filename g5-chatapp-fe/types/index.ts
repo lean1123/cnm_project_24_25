@@ -99,3 +99,19 @@ export type UserUpdate = {
     gender: string;
     dob: string;
 }
+
+// 
+export type OngoingCallex = {
+    callId: string;
+    conversationId: string;
+    callType: "audio" | "video";
+    isCallActive: boolean;
+    isCallAccepted: boolean;
+    callStatus: string;
+    callDuration: number;
+}
+
+export type OngoingCall = {
+    sender: User;
+    isRinging: boolean;
+}

@@ -44,17 +44,17 @@ export function MessageOption({message, setIsDropdownOpen, setIsHovered} : Props
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 z-[999]">
         <DropdownMenuItem>
-          <Button variant={"link"} className="flex items-center gap-2 text-red-500 p-2" onClick={() => revokeMessage(message)}>
+          <button  className="flex items-center gap-2 text-red-500 " onClick={() => revokeMessage(message)}>
             <MessageCircleX className="size-4" />
             <span>Recall</span>
-          </Button>
+          </button>
         </DropdownMenuItem>
         <Separator/>
         <DropdownMenuItem>
-        <Button variant={"link"} className="flex items-center gap-2 text-red-500 p-2" onClick={() => deleteMessage(message)}>
+        <button  className="flex items-center gap-2 text-red-500 " onClick={() => deleteMessage(message)}>
             <Trash2 className="size-4" />
             <span>Delete for me only</span>
-          </Button>
+          </button>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

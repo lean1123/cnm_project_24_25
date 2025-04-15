@@ -17,6 +17,8 @@ import {
   Repeat,
   MessageSquareText,
   Forward,
+  CheckCheck,
+  Heart,
 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -38,6 +40,7 @@ type Props = {
   type: string;
   isTemp?: boolean;
   isError?: boolean;
+  isLastMessage?: boolean;
 };
 
 const Message = ({
@@ -52,6 +55,7 @@ const Message = ({
   isTemp,
   isError,
   message,
+  isLastMessage,
 }: Props) => {
   const formatTime = (timeStamp: number) => {
     const date = new Date(timeStamp);
@@ -121,7 +125,7 @@ const Message = ({
   const [isHovered, setIsHovered] = useState(false);
 
   // check message is deleted
-  const {user} = useAuthStore();
+  const { user } = useAuthStore();
 
   const checkDeletedMessage = (message: Message | null) => {
     if (!message) return false;
@@ -129,21 +133,24 @@ const Message = ({
       return message.deletedFor.includes(user?._id);
     }
     return false;
-  }
+  };
 
   const isDeleted = checkDeletedMessage(message);
   // const [isHovered, setIsHovered] = useState(false);
-const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-const handleMouseEnter = () => setIsHovered(true);
-const handleMouseLeave = () => {
-  if (!isDropdownOpen) setIsHovered(false);
-};
-
+  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseLeave = () => {
+    if (!isDropdownOpen) setIsHovered(false);
+  };
 
   return (
-    <div className={cn("flex items-end gap-2", { "flex-row-reverse": fromCurrentUser })}>
-            <Avatar
+    <div
+      className={cn("flex items-end gap-2", {
+        "flex-row-reverse": fromCurrentUser,
+      })}
+    >
+      <Avatar
         className={cn("relative w-8 h-8 flex-shrink-0", {
           // "order-2": fromCurrentUser,
           // "order-1": !fromCurrentUser,
@@ -154,133 +161,135 @@ const handleMouseLeave = () => {
         <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
       </Avatar>
       {/* chat content */}
-      <div className="relative group"
-              // onMouseEnter={() => setIsHovered(true)}
-              // onMouseLeave={() => setIsHovered(false)}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-      >
-
-
       <div
-        className={cn("group", {
-          // "order-1 items-end": fromCurrentUser,
-          // "order-2 items-start": !fromCurrentUser,
-        })}
-
+        className="relative group"
+        // onMouseEnter={() => setIsHovered(true)}
+        // onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
-        {message && message.forwardFrom && (
-          <div
-            className={cn(
-              "absolute flex gap-2 z-10 text-foreground text-xs",
-              fromCurrentUser ? "-top-8 right-1" : "-top-8 left-1"
-            )}
-          >
-            <Forward className="size-4" /> Message is forwarded
-          </div>
-        )}
-
         <div
-          className={cn("relative px-4 py-2 rounded-lg", {
-            "bg-secondary text-secondary-foreground": fromCurrentUser,
-            "bg-muted text-mute-foreground": !fromCurrentUser,
-            "rounded-br-none": !lastByUser && fromCurrentUser,
-            "rounded-bl-none": !lastByUser && !fromCurrentUser,
+          className={cn("group", {
+            // "order-1 items-end": fromCurrentUser,
+            // "order-2 items-start": !fromCurrentUser,
           })}
         >
-          {!message?.isRevoked && type === "TEXT" ? (
-            <p className="text-wrap break-words whitespace-pre-wrap">
-              {content}
-            </p>
-          ) : null}
-          {!message?.isRevoked && type === "IMAGE" && file && (
-            <ImageGallery images={file} sizes={imageSizes} content={content} />
-          )}
-          {!message?.isRevoked && type === "FILE" && file && (
-            <div className="flex flex-col gap-2">
-              {file.map((file, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  {getFileIcon(file.fileName)}
-                  <Button
-                    key={index}
-                    onClick={() => {
-                      const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
-                        file.url
-                      )}`;
-                      window.open(viewerUrl, "_blank", "noopener,noreferrer");
-                    }}
-                    variant={"link"}
-                    className="flex items-center gap-2 p-2 transition-all max-w-[440px] text-left"
-                  >
-                    <span className="text-sm break-words line-clamp-2 text-foreground font-semibold">
-                      {file.fileName}
-                    </span>
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const response = await axios.get(file.url, {
-                          responseType: "blob",
-                          headers: {},
-                        });
-
-                        if (response.status !== 200) {
-                          console.error("Failed to download file");
-                          return;
-                        }
-
-                        const blob = response.data; // Đã là Blob rồi
-                        const url = window.URL.createObjectURL(blob);
-
-                        const link = document.createElement("a");
-                        link.href = url;
-                        link.download = file.fileName;
-                        document.body.appendChild(link);
-                        link.click();
-                        link.remove();
-
-                        window.URL.revokeObjectURL(url);
-                      } catch (error) {
-                        console.error("Download error", error);
-                        toast.error(
-                          "Tải xuống không thành công. Vui lòng thử lại."
-                        );
-                      }
-                    }}
-                    className="text-sm text-gray-600 hover:text-blue-600"
-                    title="Tải xuống"
-                    variant="link"
-                  >
-                    <Download className="size-10" />
-                  </Button>
-                </div>
-              ))}
-              {content && (
-                <p className="text-wrap break-words whitespace-pre-wrap mt-2">
-                  {content}
-                </p>
+          {message && message.forwardFrom && (
+            <div
+              className={cn(
+                "flex gap-2 z-10 text-foreground text-xs",
+                fromCurrentUser ? "-top-8 right-1" : "-top-8 left-1"
               )}
+            >
+              <Forward className="size-4" /> Message is forwarded
             </div>
           )}
-          {!message?.isRevoked && type === "VIDEO" && file && (
-            <div className="flex flex-col gap-2">
-              {file.map((video, index) => (
-                <div key={index} className="">
-                  <video
-                    key={video.url}
-                    controls
-                    muted
-                    className="rounded-lg max-w-full max-h-96 object-contain bg-black"
-                  >
-                    <source
-                      src={video.url}
-                      type={`video/${video.url.split(".").pop()}`}
-                    />
-                    Your browser does not support the video tag.
-                  </video>
 
-                  {/* Download button */}
-                  {/* <div className="bottom-2 right-2 transition-opacity">
+          <div
+            className={cn("relative px-4 py-2 rounded-lg", {
+              "bg-secondary text-secondary-foreground": fromCurrentUser,
+              "bg-muted text-mute-foreground": !fromCurrentUser,
+              "rounded-br-none": !lastByUser && fromCurrentUser,
+              "rounded-bl-none": !lastByUser && !fromCurrentUser,
+            })}
+          >
+            {!message?.isRevoked && type === "TEXT" ? (
+              <p className="text-wrap break-words whitespace-pre-wrap">
+                {content}
+              </p>
+            ) : null}
+            {!message?.isRevoked && type === "IMAGE" && file && (
+              <ImageGallery
+                images={file}
+                sizes={imageSizes}
+                content={content}
+              />
+            )}
+            {!message?.isRevoked && type === "FILE" && file && (
+              <div className="flex flex-col gap-2">
+                {file.map((file, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    {getFileIcon(file.fileName)}
+                    <Button
+                      key={index}
+                      onClick={() => {
+                        const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
+                          file.url
+                        )}`;
+                        window.open(viewerUrl, "_blank", "noopener,noreferrer");
+                      }}
+                      variant={"link"}
+                      className="flex items-center gap-2 p-2 transition-all max-w-[440px] text-left"
+                    >
+                      <span className="text-sm break-words line-clamp-2 text-foreground font-semibold">
+                        {file.fileName}
+                      </span>
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const response = await axios.get(file.url, {
+                            responseType: "blob",
+                            headers: {},
+                          });
+
+                          if (response.status !== 200) {
+                            console.error("Failed to download file");
+                            return;
+                          }
+
+                          const blob = response.data; // Đã là Blob rồi
+                          const url = window.URL.createObjectURL(blob);
+
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = file.fileName;
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+
+                          window.URL.revokeObjectURL(url);
+                        } catch (error) {
+                          console.error("Download error", error);
+                          toast.error(
+                            "Tải xuống không thành công. Vui lòng thử lại."
+                          );
+                        }
+                      }}
+                      className="text-sm text-gray-600 hover:text-blue-600"
+                      title="Tải xuống"
+                      variant="link"
+                    >
+                      <Download className="size-10" />
+                    </Button>
+                  </div>
+                ))}
+                {content && (
+                  <p className="text-wrap break-words whitespace-pre-wrap mt-2">
+                    {content}
+                  </p>
+                )}
+              </div>
+            )}
+            {!message?.isRevoked && type === "VIDEO" && file && (
+              <div className="flex flex-col gap-2">
+                {file.map((video, index) => (
+                  <div key={index} className="">
+                    <video
+                      key={video.url}
+                      controls
+                      muted
+                      className="rounded-lg max-w-full max-h-96 object-contain bg-black"
+                    >
+                      <source
+                        src={video.url}
+                        type={`video/${video.url.split(".").pop()}`}
+                      />
+                      Your browser does not support the video tag.
+                    </video>
+
+                    {/* Download button */}
+                    {/* <div className="bottom-2 right-2 transition-opacity">
                     <Button
                       onClick={async () => {
                         try {
@@ -313,55 +322,84 @@ const handleMouseLeave = () => {
                       <Download className="size-4" />
                     </Button>
                   </div> */}
-                </div>
-              ))}
-              {content && (
-                <p className="text-wrap break-words whitespace-pre-wrap mt-2">
-                  {content}
-                </p>
-              )}
+                  </div>
+                ))}
+                {content && (
+                  <p className="text-wrap break-words whitespace-pre-wrap mt-2">
+                    {content}
+                  </p>
+                )}
+              </div>
+            )}
+            {message && message?.isRevoked && (
+              <div className="flex gap-2 text-gray-600">
+                Message is recalled
+              </div>
+            )}
+            <p
+              className={cn("text-xs flex w-full my-1", {
+                "text-secondary-foreground justify-end": fromCurrentUser,
+                "text-muted-foreground justify-start": !fromCurrentUser,
+              })}
+            >
+              {formatTime(new Date(createdAt).getTime())}
+            </p>
+            {isLastMessage && (
+              <p className="absolute -bottom-4 right-1 text-muted-foreground flex w-full justify-end text-xs">
+                <CheckCheck className="size-4" /> received
+              </p>
+            )}
+          </div>
+          {isTemp && !isError && (
+            <p className="text-xs text-gray-500 italic">Sending...</p>
+          )}
+          {isTemp && isError && (
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-red-500 italic">Error</p>
+              <Button
+                onClick={() => toast.error("Đã xảy ra lỗi")}
+                variant="ghost"
+                size="icon"
+                className="rounded-full shadow-lg"
+              >
+                <Repeat className="size-2" />
+              </Button>
             </div>
           )}
-          {message && message?.isRevoked && (
-            <div className="flex gap-2 text-gray-600">
-               Message is recalled
-            </div>
-          )}
-          <p
-            className={cn("text-xs flex w-full my-1", {
-              "text-secondary-foreground justify-end": fromCurrentUser,
-              "text-muted-foreground justify-start": !fromCurrentUser,
-            })}
-          >
-            {formatTime(new Date(createdAt).getTime())}
-          </p>
         </div>
-        {isTemp && !isError && (
-          <p className="text-xs text-gray-500 italic">Sending...</p>
-        )}
-        {isTemp && isError && (
-          <div className="flex items-center gap-2">
-            <p className="text-xs text-red-500 italic">Error</p>
+
+        {isHovered && (
+          <div
+            className={cn(
+              "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+              {
+                "right-auto left-2": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
+                "right-2": !fromCurrentUser, // Hiển thị bên phải nếu không phải user hiện tại
+              }
+            )}
+          >
             <Button
-              onClick={() => toast.error("Đã xảy ra lỗi")}
               variant="ghost"
               size="icon"
-              className="rounded-full shadow-lg"
+              className="rounded-full size-4 bg-background shadow-sm hover:bg-muted"
+              onClick={(e) => {
+                e.stopPropagation();
+                // Handle reply logic
+              }}
             >
-              <Repeat className="size-2" />
+              <Heart className="size-4" />
             </Button>
           </div>
         )}
-      </div>
 
-      {isHovered && (
+        {isHovered && (
           <div
-          className={cn(
-            "absolute -right-[110px] bottom-0 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
-            {
-              "right-auto -left-[110px]": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
-            }
-          )}
+            className={cn(
+              "absolute -right-[110px] bottom-0 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+              {
+                "right-auto -left-[110px]": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
+              }
+            )}
           >
             <Button
               variant="ghost"
@@ -375,10 +413,14 @@ const handleMouseLeave = () => {
               <MessageSquareText className="size-4" />
             </Button>
             <ForwardMessageDialog messageToForward={message} />
-            <MessageOption message={message!} setIsDropdownOpen={setIsDropdownOpen} setIsHovered={setIsHovered}/>
+            <MessageOption
+              message={message!}
+              setIsDropdownOpen={setIsDropdownOpen}
+              setIsHovered={setIsHovered}
+            />
           </div>
         )}
-              </div>
+      </div>
     </div>
   );
 };

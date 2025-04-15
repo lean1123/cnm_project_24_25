@@ -112,6 +112,7 @@ export class ConversationService {
       .find({
         members: new Types.ObjectId(userPayload._id.toString()),
       })
+      .sort({ updatedAt: -1 })
       .populate('members', 'firstName lastName email avatar')
       .populate('admin', 'firstName lastName email avatar')
       .populate({

@@ -22,7 +22,7 @@ type Props = {
 };
 
 const ForwardMessageDialog = ({ messageToForward }: Props) => {
-  const { getConversations, conversations, forwardMessage } = useConversationStore();
+  const { getConversations, conversations, forwardMessage, selectedConversation } = useConversationStore();
   const [inputValue, setInputValue] = React.useState("");
   const { user } = useAuthStore();
   const [selectedConversationId, setSelectedConversationId] = useState<
@@ -43,15 +43,22 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
   };
 
   const filterConversations = () => {
-    if (inputValue.length === 0) {
-      return conversations;
-    }
-    const filteredConversations = conversations.filter((conversation) => {
+    return conversations.filter((conversation) => {
+      // Bỏ qua cuộc trò chuyện đang được chọn
+      if (conversation._id === selectedConversation?._id) {
+        return false;
+      }
+  
+      // Nếu không có input, trả về tất cả trừ selectedConversation
+      if (inputValue.length === 0) {
+        return true;
+      }
+  
       const memberName = getMemberName(conversation).toLowerCase();
       return memberName.includes(inputValue.toLowerCase());
     });
-    return filteredConversations;
   };
+  
 
   const filteredConversations = filterConversations();
 
