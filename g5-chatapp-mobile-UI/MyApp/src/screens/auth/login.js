@@ -15,13 +15,15 @@ import NotificationModal from "../../components/CustomModal";
 import { signIn } from "../../services/auth/authService";
 import { validateSignIn } from "../../utils/validators";
 import { CommonActions } from "@react-navigation/native";
-import { initSocket } from '../../services/socket';
+import { initSocket } from "../../services/socket";
+import useAuthStore from "../../store/useAuthStore";
 
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
+  const { setUser } = useAuthStore();
 
   const handleSignIn = async () => {
     // Validate form
@@ -47,7 +49,7 @@ const SignInScreen = ({ navigation }) => {
           phone: result.user.phone,
           status: result.user.status,
           isOnline: true,
-          token: result.token
+          token: result.token,
         };
 
         // Store user data in AsyncStorage
@@ -70,7 +72,7 @@ const SignInScreen = ({ navigation }) => {
 
         // Initialize socket connection
         await initSocket(result.user._id);
-        
+
         // Navigate after showing modal
         setTimeout(() => {
           setModalVisible(false);
@@ -88,7 +90,9 @@ const SignInScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error("Sign-in error:", error);
-      setModalMessage(error.message || "An error occurred. Please try again later.");
+      setModalMessage(
+        error.message || "An error occurred. Please try again later."
+      );
       setModalVisible(true);
     }
   };
@@ -115,7 +119,7 @@ const SignInScreen = ({ navigation }) => {
             onChangeText={setPassword}
           />
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.forgotPasswordButton}
             onPress={() => navigation.navigate("ForgotPasswordScreen")}
           >
@@ -126,16 +130,12 @@ const SignInScreen = ({ navigation }) => {
             <Text style={styles.buttonText}>Login</Text>
           </TouchableOpacity>
 
-          
-
-          <TouchableOpacity onPress={() => navigation.navigate("SignUpScreen")} >
+          <TouchableOpacity onPress={() => navigation.navigate("SignUpScreen")}>
             <Text style={styles.footerText}>
               Don't have an account?
               <Text style={{ fontWeight: "bold" }}> Register</Text>
             </Text>
           </TouchableOpacity>
-          
-          
         </View>
       </ScrollView>
 

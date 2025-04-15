@@ -238,8 +238,10 @@ export class MessageService {
     const originalMessage = await this.messageModel.findById(
       messageForwardationDto.originalMessageId,
     );
-    if (!originalMessage) {
-      throw new NotFoundException('Original message not found');
+    if (!originalMessage || originalMessage.isRevoked) {
+      throw new NotFoundException(
+        'Original message not found or has been revoked',
+      );
     }
 
     const sender = await this.userService.findById(userPayload._id);

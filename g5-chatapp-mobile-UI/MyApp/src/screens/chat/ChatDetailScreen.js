@@ -15,6 +15,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from "react-native";
+import { Video } from "expo-av";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -28,7 +29,8 @@ import { getSocket } from "../../services/socket";
 import axiosInstance from "../../config/axiosInstance";
 import { format } from "date-fns";
 import ChatOptions from "../chat/components/ChatOptions";
-import { chatService } from '../../services/chat.service';
+import { chatService } from "../../services/chat.service";
+import useAuthStore from "../../store/useAuthStore";
 
 const ChatDetailScreen = ({ navigation, route }) => {
   const { conversation } = route.params;
@@ -50,6 +52,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [friends, setFriends] = useState([]);
   const [selectedFriends, setSelectedFriends] = useState([]);
+
+  const [authenticated, setAuthenticated] = useState("");
 
   const handleReturn = () => {
     navigation.navigate("Home_Chat");
@@ -156,6 +160,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
 
           await fetchMessages();
+          const userId = await AsyncStorage.getItem("userId");
+
+          setAuthenticated(userId);
         }
       } catch (error) {
         console.error("Error initializing chat:", error);
@@ -254,7 +261,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
       ...message,
       _id: tempId,
     };
-    setTempMessages(prev => [...prev, tempMessage]);
+    setTempMessages((prev) => [...prev, tempMessage]);
   };
 
   const removeTempMessage = (messageId) => {
@@ -268,7 +275,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const sendMessage = async (messageData = null) => {
     if (
-      (!newMessage.trim() && !messageData?.files?.length && !messageData?.content) ||
+      (!newMessage.trim() &&
+        !messageData?.files?.length &&
+        !messageData?.content) ||
       !socket ||
       !currentUser ||
       !conversation?._id
@@ -285,8 +294,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
       messageType = "IMAGE";
     }
 
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+    const tempId = `temp-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
     const tempMessage = {
       _id: tempId,
       content,
@@ -294,14 +305,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
         _id: currentUser._id,
         avatar: currentUser.avatar,
         firstName: currentUser.firstName,
-        lastName: currentUser.lastName
+        lastName: currentUser.lastName,
       },
       conversation: conversation._id,
       createdAt: new Date().toISOString(),
       status: "sending",
       type: messageType,
       files: files.map((file) => ({
-        fileName: file.name || file.fileName || file.uri.split('/').pop(),
+        fileName: file.name || file.fileName || file.uri.split("/").pop(),
         url: file.uri,
       })),
     };
@@ -312,10 +323,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
     try {
       let response;
       if (files.length > 0) {
-        const preparedFiles = files.map(file => ({
+        const preparedFiles = files.map((file) => ({
           uri: file.uri,
-          type: file.type || 'image/jpeg',
-          name: file.name || file.fileName || file.uri.split('/').pop(),
+          type: file.type || "image/jpeg",
+          name: file.name || file.fileName || file.uri.split("/").pop(),
         }));
 
         response = await chatService.sendMessageWithFiles(
@@ -328,30 +339,27 @@ const ChatDetailScreen = ({ navigation, route }) => {
           preparedFiles
         );
       } else {
-        response = await chatService.sendMessageWithFile(
-          conversation._id,
-          {
-            content,
-            type: "TEXT",
-            sender: currentUser._id,
-          }
-        );
+        response = await chatService.sendMessageWithFile(conversation._id, {
+          content,
+          type: "TEXT",
+          sender: currentUser._id,
+        });
       }
 
       if (response.success) {
-        setTempMessages(prev => prev.filter(msg => msg._id !== tempId));
-        
+        setTempMessages((prev) => prev.filter((msg) => msg._id !== tempId));
+
         const newMessage = {
           ...response.data,
           sender: {
             _id: currentUser._id,
             avatar: currentUser.avatar,
             firstName: currentUser.firstName,
-            lastName: currentUser.lastName
-          }
+            lastName: currentUser.lastName,
+          },
         };
-        
-        setMessages(prevMessages => [...prevMessages, newMessage]);
+
+        // setMessages((prevMessages) => [...prevMessages, newMessage]);
 
         socket.emit("sendMessage", {
           message: newMessage,
@@ -363,35 +371,34 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      setTempMessages(prev => prev.filter(msg => msg._id !== tempId));
+      setTempMessages((prev) => prev.filter((msg) => msg._id !== tempId));
       alert("Không thể gửi tin nhắn. Vui lòng thử lại.");
     }
   };
-  
 
   const handleSubmitEditing = () => {
     if (newMessage.trim()) {
       sendMessage();
     }
   };
-  
+
   const handlePressSend = () => {
     if (newMessage.trim()) {
       sendMessage();
     }
   };
-  
 
   const handlePressLike = () => {
     sendMessage({ content: "👍" });
   };
-  
 
   const handleCamera = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        alert("Xin lỗi, chúng tôi cần quyền truy cập camera để thực hiện điều này!");
+        alert(
+          "Xin lỗi, chúng tôi cần quyền truy cập camera để thực hiện điều này!"
+        );
         return;
       }
 
@@ -403,16 +410,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        
+
         const preparedFile = {
           uri: asset.uri,
-          type: asset.type || 'image/jpeg',
+          type: asset.type || "image/jpeg",
           name: asset.fileName || `photo-${Date.now()}.jpg`,
-          size: asset.fileSize || asset.size || 0
+          size: asset.fileSize || asset.size || 0,
         };
-        
+
         console.log("Captured image for sending:", preparedFile);
-        
+
         await sendMessage({ files: [preparedFile] });
       }
     } catch (err) {
@@ -420,13 +427,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
       alert("Không thể mở camera. Vui lòng thử lại.");
     }
   };
-  
 
   const handleGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        alert("Xin lỗi, chúng tôi cần quyền truy cập thư viện ảnh để thực hiện điều này!");
+        alert(
+          "Xin lỗi, chúng tôi cần quyền truy cập thư viện ảnh để thực hiện điều này!"
+        );
         return;
       }
 
@@ -438,13 +447,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const preparedFiles = result.assets.map(asset => ({
+        const preparedFiles = result.assets.map((asset) => ({
           uri: asset.uri,
-          type: asset.type || 'image/jpeg',
+          type: asset.type || "image/jpeg",
           name: asset.fileName || `image-${Date.now()}-${Math.random()}.jpg`,
-          size: asset.fileSize || asset.size || 0
+          size: asset.fileSize || asset.size || 0,
         }));
-        
+
         console.log("Prepared files for sending:", preparedFiles);
         await sendMessage({ files: preparedFiles });
       }
@@ -453,7 +462,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       alert("Có lỗi khi truy cập thư viện ảnh. Vui lòng thử lại.");
     }
   };
-  
 
   const handleDocument = async () => {
     try {
@@ -462,7 +470,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         multiple: true,
         copyToCacheDirectory: true,
       });
-  
+
       if (
         result.type === "success" ||
         (Array.isArray(result.assets) && result.assets.length > 0)
@@ -475,7 +483,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       alert("Error selecting documents");
     }
   };
-  
 
   const handleLocation = async () => {
     try {
@@ -523,14 +530,20 @@ const ChatDetailScreen = ({ navigation, route }) => {
               {item.files.map((file, index) => (
                 <TouchableOpacity
                   key={file._id || index}
-                  onPress={() => navigation.navigate("ImageViewer", { uri: file.url })}
+                  onPress={() =>
+                    navigation.navigate("ImageViewer", { uri: file.url })
+                  }
                   style={[
                     styles.gridImageContainer,
-                    item.files.length === 3 && index === 2 && styles.gridImageLast,
-                    item.files.length >= 4 && index === 3 && styles.gridImageLast,
-                    item.files.length === 2 && { width: '50%' },
-                    item.files.length === 3 && { width: '33.33%' },
-                    item.files.length >= 4 && { width: '50%' },
+                    item.files.length === 3 &&
+                      index === 2 &&
+                      styles.gridImageLast,
+                    item.files.length >= 4 &&
+                      index === 3 &&
+                      styles.gridImageLast,
+                    item.files.length === 2 && { width: "50%" },
+                    item.files.length === 3 && { width: "33.33%" },
+                    item.files.length >= 4 && { width: "50%" },
                   ]}
                 >
                   <Image
@@ -553,7 +566,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
         return (
           <TouchableOpacity
-            onPress={() => navigation.navigate("ImageViewer", { uri: item.files[0].url })}
+            onPress={() =>
+              navigation.navigate("ImageViewer", { uri: item.files[0].url })
+            }
             style={styles.mediaContainer}
           >
             <Image
@@ -568,27 +583,39 @@ const ChatDetailScreen = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         );
-      case "video":
+      // case "video":
+      //   return (
+      //     <TouchableOpacity
+      //       onPress={() =>
+      //         navigation.navigate("VideoPlayer", { uri: item.files[0].url })
+      //       }
+      //       style={styles.mediaContainer}
+      //     >
+      //       <Image
+      //         source={{ uri: item.thumbnail || item.content }}
+      //         style={styles.videoThumbnail}
+      //       />
+      //       <View style={styles.playButton}>
+      //         <Ionicons name="play" size={24} color="white" />
+      //       </View>
+      //       {isTemp && item.status === "sending" && (
+      //         <View style={styles.uploadingOverlay}>
+      //           <ActivityIndicator color="#fff" />
+      //         </View>
+      //       )}
+      //     </TouchableOpacity>
+      //   );
+      case "VIDEO":
+        console.log("VIDEO URL:", item.files[0]?.url);
+
         return (
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("VideoPlayer", { uri: item.content })
-            }
-            style={styles.mediaContainer}
-          >
-            <Image
-              source={{ uri: item.thumbnail || item.content }}
-              style={styles.videoThumbnail}
-            />
-            <View style={styles.playButton}>
-              <Ionicons name="play" size={24} color="white" />
-            </View>
-            {isTemp && item.status === "sending" && (
-              <View style={styles.uploadingOverlay}>
-                <ActivityIndicator color="#fff" />
-              </View>
-            )}
-          </TouchableOpacity>
+          <Video
+            source={{ uri: item.files[0]?.url }}
+            style={styles.videoMessage}
+            useNativeControls
+            resizeMode="CONTAIN"
+            isLooping
+          />
         );
       case "FILE":
         const file = item.files && item.files[0];
@@ -615,10 +642,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 color={isMyMessage ? "white" : "#666"}
               />
               <Text
-                style={[
-                  styles.fileName,
-                  isMyMessage && styles.userMessageText,
-                ]}
+                style={[styles.fileName, isMyMessage && styles.userMessageText]}
                 numberOfLines={1}
               >
                 {fileName || "Unnamed File"}
@@ -651,7 +675,26 @@ const ChatDetailScreen = ({ navigation, route }) => {
             />
           </TouchableOpacity>
         );
+
       default:
+        if (item.isRevoked) {
+          return (
+            <Text
+              style={[
+                styles.messageText,
+                isMyMessage ? styles.userMessageText : styles.friendMessageText,
+                { fontStyle: "italic", color: "#888" }, // ví dụ: style cho tin bị thu hồi
+              ]}
+            >
+              Tin nhắn đã được thu hồi
+            </Text>
+          );
+        }
+
+        if (item.deletedFor && item.deletedFor.includes(authenticated)) {
+          return <></>;
+        }
+
         return (
           <Text
             style={[
@@ -671,24 +714,31 @@ const ChatDetailScreen = ({ navigation, route }) => {
       return null;
     }
 
+    // Ẩn tin nhắn nếu user hiện tại đã xóa
+    if (item.deletedFor?.includes(authenticated)) {
+      return null;
+    }
+
     const isMyMessage = currentUser && item.sender._id === currentUser._id;
     const isTemp = item._id && item._id.startsWith("temp-");
-    
+
     const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
     const defaultAvatar = require("../../../assets/chat/man.png");
 
     return (
-      <View style={[
-        styles.messageRow,
-        isMyMessage ? styles.userMessageRow : styles.friendMessageRow
-      ]}>
+      <View
+        style={[
+          styles.messageRow,
+          isMyMessage ? styles.userMessageRow : styles.friendMessageRow,
+        ]}
+      >
         {!isMyMessage && (
           <Image
             source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
             style={styles.messageAvatar}
           />
         )}
-        
+
         <TouchableOpacity
           style={[
             styles.messageContainer,
@@ -703,9 +753,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
         >
           <View style={styles.messageContent}>
             {renderMessageContent(item)}
+
             <View style={styles.messageFooter}>
               <Text style={styles.messageTime}>
-                {item.createdAt ? format(new Date(item.createdAt), "HH:mm") : ""}
+                {item.createdAt
+                  ? format(new Date(item.createdAt), "HH:mm")
+                  : ""}
               </Text>
               {isTemp && (
                 <View style={styles.messageStatus}>
@@ -796,7 +849,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
         case "FILE":
           return (
             <View style={styles.pinnedFileContainer}>
-              <Ionicons name={getFileIcon(pinnedMessage.files[0]?.fileName)} size={16} color="#666" />
+              <Ionicons
+                name={getFileIcon(pinnedMessage.files[0]?.fileName)}
+                size={16}
+                color="#666"
+              />
               <Text style={styles.pinnedFileName} numberOfLines={1}>
                 {pinnedMessage.files[0]?.fileName || "File"}
               </Text>
@@ -814,7 +871,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
     return (
       <View style={styles.pinnedMessageContainer}>
         <View style={styles.pinnedMessageContent}>
-          <Ionicons name="pin" size={16} color="#666" style={styles.pinnedIcon} />
+          <Ionicons
+            name="pin"
+            size={16}
+            color="#666"
+            style={styles.pinnedIcon}
+          />
           {renderPinnedContent()}
         </View>
         <TouchableOpacity
@@ -838,23 +900,25 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const handleMessageForward = async (message) => {
     try {
-      console.log('Selected message for forwarding:', message);
+      console.log("Selected message for forwarding:", message);
       setSelectedMessage(message);
-      
+
       const response = await chatService.getMyConversations();
-      console.log('Conversations response:', response);
-      
+      console.log("Conversations response:", response);
+
       if (response.data) {
         // Filter out current conversation and ensure conversation has required data
         const availableConversations = response.data
-          .filter(conv => conv._id !== conversation._id)
-          .map(conv => {
+          .filter((conv) => conv._id !== conversation._id)
+          .map((conv) => {
             let name = conv.name;
             let avatar = conv.avatar;
 
             // If no name/avatar, try to get from members
             if ((!name || !avatar) && conv.members && conv.members.length > 0) {
-              const otherMember = conv.members.find(m => m._id !== currentUser._id);
+              const otherMember = conv.members.find(
+                (m) => m._id !== currentUser._id
+              );
               if (otherMember) {
                 name = `${otherMember.firstName} ${otherMember.lastName}`;
                 avatar = otherMember.avatar;
@@ -863,19 +927,22 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
             return {
               _id: conv._id,
-              name: name || 'Người dùng',
-              avatar: avatar
+              name: name || "Người dùng",
+              avatar: avatar,
             };
           })
-          .filter(conv => conv.name !== 'Người dùng');
-        
-        console.log('Available conversations for forwarding:', availableConversations);
-        
+          .filter((conv) => conv.name !== "Người dùng");
+
+        console.log(
+          "Available conversations for forwarding:",
+          availableConversations
+        );
+
         if (availableConversations.length === 0) {
-          alert('Không có cuộc trò chuyện nào để chuyển tiếp');
+          alert("Không có cuộc trò chuyện nào để chuyển tiếp");
           return;
         }
-        
+
         setFriends(availableConversations);
         setShowForwardModal(true);
         setShowMessageOptions(false);
@@ -894,13 +961,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
 
       if (!selectedMessage || !selectedMessage._id) {
-        console.error('No message selected for forwarding');
+        console.error("No message selected for forwarding");
         alert("Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.");
         return;
       }
 
       if (!currentUser || !currentUser._id) {
-        console.error('No current user');
+        console.error("No current user");
         alert("Vui lòng đăng nhập lại.");
         return;
       }
@@ -908,17 +975,17 @@ const ChatDetailScreen = ({ navigation, route }) => {
       // Format dữ liệu theo cấu trúc CSDL
       const forwardData = {
         originalMessageId: selectedMessage._id,
-        conversationIds: selectedFriends.map(f => f._id),
+        conversationIds: selectedFriends.map((f) => f._id),
         sender: currentUser._id,
         type: selectedMessage.type || "TEXT",
         content: selectedMessage.content,
-        files: selectedMessage.files || []
+        files: selectedMessage.files || [],
       };
 
-      console.log('Sending forward request with data:', forwardData);
+      console.log("Sending forward request with data:", forwardData);
 
       const response = await chatService.forwardMessage(forwardData);
-      console.log('Forward response:', response);
+      console.log("Forward response:", response);
 
       if (response.success) {
         setShowForwardModal(false);
@@ -929,7 +996,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
     } catch (error) {
       console.error("Error forwarding message:", error);
-      alert(error.message || "Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.");
+      alert(
+        error.message || "Không thể chuyển tiếp tin nhắn. Vui lòng thử lại."
+      );
     } finally {
       setShowForwardModal(false);
       setSelectedFriends([]);
@@ -939,24 +1008,29 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const handleMessageDelete = async (message) => {
     try {
       if (!message || !message._id) {
-        throw new Error('Invalid message');
+        throw new Error("Invalid message");
       }
 
-      const response = await chatService.revokeMessageBoth(message._id, conversation._id);
-      
-      setMessages((prevMessages) => 
-        prevMessages.filter((msg) => msg._id !== message._id)
+      const response = await chatService.revokeMessageBoth(
+        message._id,
+        conversation._id
       );
-      
+
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === message._id ? { ...msg, isRevoked: true } : msg
+        )
+      );
+
       socket.emit("revokeMessage", {
         messageId: message._id,
         conversationId: conversation._id,
       });
-      
+
       setShowMessageOptions(false);
     } catch (error) {
-      console.error('Error deleting message:', error);
-      alert('Không thể xóa tin nhắn. Vui lòng thử lại.');
+      console.error("Error deleting message:", error);
+      alert("Không thể xóa tin nhắn. Vui lòng thử lại.");
     }
   };
 
@@ -976,11 +1050,39 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   }, [socket, conversation]);
 
+  const handleDeleteForMe = async (message) => {
+    try {
+      if (!message || !message._id) {
+        throw new Error("Invalid message");
+      }
+
+      const response = await chatService.deleteMessageForMe(message._id);
+
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg._id === message._id
+            ? { ...msg, deletedFor: response.data.deletedFor }
+            : msg
+        )
+      );
+
+      socket.emit("revokeMessage", {
+        messageId: message._id,
+        conversationId: conversation._id,
+      });
+
+      setShowMessageOptions(false);
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      alert("Không thể xóa tin nhắn. Vui lòng thử lại.");
+    }
+  };
+
   const toggleSelectFriend = (friend) => {
-    setSelectedFriends(prev => {
-      const isSelected = prev.some(f => f._id === friend._id);
+    setSelectedFriends((prev) => {
+      const isSelected = prev.some((f) => f._id === friend._id);
       if (isSelected) {
-        return prev.filter(f => f._id !== friend._id);
+        return prev.filter((f) => f._id !== friend._id);
       } else {
         return [...prev, friend];
       }
@@ -989,7 +1091,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const ForwardModal = () => {
     if (!showForwardModal) return null;
-    
+
     return (
       <Modal
         visible={true}
@@ -1004,7 +1106,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           <View style={styles.forwardModalContent}>
             <View style={styles.forwardModalHeader}>
               <Text style={styles.forwardModalTitle}>Chuyển tiếp tin nhắn</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   setShowForwardModal(false);
                   setSelectedFriends([]);
@@ -1023,7 +1125,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   <TouchableOpacity
                     style={[
                       styles.friendItem,
-                      selectedFriends.some(f => f._id === item._id) && styles.friendItemSelected
+                      selectedFriends.some((f) => f._id === item._id) &&
+                        styles.friendItemSelected,
                     ]}
                     onPress={() => toggleSelectFriend(item)}
                   >
@@ -1038,8 +1141,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     <Text style={styles.friendName}>
                       {item.name || "Người dùng"}
                     </Text>
-                    {selectedFriends.some(f => f._id === item._id) && (
-                      <Ionicons name="checkmark-circle" size={24} color="#0099ff" />
+                    {selectedFriends.some((f) => f._id === item._id) && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={24}
+                        color="#0099ff"
+                      />
                     )}
                   </TouchableOpacity>
                 )}
@@ -1047,14 +1154,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
               />
             ) : (
               <View style={styles.noFriendsContainer}>
-                <Text style={styles.noFriendsText}>Không có cuộc trò chuyện nào</Text>
+                <Text style={styles.noFriendsText}>
+                  Không có cuộc trò chuyện nào
+                </Text>
               </View>
             )}
 
             <TouchableOpacity
               style={[
                 styles.forwardButton,
-                selectedFriends.length === 0 && styles.forwardButtonDisabled
+                selectedFriends.length === 0 && styles.forwardButtonDisabled,
               ]}
               onPress={handleSendForward}
               disabled={selectedFriends.length === 0}
@@ -1122,16 +1231,18 @@ const ChatDetailScreen = ({ navigation, route }) => {
             style={styles.iconButton}
             onPress={() => {
               if (otherUser && conversation) {
-                navigation.navigate("UserInfo", { 
+                navigation.navigate("UserInfo", {
                   conversation: {
                     _id: conversation._id,
-                    name: otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`,
+                    name:
+                      otherUser.name ||
+                      `${otherUser.firstName} ${otherUser.lastName}`,
                     members: conversation.members || [],
                     avatar: otherUser.avatar,
                     isGroup: false,
                     isOnline: isOnline,
-                    user: otherUser
-                  }
+                    user: otherUser,
+                  },
                 });
               }
             }}
@@ -1225,7 +1336,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
               <Ionicons name="pin" size={22} color="#333" />
               <Text style={styles.messageOptionText}>Ghim tin nhắn</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.messageOptionItem}
               onPress={() => handleMessageForward(selectedMessage)}
@@ -1233,13 +1344,25 @@ const ChatDetailScreen = ({ navigation, route }) => {
               <Ionicons name="arrow-redo" size={22} color="#333" />
               <Text style={styles.messageOptionText}>Chuyển tiếp</Text>
             </TouchableOpacity>
-            
+
+            <TouchableOpacity
+              style={styles.messageOptionItem}
+              onPress={() => handleDeleteForMe(selectedMessage)}
+            >
+              <Ionicons name="trash" size={22} color="#e74c3c" />
+              <Text style={[styles.messageOptionText, { color: "#e74c3c" }]}>
+                Thu hồi tin nhắn ở phía bạn
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.messageOptionItem}
               onPress={() => handleMessageDelete(selectedMessage)}
             >
               <Ionicons name="trash" size={22} color="#e74c3c" />
-              <Text style={[styles.messageOptionText, { color: '#e74c3c' }]}>Xóa tin nhắn</Text>
+              <Text style={[styles.messageOptionText, { color: "#e74c3c" }]}>
+                Xóa tin nhắn
+              </Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -1306,19 +1429,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   messageRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginVertical: 8,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     paddingHorizontal: 8,
   },
   userMessageRow: {
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   friendMessageRow: {
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   messageContainer: {
-    maxWidth: '70%',
+    maxWidth: "70%",
     marginHorizontal: 8,
   },
   messageContent: {
@@ -1328,12 +1451,12 @@ const styles = StyleSheet.create({
   userMessage: {
     alignSelf: "flex-end",
     backgroundColor: "#0099ff",
-    marginLeft: 'auto',
+    marginLeft: "auto",
   },
   friendMessage: {
     alignSelf: "flex-start",
     backgroundColor: "#e4e4e4",
-    marginRight: 'auto',
+    marginRight: "auto",
   },
   messageText: {
     fontSize: 15,
@@ -1446,48 +1569,48 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   messageOptionsContainer: {
-    width: '80%',
-    backgroundColor: 'white',
+    width: "80%",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
   messageOptionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   messageOptionText: {
     fontSize: 16,
     marginLeft: 16,
-    color: '#333',
+    color: "#333",
   },
   pinnedMessageContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: 60,
     left: 0,
     right: 0,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
     zIndex: 999,
     elevation: 3,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -1497,16 +1620,16 @@ const styles = StyleSheet.create({
   },
   pinnedMessageContent: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   pinnedIcon: {
     marginRight: 8,
-    transform: [{ rotate: '45deg' }],
+    transform: [{ rotate: "45deg" }],
   },
   pinnedText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     flex: 1,
   },
   pinnedImage: {
@@ -1516,12 +1639,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   pinnedFileContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   pinnedFileName: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginLeft: 8,
     flex: 1,
   },
@@ -1530,28 +1653,28 @@ const styles = StyleSheet.create({
   },
   forwardModalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   forwardModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
-    minHeight: '50%',
+    maxHeight: "80%",
+    minHeight: "50%",
   },
   forwardModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   forwardModalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: "bold",
+    color: "#000",
   },
   closeButton: {
     padding: 8,
@@ -1560,14 +1683,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   friendItemSelected: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: "#f0f8ff",
   },
   friendAvatar: {
     width: 40,
@@ -1578,63 +1701,63 @@ const styles = StyleSheet.create({
   friendName: {
     flex: 1,
     fontSize: 16,
-    color: '#000',
+    color: "#000",
   },
   noFriendsContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   noFriendsText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   forwardButton: {
-    backgroundColor: '#0099ff',
+    backgroundColor: "#0099ff",
     margin: 16,
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   forwardButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: "#ccc",
   },
   forwardButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   imageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     margin: -2,
     borderRadius: 15,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   gridImageContainer: {
     padding: 2,
   },
   gridImage: {
-    width: '100%',
+    width: "100%",
     aspectRatio: 1,
     borderRadius: 8,
   },
   gridImageLast: {
-    position: 'relative',
+    position: "relative",
   },
   remainingCount: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 8,
     margin: 2,
   },
   remainingCountText: {
-    color: 'white',
+    color: "white",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
 
