@@ -162,10 +162,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('typing')
-  async handleTyping(
-    @MessageBody() typinationDto: TypinationRequest,
-    @ConnectedSocket() client: Socket,
-  ) {
+  handleTyping(@MessageBody() typinationDto: TypinationRequest) {
     const { userId, conversationId } = typinationDto;
 
     // const user = await this.userService.findById(userId);
@@ -252,7 +249,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('call')
   handleCall(
     @MessageBody()
-    { sender, conversationId }: { sender: User; conversationId: string},
+    { sender, conversationId }: { sender: User; conversationId: string },
   ) {
     this.server.to(conversationId).emit('goingCall', {
       sender,
@@ -262,7 +259,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinCall')
   handleJoinCall(
     @MessageBody()
-    { userId, conversationId }: { userId: string; conversationId: string; },
+    { userId, conversationId }: { userId: string; conversationId: string },
   ) {
     this.server.to(conversationId).emit('newUser', {
       userId: userId,
@@ -272,7 +269,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('acceptCall')
   handleAcceptCall(
     @MessageBody()
-    { userId, conversationId }: { userId: string; conversationId: string;},
+    { userId, conversationId }: { userId: string; conversationId: string },
   ) {
     this.server.to(conversationId).emit('newUserJoinCall', {
       sender: userId,
@@ -281,7 +278,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('rejectCall')
   handleRejectCall(
     @MessageBody()
-    { userId, conversationId, callData }: { userId: string; conversationId: string; callData: any },
+    {
+      userId,
+      conversationId,
+      callData,
+    }: {
+      userId: string;
+      conversationId: string;
+      callData: any;
+    },
   ) {
     this.server.to(userId).emit('rejectCall', {
       conversationId,
@@ -291,7 +296,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('endCall')
   handleEndCall(
     @MessageBody()
-    { userId, conversationId, callData }: { userId: string; conversationId: string; callData: any },
+    {
+      userId,
+      conversationId,
+      callData,
+    }: {
+      userId: string;
+      conversationId: string;
+      callData: any;
+    },
   ) {
     this.server.to(userId).emit('endCall', {
       conversationId,
@@ -301,7 +314,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('cancelCall')
   handleCancelCall(
     @MessageBody()
-    { userId, conversationId, callData }: { userId: string; conversationId: string; callData: any },
+    {
+      userId,
+      conversationId,
+      callData,
+    }: {
+      userId: string;
+      conversationId: string;
+      callData: any;
+    },
   ) {
     this.server.to(userId).emit('cancelCall', {
       conversationId,
@@ -312,7 +333,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('newUserJoinCall')
   handleNewUserStartCall(
     @MessageBody()
-    data: { to: string; sender: string},
+    data: {
+      to: string;
+      sender: string;
+    },
   ) {
     this.server.to(data.to).emit('newUserJoinCall', {
       sender: data.sender,
@@ -321,7 +345,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('sdp')
   handleSdp(
     @MessageBody()
-    data: { to: string; description: any; sender: string },
+    data: {
+      to: string;
+      description: any;
+      sender: string;
+    },
   ) {
     this.server.to(data.to).emit('sdp', {
       description: data.description,
@@ -331,14 +359,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('iceCandidate')
   handleIceCandidate(
     @MessageBody()
-    data: { to: string; candidate: any; sender: string },
+    data: {
+      to: string;
+      candidate: any;
+      sender: string;
+    },
   ) {
     this.server.to(data.to).emit('iceCandidate', {
       candidate: data.candidate,
       sender: data.sender,
     });
   }
-
 
   handleReactToMessage(@MessageBody() message: Message) {
     // const conversationId = message.conversation?.toString();
@@ -359,5 +390,4 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .to(message.conversation.toString())
       .emit('unReactToMessage', message);
   }
-
 }

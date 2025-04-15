@@ -169,11 +169,10 @@ export class MessageService {
       throw new NotFoundException('Message not found');
     }
 
-
     const deletedFor = message.deletedFor || [];
-    const isDeletedForUser = deletedFor.some((user) => String(user) === String(userId));
-
-
+    const isDeletedForUser = deletedFor.some(
+      (user) => String(user) === String(userId),
+    );
 
     if (isDeletedForUser) {
       throw new NotFoundException('Message already deleted for this user');
@@ -207,7 +206,6 @@ export class MessageService {
 
     // ✅ Lấy tất cả userId từ members
     // const memberIds = conversation.members;
-
 
     const updatedMessage = await this.messageModel.findOneAndUpdate(
       {
