@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Platform,
 } from "react-native";
 import { Button } from "react-native-paper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,7 +19,6 @@ import NotificationModal from "../../components/CustomModal";
 import { signUp } from "../../services/auth/authService";
 import { validateSignUp } from "../../utils/validators";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Platform } from "react-native";
 import DateInputField from "../../components/DateInputField";
 
 const SignUpScreen = ({ navigation }) => {
@@ -118,17 +118,29 @@ const SignUpScreen = ({ navigation }) => {
             onPress={() => setDobPickerVisible(true)}
           />
 
-          {dobPickerVisible && (
+          {Platform.OS === 'android' && dobPickerVisible && (
             <DateTimePicker
               value={form.dob ? new Date(form.dob) : new Date()}
               mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
+              display="default"
               onChange={(event, selectedDate) => {
                 setDobPickerVisible(false);
                 if (selectedDate) {
-                  const formattedDate = selectedDate
-                    .toISOString()
-                    .split("T")[0];
+                  const formattedDate = selectedDate.toISOString().split('T')[0];
+                  setForm({ ...form, dob: formattedDate });
+                }
+              }}
+            />
+          )}
+
+          {Platform.OS === 'ios' && (
+            <DateTimePicker
+              value={form.dob ? new Date(form.dob) : new Date()}
+              mode="date"
+              display="spinner"
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  const formattedDate = selectedDate.toISOString().split('T')[0];
                   setForm({ ...form, dob: formattedDate });
                 }
               }}

@@ -5,16 +5,109 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    SafeAreaView
+    SafeAreaView,
+    Alert,
+    ActivityIndicator,
+    FlatList,
+    Image
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { contactService } from "../../services/contact.service";
+import { searchUsers } from "../../services/user/userService";
+import { API_URL } from "../../config/constants";
 
 const AddFriendScreen = ({ navigation }) => {
-    const [friendId, setFriendId] = useState("");
+    const [searchText, setSearchText] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
 
-    const handleAddFriend = () => {
-        console.log("Sending friend request to:", friendId);
+    const handleSearch = async () => {
+        if (!searchText.trim()) {
+            Alert.alert("Error", "Please enter an email or name to search");
+            return;
+        }
+
+        setIsSearching(true);
+        try {
+            const response = await searchUsers(searchText);
+            if (response.ok) {
+                setSearchResults(response.data || []);
+            } else {
+                Alert.alert("Error", response.message || "Failed to search users");
+            }
+        } catch (error) {
+            console.log('Search error:', error);
+            Alert.alert("Error", "Failed to search users");
+        } finally {
+            setIsSearching(false);
+        }
     };
+
+    const handleAddFriend = async (userId) => {
+        setIsLoading(true);
+        try {
+            const response = await contactService.createContact(userId);
+            if (response.success) {
+                Alert.alert(
+                    "Success", 
+                    "Friend request sent successfully",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => navigation.goBack()
+                        }
+                    ]
+                );
+            } else {
+                const errorMessage = Array.isArray(response.message) 
+                    ? response.message[0] 
+                    : (response.message || "Failed to send friend request");
+                Alert.alert("Error", errorMessage);
+            }
+        } catch (error) {
+            console.log('Error details:', error);
+            const errorMessage = error.message;
+            if (Array.isArray(errorMessage)) {
+                Alert.alert("Error", errorMessage[0] || "Something went wrong");
+            } else {
+                Alert.alert("Error", errorMessage || "Something went wrong");
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const renderUserItem = ({ item }) => (
+        <View style={styles.userItem}>
+            <View style={styles.userInfo}>
+                <Image 
+                    source={
+                        item.avatar 
+                            ? { uri: `${API_URL}/uploads/${item.avatar}` }
+                            : require("../../../assets/chat/man.png")
+                    }
+                    style={styles.avatar}
+                    defaultSource={require("../../../assets/chat/man.png")}
+                />
+                <View style={styles.userDetails}>
+                    <Text style={styles.userName}>{item.firstName} {item.lastName}</Text>
+                    <Text style={styles.userEmail}>{item.email}</Text>
+                </View>
+            </View>
+            <TouchableOpacity 
+                style={styles.addButton}
+                onPress={() => handleAddFriend(item._id)}
+                disabled={isLoading}
+            >
+                {isLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                    <Icon name="account-plus" size={24} color="#fff" />
+                )}
+            </TouchableOpacity>
+        </View>
+    );
 
     return (
         <SafeAreaView style={styles.container}>
@@ -30,20 +123,28 @@ const AddFriendScreen = ({ navigation }) => {
             <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Enter Friend's ID or Phone Number"
+                    placeholder="Search by email or name"
                     placeholderTextColor="#aaa"
-                    value={friendId}
-                    onChangeText={setFriendId}
+                    value={searchText}
+                    onChangeText={setSearchText}
                 />
-                <TouchableOpacity>
-                    <Icon name="magnify" size={28} color="#135CAF" />
+                <TouchableOpacity onPress={handleSearch} disabled={isSearching}>
+                    {isSearching ? (
+                        <ActivityIndicator size="small" color="#135CAF" />
+                    ) : (
+                        <Icon name="magnify" size={28} color="#135CAF" />
+                    )}
                 </TouchableOpacity>
             </View>
 
-            {/* Search Button */}
-            <TouchableOpacity style={styles.button} onPress={handleAddFriend}>
-                <Text style={styles.buttonText}>Search</Text>
-            </TouchableOpacity>
+            {/* Search Results */}
+            <FlatList
+                data={searchResults}
+                renderItem={renderUserItem}
+                keyExtractor={item => item._id}
+                style={styles.resultsList}
+                contentContainerStyle={styles.resultsContent}
+            />
         </SafeAreaView>
     );
 };
@@ -78,28 +179,63 @@ const styles = StyleSheet.create({
         borderColor: "#ccc",
         borderRadius: 8,
         paddingHorizontal: 10,
-        marginTop: 30, 
-        marginBottom: 20,
-        marginHorizontal: 20,
-        backgroundColor: "#f9f9f9", 
+        marginTop: 15,
+        marginBottom: 10,
+        marginHorizontal: 15,
+        backgroundColor: "#f9f9f9",
     },
     input: {
         flex: 1,
         height: 40,
-        color: "#000", 
+        color: "#000",
         fontSize: 16,
         paddingHorizontal: 10,
     },
-    button: {
-        backgroundColor: "#135CAF",
-        padding: 12,
-        borderRadius: 8,
-        alignItems: "center",
-        marginHorizontal: 20,
+    resultsList: {
+        flex: 1,
     },
-    buttonText: {
-        color: "#fff",
-        fontWeight: "bold",
+    resultsContent: {
+        paddingHorizontal: 15,
+    },
+    userItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: "#eee",
+    },
+    userInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+        flex: 1,
+    },
+    avatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        marginRight: 10,
+    },
+    userDetails: {
+        flex: 1,
+    },
+    userName: {
+        fontSize: 16,
+        fontWeight: "600",
+        marginBottom: 4,
+    },
+    userEmail: {
+        fontSize: 14,
+        color: "#666",
+    },
+    addButton: {
+        backgroundColor: "#135CAF",
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: "center",
+        alignItems: "center",
+        marginLeft: 10,
     },
 });
 
