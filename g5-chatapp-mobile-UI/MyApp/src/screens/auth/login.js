@@ -37,8 +37,21 @@ const SignInScreen = ({ navigation }) => {
       console.log("Sign in result:", result);
 
       if (result.ok && result.user && result.user._id) {
+        // Store user data
+        const userData = {
+          _id: result.user._id,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          avatar: result.user.avatar,
+          phone: result.user.phone,
+          status: result.user.status,
+          isOnline: true,
+          token: result.token
+        };
+
         // Store user data in AsyncStorage
-        await AsyncStorage.setItem("userData", JSON.stringify(result.user));
+        await AsyncStorage.setItem("userData", JSON.stringify(userData));
         await AsyncStorage.setItem("userToken", result.token);
         await AsyncStorage.setItem("userId", result.user._id);
 
@@ -54,8 +67,9 @@ const SignInScreen = ({ navigation }) => {
         console.log("User data stored successfully");
         setModalMessage("Login successful!");
         setModalVisible(true);
-        // Khởi tạo socket sau khi login thành công
-        initSocket(result.user._id); // Gọi hàm khởi tạo socket với user ID
+
+        // Initialize socket connection
+        await initSocket(result.user._id);
         
         // Navigate after showing modal
         setTimeout(() => {

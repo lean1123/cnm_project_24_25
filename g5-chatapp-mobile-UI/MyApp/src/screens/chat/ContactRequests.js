@@ -23,7 +23,6 @@ const ContactRequestsScreen = ({ navigation }) => {
             const response = await contactService.getMyRequestContacts();
             console.log('Pending requests response:', response);
             if (response.success) {
-                // Log the received data for debugging
                 console.log('Received requests data:', response.data);
                 setPendingRequests(response.data);
             } else {
@@ -42,19 +41,14 @@ const ContactRequestsScreen = ({ navigation }) => {
         try {
             const response = await contactService.acceptContact(contactId);
             if (response.success) {
-                // Thông báo thành công
                 Alert.alert('Success', 'Contact request accepted');
-                
-                // Refresh lại danh sách request
+        
                 fetchPendingRequests();
                 
-                // Đợi 1 chút để server tạo conversation
                 setTimeout(() => {
-                    // Gọi event để home_chat refresh conversations
                     if (navigation.getParent()) {
                         navigation.getParent().setParams({ refreshConversations: Date.now() });
                     }
-                    // Quay về màn home_chat
                     navigation.goBack();
                 }, 500);
             } else {
@@ -86,10 +80,8 @@ const ContactRequestsScreen = ({ navigation }) => {
     }, []);
 
     const renderItem = ({ item }) => {
-        // Log the item data for debugging
         console.log('Rendering request item:', item);
         
-        // Lấy thông tin từ user thay vì sender
         const senderName = item.user 
             ? `${item.user.firstName || ''} ${item.user.lastName || ''}`.trim() 
             : 'Unknown User';

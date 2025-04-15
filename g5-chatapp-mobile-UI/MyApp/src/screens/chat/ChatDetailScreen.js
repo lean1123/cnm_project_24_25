@@ -28,6 +28,7 @@ import { getSocket } from "../../services/socket";
 import axiosInstance from "../../config/axiosInstance";
 import { format } from "date-fns";
 import ChatOptions from "../chat/components/ChatOptions";
+import { chatService } from '../../services/chat.service';
 
 const ChatDetailScreen = ({ navigation, route }) => {
   const { conversation } = route.params;
@@ -43,6 +44,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const flatListRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [showMessageOptions, setShowMessageOptions] = useState(false);
+  const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [friends, setFriends] = useState([]);
+  const [selectedFriends, setSelectedFriends] = useState([]);
 
   const handleReturn = () => {
     navigation.navigate("Home_Chat");
@@ -54,14 +61,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
         console.log("Initializing chat with conversation:", conversation);
         setLoading(true);
 
-        // Data from AsyncStorage
         const userData = await AsyncStorage.getItem("userData");
         if (userData) {
           const currentUserData = JSON.parse(userData);
           setCurrentUser(currentUserData);
           console.log("Current user:", currentUserData);
 
-          // User data
           if (conversation) {
             if (conversation.name) {
               setOtherUser({
@@ -75,7 +80,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
             }
           }
 
-          // Set socket state
           const socketInstance = getSocket();
           console.log("Got existing socket:", socketInstance ? "yes" : "no");
 
@@ -85,18 +89,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
               socketInstance.connected ? "connected" : "disconnected"
             );
 
-            // Set socket state
             setSocket(socketInstance);
             setIsOnline(socketInstance.connected);
 
-            // Join conversation room
             console.log("Joining conversation room:", conversation._id);
             socketInstance.emit("join", {
               conversationId: conversation._id,
               userId: currentUserData._id,
             });
 
-            // Set up message listeners
             const handleNewMessage = (data) => {
               console.log("New message received:", data);
 
@@ -131,15 +132,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
               }
             };
 
-            // Remove any existing listeners
             socketInstance.off("messageReceived");
             socketInstance.off("newMessage");
 
-            // Add new listeners
             socketInstance.on("messageReceived", handleNewMessage);
             socketInstance.on("newMessage", handleNewMessage);
 
-            // Set up connect/disconnect handlers
             socketInstance.on("connect", () => {
               console.log("Socket reconnected in chat detail");
               setIsOnline(true);
@@ -157,7 +155,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
             console.error("No socket connection available");
           }
 
-          // Fetch initial messages
           await fetchMessages();
         }
       } catch (error) {
@@ -169,7 +166,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     initializeChat();
 
-    // Cleanup function
     return () => {
       const socketInstance = getSocket();
       if (socketInstance && conversation?._id && currentUser?._id) {
@@ -179,7 +175,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
           userId: currentUser._id,
         });
 
-        // Remove only the listeners for this conversation
         socketInstance.off("messageReceived");
         socketInstance.off("newMessage");
         socketInstance.off("connect");
@@ -188,7 +183,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
     };
   }, [conversation]);
 
-  // Add useEffect for messages changes
   useEffect(() => {
     console.log("Messages changed, checking if scroll needed");
     if (flatListRef.current && messages.length > 0) {
@@ -204,11 +198,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
 
       console.log("Fetching messages for conversation:", conversation._id);
-      const response = await axiosInstance.get(`/message/${conversation._id}`);
-      console.log("Messages response:", response.data);
+      const response = await chatService.getMessages(conversation._id);
+      console.log("Messages response:", response);
 
-      if (response.data && response.data.data) {
-        let messagesData = response.data.data;
+      if (response && response.data) {
+        let messagesData = response.data;
 
         if (messagesData.data && Array.isArray(messagesData.data)) {
           messagesData = messagesData.data;
@@ -221,7 +215,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
           return true;
         });
 
-        // Sắp xếp tin nhắn từ cũ đến mới
         const sortedMessages = validMessages.sort(
           (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
         );
@@ -235,7 +228,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
         });
       } else {
-        console.log("Invalid response format:", response.data);
+        console.log("Invalid response format:", response);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -256,8 +249,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
   }, [messages, tempMessages]);
 
   const addTempMessage = (message) => {
-    console.log("Adding temp message:", message);
-    setTempMessages((prev) => [...prev, message]);
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const tempMessage = {
+      ...message,
+      _id: tempId,
+    };
+    setTempMessages(prev => [...prev, tempMessage]);
   };
 
   const removeTempMessage = (messageId) => {
@@ -269,15 +266,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
     });
   };
 
-  const updateTempMessageStatus = (messageId, status) => {
-    setTempMessages((prev) =>
-      prev.map((msg) => (msg._id === messageId ? { ...msg, status } : msg))
-    );
-  };
-
   const sendMessage = async (messageData = null) => {
     if (
-      (!newMessage.trim() && !messageData) ||
+      (!newMessage.trim() && !messageData?.files?.length && !messageData?.content) ||
       !socket ||
       !currentUser ||
       !conversation?._id
@@ -286,493 +277,183 @@ const ChatDetailScreen = ({ navigation, route }) => {
       return;
     }
 
-    const currentContent = newMessage.trim();
+    const content = messageData?.content || newMessage.trim();
+    const files = messageData?.files || [];
+
+    let messageType = "TEXT";
+    if (files.length > 0) {
+      messageType = "IMAGE";
+    }
+
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const tempMessage = {
+      _id: tempId,
+      content,
+      sender: {
+        _id: currentUser._id,
+        avatar: currentUser.avatar,
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName
+      },
+      conversation: conversation._id,
+      createdAt: new Date().toISOString(),
+      status: "sending",
+      type: messageType,
+      files: files.map((file) => ({
+        fileName: file.name || file.fileName || file.uri.split('/').pop(),
+        url: file.uri,
+      })),
+    };
+
+    setTempMessages((prev) => [...prev, tempMessage]);
+    setNewMessage("");
 
     try {
-      // --- GỬI ẢNH ---
-      if (messageData?.type === "image") {
-        const files = messageData.files || [];
-        if (files.length === 0) return;
+      let response;
+      if (files.length > 0) {
+        const preparedFiles = files.map(file => ({
+          uri: file.uri,
+          type: file.type || 'image/jpeg',
+          name: file.name || file.fileName || file.uri.split('/').pop(),
+        }));
 
-        for (const media of files) {
-          const tempId = `temp-${Date.now()}-${Math.random()}`;
-
-          const tempMessage = {
-            _id: tempId,
-            url: media.url,
-            fileName: media.fileName || "image.jpg",
-            sender: currentUser,
-            conversation: conversation._id,
-            createdAt: new Date().toISOString(),
-            status: "sending",
-            type: "image",
-          };
-
-          setTempMessages((prev) => [...prev, tempMessage]);
-
-          const formData = new FormData();
-          formData.append("files", {
-            uri: media.url,
-            name: media.fileName || "image.jpg",
-            type: media.type || "image/jpeg",
-          });
-          formData.append("conversationId", conversation._id);
-          formData.append("type", "image");
-
-          try {
-            const response = await axiosInstance.post(
-              `/message/send-message/${conversation._id}`,
-              formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                },
-              }
-            );
-
-            console.log("Image message send response:", response.data);
-            removeTempMessage(tempId);
-
-            if (response.data?.data) {
-              const newMessage = response.data.data;
-
-              setMessages((prevMessages) =>
-                prevMessages
-                  .filter((msg) => msg._id !== tempId)
-                  .concat({
-                    ...newMessage,
-                    sender: currentUser,
-                  })
-              );
-
-              socket.emit("sendMessage", {
-                message: newMessage,
-                conversationId: conversation._id,
-                senderId: currentUser._id,
-              });
-
-              requestAnimationFrame(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-              });
-            }
-          } catch (error) {
-            console.error("Error sending image:", error);
-            setMessages((prevMessages) =>
-              prevMessages.map((msg) =>
-                msg._id === tempId ? { ...msg, status: "error" } : msg
-              )
-            );
-          }
-        }
-
-        return;
-      }
-
-      // --- GỬI FILE ---
-if (messageData?.type === "file") {
-  const file = messageData.files?.[0];
-  if (!file) return;
-
-  const tempId = `temp-${Date.now()}`;
-  const tempMessage = {
-    _id: tempId,
-    url: file.url,
-    fileName: file.fileName || "file.txt",
-    sender: currentUser,
-    conversation: conversation._id,
-    createdAt: new Date().toISOString(),
-    status: "sending",
-    type: "FILE",  // Đảm bảo type là "file"
-  };
-
-  // Lưu tin nhắn tạm thời để hiển thị trong UI
-  setTempMessages((prev) => [...prev, tempMessage]);
-
-  const formData = new FormData();
-  formData.append("files", {
-    uri: file.url,
-    name: file.fileName || "file.txt",
-    type: file.type || "application/octet-stream", // Đảm bảo MIME type là chuẩn
-  });
-  formData.append("conversationId", conversation._id);
-  formData.append("type", "FILE");  // Gửi đúng loại tệp
-
-  try {
-    // Gửi tệp tin lên server
-    const response = await axiosInstance.post(
-      `/message/send-message/${conversation._id}`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    console.log("Upload response:", response.data); // Debugging the response
-
-    if (response.data?.data?.url) {
-      // Xóa tin nhắn tạm thời sau khi gửi thành công
-      removeTempMessage(tempId);
-
-      const newMessage = response.data.data;
-
-      // Đảm bảo rằng bạn cập nhật đúng loại tệp khi lưu vào state
-      setMessages((prevMessages) =>
-        prevMessages
-          .filter((msg) => msg._id !== tempId) // Xóa tin nhắn tạm
-          .concat({
-            ...newMessage,
-            sender: currentUser, // Gắn thông tin người gửi
-            type: "file",  // Đảm bảo type là "file"
-          })
-      );
-
-      // Gửi tin nhắn qua socket
-      socket.emit("sendMessage", {
-        message: newMessage,
-        conversationId: conversation._id,
-        senderId: currentUser._id,
-      });
-
-      // Cuộn xuống cuối danh sách tin nhắn
-      requestAnimationFrame(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      });
-    } else {
-      console.error("Upload response is invalid or missing URL");
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg._id === tempId ? { ...msg, status: "error" } : msg
-        )
-      );
-    }
-  } catch (error) {
-    console.error("Error sending file:", error);
-
-    // Xử lý lỗi bằng cách thay đổi trạng thái của tin nhắn tạm thời
-    setMessages((prevMessages) =>
-      prevMessages.map((msg) =>
-        msg._id === tempId ? { ...msg, status: "error" } : msg
-      )
-    );
-  }
-
-  return;
-}
-
-
-      // --- GỬI VỊ TRÍ ---
-      if (messageData?.type === "location") {
-        const tempId = `temp-${Date.now()}`;
-        const tempMessage = {
-          _id: tempId,
-          content: messageData.content,
-          preview: messageData.preview,
-          sender: currentUser,
-          conversation: conversation._id,
-          createdAt: new Date().toISOString(),
-          status: "sending",
-          type: "location",
-        };
-
-        setTempMessages((prev) => [...prev, tempMessage]);
-
-        const response = await axiosInstance.post(
-          `/message/send-message/${conversation._id}`,
+        response = await chatService.sendMessageWithFiles(
+          conversation._id,
           {
-            content: messageData.content,
-            preview: messageData.preview,
+            content,
+            type: messageType,
+            sender: currentUser._id,
+          },
+          preparedFiles
+        );
+      } else {
+        response = await chatService.sendMessageWithFile(
+          conversation._id,
+          {
+            content,
+            type: "TEXT",
+            sender: currentUser._id,
           }
         );
-
-        removeTempMessage(tempId);
-
-        if (response.data?.data) {
-          const newMessage = response.data.data;
-
-          setMessages((prevMessages) =>
-            prevMessages
-              .filter((msg) => msg._id !== tempId)
-              .concat({
-                ...newMessage,
-                sender: currentUser,
-              })
-          );
-
-          socket.emit("sendMessage", {
-            message: newMessage,
-            conversationId: conversation._id,
-            senderId: currentUser._id,
-          });
-
-          requestAnimationFrame(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
-          });
-        }
-
-        return;
       }
 
-      // --- GỬI VĂN BẢN ---
-
-      const finalContent = messageData?.content || currentContent;
-
-      if (!finalContent.trim()) return;
-
-      setNewMessage("");
-      Keyboard.dismiss();
-
-      const tempId = `temp-${Date.now()}`;
-      const tempMessage = {
-        _id: tempId,
-        content: finalContent,
-        sender: currentUser,
-        conversation: conversation._id,
-        createdAt: new Date().toISOString(),
-        status: "sending",
-        type: "text",
-      };
-
-      setTempMessages((prev) => [...prev, tempMessage]);
-
-      const response = await axiosInstance.post(
-        `/message/send-message/${conversation._id}`,
-        { content: finalContent }
-      );
-
-      removeTempMessage(tempId);
-
-      if (response.data?.data) {
-        const newMessage = response.data.data;
-
-        setMessages((prevMessages) =>
-          prevMessages
-            .filter((msg) => msg._id !== tempId)
-            .concat({
-              ...newMessage,
-              sender: currentUser,
-            })
-        );
+      if (response.success) {
+        setTempMessages(prev => prev.filter(msg => msg._id !== tempId));
+        
+        const newMessage = {
+          ...response.data,
+          sender: {
+            _id: currentUser._id,
+            avatar: currentUser.avatar,
+            firstName: currentUser.firstName,
+            lastName: currentUser.lastName
+          }
+        };
+        
+        setMessages(prevMessages => [...prevMessages, newMessage]);
 
         socket.emit("sendMessage", {
           message: newMessage,
           conversationId: conversation._id,
           senderId: currentUser._id,
         });
-
-        requestAnimationFrame(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        });
+      } else {
+        throw new Error(response.error || "Không thể gửi tin nhắn");
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      console.log("Error details:", error.response?.data);
+      setTempMessages(prev => prev.filter(msg => msg._id !== tempId));
+      alert("Không thể gửi tin nhắn. Vui lòng thử lại.");
     }
   };
+  
 
-  //submit  TextInput
   const handleSubmitEditing = () => {
     if (newMessage.trim()) {
       sendMessage();
     }
   };
-
-  //  press send button
+  
   const handlePressSend = () => {
     if (newMessage.trim()) {
       sendMessage();
     }
   };
+  
 
   const handlePressLike = () => {
-    sendMessage({ type: "text", content: "👍" });
+    sendMessage({ content: "👍" });
   };
-
-  const retryMessage = async (tempMessage) => {
-    try {
-      updateTempMessageStatus(tempMessage._id, "sending");
-
-      const messageData = {
-        content: tempMessage.content,
-      };
-
-      // Send through socket for real-time
-      socket.emit("sendMessage", {
-        conversationId: conversation._id,
-        content: tempMessage.content,
-      });
-
-      // Send to API
-      const response = await axiosInstance.post(
-        `/message/send-message/${conversation._id}`,
-        messageData
-      );
-
-      if (response.data) {
-        removeTempMessage(tempMessage._id);
-        setMessages((prev) => [...prev, response.data]);
-      }
-    } catch (error) {
-      console.error("Error retrying message:", error);
-      console.log("Error details:", error.response?.data);
-      updateTempMessageStatus(tempMessage._id, "error");
-    }
-  };
+  
 
   const handleCamera = async () => {
-    setCapturedImage(null);
-    console.log("reset capturedImage");
-
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        alert("Sorry, we need camera permissions to make this work!");
+        alert("Xin lỗi, chúng tôi cần quyền truy cập camera để thực hiện điều này!");
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
+        quality: 0.5,
+        allowsEditing: true,
       });
 
-      if (!result.canceled) {
+      if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-
-        // Tạo fileName nếu asset không có
-        const timestamp = Date.now();
-        const fileName = asset.fileName || `image_${timestamp}.jpg`;
-
-        // Đường dẫn mới (lưu trữ ảnh ở thư mục riêng)
-        const newPath = `${FileSystem.documentDirectory}${fileName}`;
-
-        try {
-          // Sao chép file ảnh sang thư mục mới để đảm bảo là ảnh mới
-          await FileSystem.copyAsync({
-            from: asset.uri,
-            to: newPath,
-          });
-
-          // Cập nhật asset với uri mới
-          const copiedAsset = {
-            ...asset,
-            uri: newPath,
-            fileName,
-          };
-
-          setCapturedImage(copiedAsset); // Hiển thị ảnh preview
-          setIsUploading(true);
-
-          // Tiến hành upload ảnh mới
-          const uploadResponse = await handleMediaUpload(
-            copiedAsset,
-            "image",
-            fileName
-          );
-
-          if (uploadResponse && uploadResponse.url) {
-            console.log("✅ Upload successful, image URL:", uploadResponse.url);
-
-            const messageData = {
-              files: [
-                {
-                  _id: uploadResponse._id,
-                  fileName: fileName,
-                  url: uploadResponse.url, // Không cần thêm `?t=`
-                },
-              ],
-              type: "image",
-            };
-
-            // Gửi tin nhắn với ảnh
-            await sendMessage(messageData);
-            console.log("✅ Message sent with image:", uploadResponse.url);
-            setCapturedImage(null); // Dọn sạch ảnh đã chụp sau khi gửi xong
-          } else {
-            console.error("❌ Upload response is invalid or missing URL");
-          }
-        } catch (err) {
-          console.error("❌ Error uploading image:", err);
-          alert("Upload thất bại");
-        } finally {
-          setIsUploading(false);
-        }
+        
+        const preparedFile = {
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `photo-${Date.now()}.jpg`,
+          size: asset.fileSize || asset.size || 0
+        };
+        
+        console.log("Captured image for sending:", preparedFile);
+        
+        await sendMessage({ files: [preparedFile] });
       }
     } catch (err) {
-      console.error("❌ Error using camera:", err);
-      alert("Không thể mở camera");
+      console.error("Error using camera:", err);
+      alert("Không thể mở camera. Vui lòng thử lại.");
     }
-
-    setShowOptions(false);
   };
+  
 
   const handleGallery = async () => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        alert("Sorry, we need gallery permissions to make this work!");
+        alert("Xin lỗi, chúng tôi cần quyền truy cập thư viện ảnh để thực hiện điều này!");
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        quality: 0.5,
         allowsMultipleSelection: true,
         selectionLimit: 10,
       });
 
-      if (!result.canceled) {
-        setIsUploading(true);
-        try {
-          const uploadPromises = result.assets.map(async (asset) => {
-            console.log("Selected image asset:", asset);
-
-            const uploadResponse = await handleMediaUpload(asset, "image");
-
-            if (uploadResponse && uploadResponse.url) {
-              console.log("Upload successful, image URL:", uploadResponse.url);
-
-              const messageData = {
-                files: [
-                  {
-                    _id: uploadResponse._id,
-                    fileName: asset.fileName,
-                    url: uploadResponse.url,
-                  },
-                ],
-                type: "image",
-              };
-
-              console.log("Prepared message data to send:", messageData);
-
-              await sendMessage(messageData);
-
-              console.log(
-                "Message sent successfully with image:",
-                uploadResponse.url
-              );
-            } else {
-              console.error("Upload response is invalid or missing URL");
-            }
-          });
-
-          await Promise.all(uploadPromises);
-        } catch (error) {
-          console.error("Error uploading images:", error);
-          alert("Error uploading images");
-        } finally {
-          setIsUploading(false);
-        }
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const preparedFiles = result.assets.map(asset => ({
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `image-${Date.now()}-${Math.random()}.jpg`,
+          size: asset.fileSize || asset.size || 0
+        }));
+        
+        console.log("Prepared files for sending:", preparedFiles);
+        await sendMessage({ files: preparedFiles });
       }
     } catch (error) {
       console.error("Error picking images:", error);
-      alert("Error accessing gallery");
-      setIsUploading(false);
+      alert("Có lỗi khi truy cập thư viện ảnh. Vui lòng thử lại.");
     }
-    setShowOptions(false);
   };
+  
 
   const handleDocument = async () => {
     try {
@@ -786,55 +467,13 @@ if (messageData?.type === "file") {
         result.type === "success" ||
         (Array.isArray(result.assets) && result.assets.length > 0)
       ) {
-        setIsUploading(true);
-        try {
-          const files = Array.isArray(result.assets) ? result.assets : [result];
-          const uploadPromises = files.map(async (file) => {
-            console.log("Selected file asset:", file);
-  
-            const uploadResponse = await handleMediaUpload(file, "file");
-  
-            if (uploadResponse && uploadResponse.url) {
-              console.log("Upload successful, file URL:", uploadResponse.url);
-  
-              const messageData = {
-                files: [
-                  {
-                    fileName: file.name,
-                    url: uploadResponse.url,
-                    // Nếu cần _id, bạn có thể truyền từ backend về kèm với URL
-                  },
-                ],
-                type: "file",
-              };
-  
-              console.log("Prepared message data to send:", messageData);
-  
-              await sendMessage(messageData);
-  
-              console.log(
-                "Message sent successfully with file:",
-                uploadResponse.url
-              );
-            } else {
-              console.error("Upload response is invalid or missing URL");
-            }
-          });
-  
-          await Promise.all(uploadPromises);
-        } catch (error) {
-          console.error("Error processing documents:", error);
-          alert("Error processing documents");
-        } finally {
-          setIsUploading(false);
-        }
+        const files = Array.isArray(result.assets) ? result.assets : [result];
+        await sendMessage({ files });
       }
     } catch (error) {
       console.error("Error picking documents:", error);
       alert("Error selecting documents");
-      setIsUploading(false);
     }
-    setShowOptions(false);
   };
   
 
@@ -852,113 +491,179 @@ if (messageData?.type === "file") {
       const locationMessage = {
         type: "location",
         content: `${latitude},${longitude}`,
-        preview: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`, // Ảnh xem trước vị trí
+        preview: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`,
       };
 
-      console.log("Prepared location message to send:", locationMessage);
-
       await sendMessage(locationMessage);
-
-      console.log("Location message sent successfully");
     } catch (error) {
       console.error("Error getting location:", error);
       alert("Error getting location");
     }
-    setShowOptions(false);
   };
 
-  const handleMediaUpload = async (asset, type) => {
-    try {
-      if (!asset || !asset.uri) {
-        throw new Error("Invalid asset provided");
-      }
-  
-      // Kiểm tra loại file dựa trên `type` và các đuôi file hoặc MIME type
-      let fileExtension, mimeType;
-  
-      // Nếu `type` là ảnh
-      if (type === "image") {
-        fileExtension = "jpg"; // Mặc định ảnh là jpg
-        mimeType = "image/jpeg";
-      }
-      // Nếu `type` là video
-      else if (type === "video") {
-        fileExtension = "mp4"; // Mặc định video là mp4
-        mimeType = "video/mp4";
-      }
-      // Nếu `type` là các file tài liệu (pdf, txt, ppt, ...)
-      else {
-        // Tìm phần mở rộng dựa trên tên file nếu không có `type`
-        const extension = asset.name.split(".").pop().toLowerCase();
-  
-        // Kiểm tra đuôi file và quyết định loại
-        if (["pdf", "txt", "doc", "docx", "ppt", "pptx"].includes(extension)) {
-          fileExtension = extension;
-          mimeType = "application/octet-stream"; // Hoặc thay bằng mimeType chính xác cho các tài liệu
-          type = "file"; // Cập nhật lại type cho file
-        } else {
-          throw new Error("Unsupported file type");
+  const renderMessageContent = (item) => {
+    if (!item || !item.sender) {
+      console.log("Invalid message item:", item);
+      return null;
+    }
+
+    const isMyMessage = currentUser && item.sender._id === currentUser._id;
+    const isTemp = item._id && item._id.startsWith("temp-");
+
+    switch (item.type) {
+      case "IMAGE":
+        if (!item.files || item.files.length === 0) {
+          console.warn("No image files found");
+          return null;
         }
-      }
-  
-      const fallbackName = `media.${fileExtension || "txt"}`;
-      const fallbackMime = mimeType || "application/octet-stream";
-  
-      const formData = new FormData();
-      formData.append("file", {
-        uri: asset.uri,
-        name: asset.name || asset.fileName || fallbackName,
-        type: asset.mimeType || fallbackMime,
-      });
-  
-      // Thực hiện upload file
-      const response = await axiosInstance.post("/upload-test/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-  
-      console.log("Response from upload:", response);
-  
-      const fileUrl = response?.data?.data;
-      const success = response?.data?.success;
-  
-      if (success && fileUrl && typeof fileUrl === "string") {
-        console.log("✅ File URL:", fileUrl);
-        return { url: fileUrl };
-      } else {
-        throw new Error("Upload failed: Missing success flag or file URL in response");
-      }
-    } catch (error) {
-      console.error("❌ Error uploading media:", error);
-      alert("⚠️ Failed to upload media");
-      throw error;
-    }
-  };
-  
 
-  const getFileTypeForDatabase = (mimeType = "", fileName = "") => {
-    const ext = fileName.split(".").pop()?.toLowerCase(); // Lấy đuôi file
-  
-    // Các định dạng hình ảnh
-    const imageTypes = ["jpg", "jpeg", "png", "gif", "webp"];
-  
-    // Các định dạng file (PDF, DOCX, PPTX, TXT, ...)
-    const fileTypes = ["pdf", "doc", "docx", "txt", "xlsx", "xls", "ppt", "pptx"];
-  
-    // Nếu là hình ảnh
-    if (mimeType.startsWith("image/") || imageTypes.includes(ext)) {
-      return "IMAGE";
+        if (item.files.length > 1) {
+          return (
+            <View style={styles.imageGrid}>
+              {item.files.map((file, index) => (
+                <TouchableOpacity
+                  key={file._id || index}
+                  onPress={() => navigation.navigate("ImageViewer", { uri: file.url })}
+                  style={[
+                    styles.gridImageContainer,
+                    item.files.length === 3 && index === 2 && styles.gridImageLast,
+                    item.files.length >= 4 && index === 3 && styles.gridImageLast,
+                    item.files.length === 2 && { width: '50%' },
+                    item.files.length === 3 && { width: '33.33%' },
+                    item.files.length >= 4 && { width: '50%' },
+                  ]}
+                >
+                  <Image
+                    source={{ uri: file.url }}
+                    style={styles.gridImage}
+                    resizeMode="cover"
+                  />
+                  {item.files.length > 4 && index === 3 && (
+                    <View style={styles.remainingCount}>
+                      <Text style={styles.remainingCountText}>
+                        +{item.files.length - 4}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          );
+        }
+
+        return (
+          <TouchableOpacity
+            onPress={() => navigation.navigate("ImageViewer", { uri: item.files[0].url })}
+            style={styles.mediaContainer}
+          >
+            <Image
+              source={{ uri: item.files[0].url }}
+              style={styles.messageImage}
+              resizeMode="cover"
+            />
+            {isTemp && item.status === "sending" && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      case "video":
+        return (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("VideoPlayer", { uri: item.content })
+            }
+            style={styles.mediaContainer}
+          >
+            <Image
+              source={{ uri: item.thumbnail || item.content }}
+              style={styles.videoThumbnail}
+            />
+            <View style={styles.playButton}>
+              <Ionicons name="play" size={24} color="white" />
+            </View>
+            {isTemp && item.status === "sending" && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      case "FILE":
+        const file = item.files && item.files[0];
+        const fileName = file?.fileName || "File";
+        const fileUrl = file?.url || "";
+
+        if (!fileUrl) {
+          console.warn("No file URL found");
+          return null;
+        }
+
+        const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
+          fileUrl
+        )}&embedded=true`;
+        return (
+          <TouchableOpacity
+            style={styles.fileContainer}
+            onPress={() => Linking.openURL(viewerUrl)}
+          >
+            <View style={styles.rowContainer}>
+              <Ionicons
+                name={getFileIcon(fileName)}
+                size={27}
+                color={isMyMessage ? "white" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.fileName,
+                  isMyMessage && styles.userMessageText,
+                ]}
+                numberOfLines={1}
+              >
+                {fileName || "Unnamed File"}
+              </Text>
+            </View>
+
+            {isTemp && item.status === "sending" && (
+              <ActivityIndicator
+                size="small"
+                color={isMyMessage ? "#fff" : "#666"}
+                style={{ marginTop: 5 }}
+              />
+            )}
+          </TouchableOpacity>
+        );
+
+      case "location":
+        return (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("MapViewer", {
+                latitude: parseFloat(item.content.split(",")[0]),
+                longitude: parseFloat(item.content.split(",")[1]),
+              })
+            }
+          >
+            <Image
+              source={{ uri: item.preview }}
+              style={styles.locationPreview}
+            />
+          </TouchableOpacity>
+        );
+      default:
+        return (
+          <Text
+            style={[
+              styles.messageText,
+              isMyMessage ? styles.userMessageText : styles.friendMessageText,
+            ]}
+          >
+            {item.content || ""}
+          </Text>
+        );
     }
-  
-    // Nếu là file (PDF, DOCX, PPTX, TXT,...)
-    if (fileTypes.includes(ext) || mimeType.startsWith("application/")) {
-      return "FILE";
-    }
-  
-    return "FILE"; // Fallback mặc định là FILE nếu không xác định được
   };
-  
 
   const renderMessage = ({ item }) => {
     if (!item || !item.sender) {
@@ -967,182 +672,62 @@ if (messageData?.type === "file") {
     }
 
     const isMyMessage = currentUser && item.sender._id === currentUser._id;
-    const isTemp = item._id.startsWith("temp-");
-
-    const renderMessageContent = () => {
-      switch (item.type) {
-        case "IMAGE":
-          const imageUrl = item.files.length > 0 ? item.files[0].url : "";
-
-          if (!imageUrl) {
-            console.warn("No image URL found");
-            return null;
-          }
-
-          return (
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate("ImageViewer", { uri: imageUrl })
-              }
-              style={styles.mediaContainer}
-            >
-              <Image
-                source={{ uri: imageUrl }}
-                style={styles.messageImage}
-                resizeMode="cover"
-              />
-              {isTemp && item.status === "sending" && (
-                <View style={styles.uploadingOverlay}>
-                  <ActivityIndicator color="#fff" />
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        case "video":
-          return (
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate("VideoPlayer", { uri: item.content })
-              }
-              style={styles.mediaContainer}
-            >
-              <Image
-                source={{ uri: item.thumbnail || item.content }}
-                style={styles.videoThumbnail}
-              />
-              <View style={styles.playButton}>
-                <Ionicons name="play" size={24} color="white" />
-              </View>
-              {isTemp && item.status === "sending" && (
-                <View style={styles.uploadingOverlay}>
-                  <ActivityIndicator color="#fff" />
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        case "FILE":
-          const file = item.files && item.files[0];
-          const fileName = file?.fileName || "File";
-          const fileUrl = file?.url || "";
-          // console.log("file name ---:", fileName);
-
-          if (!fileUrl) {
-            console.warn("No file URL found");
-            return null;
-          }
-
-          const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
-            fileUrl
-          )}&embedded=true`;
-          return (
-            <TouchableOpacity
-              style={styles.fileContainer}
-              onPress={() => Linking.openURL(viewerUrl)}
-            >
-              <View style={styles.rowContainer}>
-                <Ionicons
-                  name={getFileIcon(fileName)}
-                  size={27}
-                  color={isMyMessage ? "white" : "#666"}
-                />
-                <Text
-                  style={[
-                    styles.fileName,
-                    isMyMessage && styles.userMessageText,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {fileName || "Unnamed File"}
-                </Text>
-              </View>
-
-              {isTemp && item.status === "sending" && (
-                <ActivityIndicator
-                  size="small"
-                  color={isMyMessage ? "#fff" : "#666"}
-                  style={{ marginTop: 5 }}
-                />
-              )}
-            </TouchableOpacity>
-          );
-
-        case "location":
-          return (
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate("MapViewer", {
-                  latitude: parseFloat(item.content.split(",")[0]),
-                  longitude: parseFloat(item.content.split(",")[1]),
-                })
-              }
-            >
-              <Image
-                source={{ uri: item.preview }}
-                style={styles.locationPreview}
-              />
-            </TouchableOpacity>
-          );
-        default:
-          return (
-            <Text
-              style={[
-                styles.messageText,
-                isMyMessage ? styles.userMessageText : styles.friendMessageText,
-              ]}
-            >
-              {item.content || ""}
-            </Text>
-          );
-      }
-    };
+    const isTemp = item._id && item._id.startsWith("temp-");
+    
+    const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
+    const defaultAvatar = require("../../../assets/chat/man.png");
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.messageContainer,
-          isMyMessage ? styles.userMessage : styles.friendMessage,
-        ]}
-        onLongPress={() => {
-          if (isTemp && item.status === "error") {
-            retryMessage(item);
-          }
-        }}
-      >
+      <View style={[
+        styles.messageRow,
+        isMyMessage ? styles.userMessageRow : styles.friendMessageRow
+      ]}>
         {!isMyMessage && (
           <Image
-            source={
-              item.sender.avatar
-                ? { uri: item.sender.avatar }
-                : require("../../../assets/chat/man.png")
-            }
+            source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
             style={styles.messageAvatar}
           />
         )}
-        <View style={styles.messageContent}>
-          {renderMessageContent()}
-          <View style={styles.messageFooter}>
-            <Text style={styles.messageTime}>
-              {item.createdAt ? format(new Date(item.createdAt), "HH:mm") : ""}
-            </Text>
-            {isTemp && (
-              <View style={styles.messageStatus}>
-                {item.status === "sending" && (
-                  <ActivityIndicator size="small" color="#999" />
-                )}
-                {item.status === "error" && (
-                  <TouchableOpacity onPress={() => retryMessage(item)}>
-                    <Ionicons name="reload" size={16} color="red" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+        
+        <TouchableOpacity
+          style={[
+            styles.messageContainer,
+            isMyMessage ? styles.userMessage : styles.friendMessage,
+          ]}
+          onLongPress={() => {
+            if (!isTemp) {
+              setSelectedMessage(item);
+              setShowMessageOptions(true);
+            }
+          }}
+        >
+          <View style={styles.messageContent}>
+            {renderMessageContent(item)}
+            <View style={styles.messageFooter}>
+              <Text style={styles.messageTime}>
+                {item.createdAt ? format(new Date(item.createdAt), "HH:mm") : ""}
+              </Text>
+              {isTemp && (
+                <View style={styles.messageStatus}>
+                  {item.status === "sending" && (
+                    <ActivityIndicator size="small" color="#999" />
+                  )}
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+
+        {isMyMessage && (
+          <Image
+            source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+            style={styles.messageAvatar}
+          />
+        )}
+      </View>
     );
   };
 
-  // Utility functions
   const getFileIcon = (fileName) => {
     if (!fileName) return "document-outline";
     const ext = fileName.split(".").pop().toLowerCase();
@@ -1181,6 +766,308 @@ if (messageData?.type === "file") {
       setRefreshing(false);
     }
   }, []);
+
+  const handleMessagePin = async (message) => {
+    try {
+      if (pinnedMessage?._id === message._id) {
+        setPinnedMessage(null);
+      } else {
+        setPinnedMessage(message);
+      }
+      setShowMessageOptions(false);
+    } catch (error) {
+      console.error("Error pinning/unpinning message:", error);
+      alert("Không thể ghim/bỏ ghim tin nhắn. Vui lòng thử lại.");
+    }
+  };
+
+  const PinnedMessageBar = () => {
+    if (!pinnedMessage) return null;
+
+    const renderPinnedContent = () => {
+      switch (pinnedMessage.type) {
+        case "IMAGE":
+          return (
+            <Image
+              source={{ uri: pinnedMessage.files[0]?.url }}
+              style={styles.pinnedImage}
+            />
+          );
+        case "FILE":
+          return (
+            <View style={styles.pinnedFileContainer}>
+              <Ionicons name={getFileIcon(pinnedMessage.files[0]?.fileName)} size={16} color="#666" />
+              <Text style={styles.pinnedFileName} numberOfLines={1}>
+                {pinnedMessage.files[0]?.fileName || "File"}
+              </Text>
+            </View>
+          );
+        default:
+          return (
+            <Text style={styles.pinnedText} numberOfLines={1}>
+              {pinnedMessage.content}
+            </Text>
+          );
+      }
+    };
+
+    return (
+      <View style={styles.pinnedMessageContainer}>
+        <View style={styles.pinnedMessageContent}>
+          <Ionicons name="pin" size={16} color="#666" style={styles.pinnedIcon} />
+          {renderPinnedContent()}
+        </View>
+        <TouchableOpacity
+          onPress={() => handleMessagePin(pinnedMessage)}
+          style={styles.unpinButton}
+        >
+          <Ionicons name="close" size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const fetchFriends = async () => {
+    try {
+      const response = await chatService.getMyConversations();
+      setFriends(response.data || []);
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+    }
+  };
+
+  const handleMessageForward = async (message) => {
+    try {
+      console.log('Selected message for forwarding:', message);
+      setSelectedMessage(message);
+      
+      const response = await chatService.getMyConversations();
+      console.log('Conversations response:', response);
+      
+      if (response.data) {
+        // Filter out current conversation and ensure conversation has required data
+        const availableConversations = response.data
+          .filter(conv => conv._id !== conversation._id)
+          .map(conv => {
+            let name = conv.name;
+            let avatar = conv.avatar;
+
+            // If no name/avatar, try to get from members
+            if ((!name || !avatar) && conv.members && conv.members.length > 0) {
+              const otherMember = conv.members.find(m => m._id !== currentUser._id);
+              if (otherMember) {
+                name = `${otherMember.firstName} ${otherMember.lastName}`;
+                avatar = otherMember.avatar;
+              }
+            }
+
+            return {
+              _id: conv._id,
+              name: name || 'Người dùng',
+              avatar: avatar
+            };
+          })
+          .filter(conv => conv.name !== 'Người dùng');
+        
+        console.log('Available conversations for forwarding:', availableConversations);
+        
+        if (availableConversations.length === 0) {
+          alert('Không có cuộc trò chuyện nào để chuyển tiếp');
+          return;
+        }
+        
+        setFriends(availableConversations);
+        setShowForwardModal(true);
+        setShowMessageOptions(false);
+      }
+    } catch (error) {
+      console.error("Error preparing forward:", error);
+      alert("Không thể tải danh sách bạn bè. Vui lòng thử lại.");
+    }
+  };
+
+  const handleSendForward = async () => {
+    try {
+      if (selectedFriends.length === 0) {
+        alert("Vui lòng chọn người nhận");
+        return;
+      }
+
+      if (!selectedMessage || !selectedMessage._id) {
+        console.error('No message selected for forwarding');
+        alert("Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.");
+        return;
+      }
+
+      if (!currentUser || !currentUser._id) {
+        console.error('No current user');
+        alert("Vui lòng đăng nhập lại.");
+        return;
+      }
+
+      // Format dữ liệu theo cấu trúc CSDL
+      const forwardData = {
+        originalMessageId: selectedMessage._id,
+        conversationIds: selectedFriends.map(f => f._id),
+        sender: currentUser._id,
+        type: selectedMessage.type || "TEXT",
+        content: selectedMessage.content,
+        files: selectedMessage.files || []
+      };
+
+      console.log('Sending forward request with data:', forwardData);
+
+      const response = await chatService.forwardMessage(forwardData);
+      console.log('Forward response:', response);
+
+      if (response.success) {
+        setShowForwardModal(false);
+        setSelectedFriends([]);
+        alert("Đã chuyển tiếp tin nhắn thành công");
+      } else {
+        throw new Error(response.error || "Không thể chuyển tiếp tin nhắn");
+      }
+    } catch (error) {
+      console.error("Error forwarding message:", error);
+      alert(error.message || "Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.");
+    } finally {
+      setShowForwardModal(false);
+      setSelectedFriends([]);
+    }
+  };
+
+  const handleMessageDelete = async (message) => {
+    try {
+      if (!message || !message._id) {
+        throw new Error('Invalid message');
+      }
+
+      const response = await chatService.revokeMessageBoth(message._id, conversation._id);
+      
+      setMessages((prevMessages) => 
+        prevMessages.filter((msg) => msg._id !== message._id)
+      );
+      
+      socket.emit("revokeMessage", {
+        messageId: message._id,
+        conversationId: conversation._id,
+      });
+      
+      setShowMessageOptions(false);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      alert('Không thể xóa tin nhắn. Vui lòng thử lại.');
+    }
+  };
+
+  useEffect(() => {
+    if (socket) {
+      socket.on("messageRevoked", (data) => {
+        if (data.conversationId === conversation._id) {
+          setMessages((prevMessages) =>
+            prevMessages.filter((msg) => msg._id !== data.messageId)
+          );
+        }
+      });
+
+      return () => {
+        socket.off("messageRevoked");
+      };
+    }
+  }, [socket, conversation]);
+
+  const toggleSelectFriend = (friend) => {
+    setSelectedFriends(prev => {
+      const isSelected = prev.some(f => f._id === friend._id);
+      if (isSelected) {
+        return prev.filter(f => f._id !== friend._id);
+      } else {
+        return [...prev, friend];
+      }
+    });
+  };
+
+  const ForwardModal = () => {
+    if (!showForwardModal) return null;
+    
+    return (
+      <Modal
+        visible={true}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setShowForwardModal(false);
+          setSelectedFriends([]);
+        }}
+      >
+        <View style={styles.forwardModalContainer}>
+          <View style={styles.forwardModalContent}>
+            <View style={styles.forwardModalHeader}>
+              <Text style={styles.forwardModalTitle}>Chuyển tiếp tin nhắn</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowForwardModal(false);
+                  setSelectedFriends([]);
+                }}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {friends.length > 0 ? (
+              <FlatList
+                data={friends}
+                keyExtractor={(item) => item._id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.friendItem,
+                      selectedFriends.some(f => f._id === item._id) && styles.friendItemSelected
+                    ]}
+                    onPress={() => toggleSelectFriend(item)}
+                  >
+                    <Image
+                      source={
+                        item.avatar
+                          ? { uri: item.avatar }
+                          : require("../../../assets/chat/man.png")
+                      }
+                      style={styles.friendAvatar}
+                    />
+                    <Text style={styles.friendName}>
+                      {item.name || "Người dùng"}
+                    </Text>
+                    {selectedFriends.some(f => f._id === item._id) && (
+                      <Ionicons name="checkmark-circle" size={24} color="#0099ff" />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.friendsList}
+              />
+            ) : (
+              <View style={styles.noFriendsContainer}>
+                <Text style={styles.noFriendsText}>Không có cuộc trò chuyện nào</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.forwardButton,
+                selectedFriends.length === 0 && styles.forwardButtonDisabled
+              ]}
+              onPress={handleSendForward}
+              disabled={selectedFriends.length === 0}
+            >
+              <Text style={styles.forwardButtonText}>
+                Chuyển tiếp ({selectedFriends.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   if (loading) {
     return (
@@ -1231,26 +1118,37 @@ if (messageData?.type === "file") {
           <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="call-outline" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Feather
-              name="more-horizontal"
-              size={24}
-              color="white"
-              onPress={() => {
-                if (otherUser) {
-                  navigation.navigate("UserInfo", { user: otherUser });
-                }
-              }}
-            />
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => {
+              if (otherUser && conversation) {
+                navigation.navigate("UserInfo", { 
+                  conversation: {
+                    _id: conversation._id,
+                    name: otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`,
+                    members: conversation.members || [],
+                    avatar: otherUser.avatar,
+                    isGroup: false,
+                    isOnline: isOnline,
+                    user: otherUser
+                  }
+                });
+              }
+            }}
+          >
+            <Feather name="more-horizontal" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </View>
+
+      <PinnedMessageBar />
 
       <FlatList
         data={combinedMessages}
         renderItem={renderMessage}
         keyExtractor={(item) => item._id}
-        style={styles.messageList}
+        style={[styles.messageList, pinnedMessage && { marginTop: 50 }]}
+        contentContainerStyle={pinnedMessage ? { paddingTop: 50 } : null}
         inverted={false}
         refreshing={refreshing}
         onRefresh={onRefresh}
@@ -1307,6 +1205,47 @@ if (messageData?.type === "file") {
         onLocation={handleLocation}
         onDocument={handleDocument}
       />
+
+      <Modal
+        visible={showMessageOptions}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMessageOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMessageOptions(false)}
+        >
+          <View style={styles.messageOptionsContainer}>
+            <TouchableOpacity
+              style={styles.messageOptionItem}
+              onPress={() => handleMessagePin(selectedMessage)}
+            >
+              <Ionicons name="pin" size={22} color="#333" />
+              <Text style={styles.messageOptionText}>Ghim tin nhắn</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.messageOptionItem}
+              onPress={() => handleMessageForward(selectedMessage)}
+            >
+              <Ionicons name="arrow-redo" size={22} color="#333" />
+              <Text style={styles.messageOptionText}>Chuyển tiếp</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.messageOptionItem}
+              onPress={() => handleMessageDelete(selectedMessage)}
+            >
+              <Ionicons name="trash" size={22} color="#e74c3c" />
+              <Text style={[styles.messageOptionText, { color: '#e74c3c' }]}>Xóa tin nhắn</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <ForwardModal />
     </SafeAreaView>
   );
 };
@@ -1335,10 +1274,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   messageAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginRight: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  userAvatar: {
+    order: 2,
+  },
+  friendAvatar: {
+    order: 0,
   },
   friendName: {
     fontSize: 16,
@@ -1361,32 +1305,45 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: "#FFFFFF",
   },
+  messageRow: {
+    flexDirection: 'row',
+    marginVertical: 8,
+    alignItems: 'flex-end',
+    paddingHorizontal: 8,
+  },
+  userMessageRow: {
+    justifyContent: 'flex-end',
+  },
+  friendMessageRow: {
+    justifyContent: 'flex-start',
+  },
   messageContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginVertical: 4,
-    maxWidth: "100%",
-    width: "auto",
-    flexWrap: "wrap",
+    maxWidth: '70%',
+    marginHorizontal: 8,
   },
   messageContent: {
     padding: 10,
     borderRadius: 15,
-    maxWidth: "90%",
   },
   userMessage: {
     alignSelf: "flex-end",
     backgroundColor: "#0099ff",
+    marginLeft: 'auto',
   },
   friendMessage: {
     alignSelf: "flex-start",
     backgroundColor: "#e4e4e4",
+    marginRight: 'auto',
+  },
+  messageText: {
+    fontSize: 15,
+    lineHeight: 20,
   },
   userMessageText: {
     color: "white",
   },
   friendMessageText: {
-    color: "black",
+    color: "#333",
   },
   messageTime: {
     fontSize: 10,
@@ -1463,10 +1420,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     overflow: "hidden",
   },
-  userMessageText: {
-    color: "white",
-  },
-
   messageFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -1490,6 +1443,198 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageOptionsContainer: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  messageOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  messageOptionText: {
+    fontSize: 16,
+    marginLeft: 16,
+    color: '#333',
+  },
+  pinnedMessageContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    zIndex: 999,
+    elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  pinnedMessageContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pinnedIcon: {
+    marginRight: 8,
+    transform: [{ rotate: '45deg' }],
+  },
+  pinnedText: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  pinnedImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  pinnedFileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pinnedFileName: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    flex: 1,
+  },
+  unpinButton: {
+    padding: 4,
+  },
+  forwardModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  forwardModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  forwardModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  forwardModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  friendsList: {
+    flex: 1,
+  },
+  friendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  friendItemSelected: {
+    backgroundColor: '#f0f8ff',
+  },
+  friendAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  friendName: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+  },
+  noFriendsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noFriendsText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  forwardButton: {
+    backgroundColor: '#0099ff',
+    margin: 16,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  forwardButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  forwardButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    margin: -2,
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  gridImageContainer: {
+    padding: 2,
+  },
+  gridImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
+  },
+  gridImageLast: {
+    position: 'relative',
+  },
+  remainingCount: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    margin: 2,
+  },
+  remainingCountText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });
 

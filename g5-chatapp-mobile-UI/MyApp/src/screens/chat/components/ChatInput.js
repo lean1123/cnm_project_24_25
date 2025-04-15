@@ -14,7 +14,7 @@ const ChatInput = ({
   const handleSend = () => {
     if (!newMessage.trim() || isSending) return;
     sendMessage();
-    Keyboard.dismiss(); // Ẩn bàn phím sau khi gửi
+    Keyboard.dismiss(); =
   };
 
   return (

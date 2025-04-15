@@ -6,14 +6,12 @@ let socket = null;
 
 export const initSocket = async () => {
   try {
-    // Get user data from AsyncStorage
     const userData = await AsyncStorage.getItem('userData');
     if (!userData) {
       console.warn('No user data found in AsyncStorage');
       return null;
     }
 
-    // Parse user data and extract userId
     const parsedUserData = JSON.parse(userData);
     const userId = parsedUserData?._id || parsedUserData?.id;
     
@@ -42,7 +40,6 @@ export const initSocket = async () => {
       socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         if (reason === 'io server disconnect') {
-          // Server initiated disconnect, try to reconnect
           socket.connect();
         }
       });

@@ -65,20 +65,18 @@ const Header = () => {
         </View>
       )}
 
-      {/* Modal */}
       <Modal
         visible={isModalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setIsModalVisible(false)}
       >
-        {/* Lớp phủ đen mờ */}
+
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setIsModalVisible(false)}
         >
-          {/* Modal giữ vị trí cũ */}
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <TouchableOpacity
@@ -144,7 +142,7 @@ const styles = StyleSheet.create({
     width: "100%",
     borderColor: "#ccc",
     borderWidth: 1,
-    height: 70, // giữ nguyên kích thước header
+    height: 70, 
     justifyContent: "center",
     paddingHorizontal: 10,
   },

@@ -12,10 +12,8 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
 
     console.log('Setting up socket listeners for conversation:', conversation._id);
 
-    // Initialize socket
     const setupSocket = async () => {
       try {
-        // Initialize socket if not already initialized
         const socketInstance = await initSocket();
         if (!socketInstance) {
           console.error('Failed to initialize socket');
@@ -24,20 +22,17 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
         
         setSocket(socketInstance);
         
-        // Ensure socket is connected
         if (!socketInstance.connected) {
           console.log('Socket not connected, connecting...');
           socketInstance.connect();
         }
         
-        // Set up event listeners
         setupEventListeners(socketInstance);
       } catch (error) {
         console.error('Error initializing socket:', error);
       }
     };
     
-    // Try to get existing socket first
     try {
       const existingSocket = getSocket();
       if (existingSocket) {
@@ -53,7 +48,6 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
     
     function setupEventListeners(socketInstance) {
 
-      // Handle connection events
       const handleConnect = () => {
         console.log('Socket connected, joining room:', conversation._id);
         socketInstance.emit('join', {
@@ -65,7 +59,7 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
       const handleDisconnect = (reason) => {
         console.log('Socket disconnected:', reason);
         setIsOnline(false);
-        // Attempt to reconnect
+
         setTimeout(() => {
           if (socketInstance && !socketInstance.connected) {
             console.log('Attempting to reconnect...');
@@ -74,20 +68,16 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
         }, 1000);
       };
 
-      // Listen for new messages
       const handleReceiveMessage = (data) => {
         console.log('Received message data in socket hook:', data);
         
-        // Extract message from data
         const messageData = data?.message || data;
         
-        // Validate message data
         if (!messageData || (!messageData.content && !messageData.file)) {
           console.log('Invalid message data received:', data);
           return;
         }
 
-        // Ensure message has required fields
         const validMessage = {
           ...messageData,
           _id: messageData._id || `temp-${Date.now()}`,
@@ -97,7 +87,6 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
 
         console.log('Processing message in socket hook:', validMessage);
         
-        // Chỉ xử lý tin nhắn thuộc về conversation hiện tại
         if (validMessage.conversation === conversation._id) {
           onNewMessage(validMessage);
         } else {
@@ -105,7 +94,6 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
         }
       };
 
-      // Listen for online status
       const handleOnlineStatus = (data) => {
         console.log('Online status update:', data);
         if (data?.userId && data.userId !== userId) {
@@ -113,33 +101,29 @@ export const useChatSocket = ({ conversation, userId, onNewMessage, setIsOnline 
         }
       };
 
-      // Setup listeners
       socketInstance.on('connect', handleConnect);
       socketInstance.on('disconnect', handleDisconnect);
-      socketInstance.on('newMessage', handleReceiveMessage);  // Lắng nghe event 'newMessage' từ server
+      socketInstance.on('newMessage', handleReceiveMessage); 
       socketInstance.on('userOnline', handleOnlineStatus);
       socketInstance.on('userOffline', handleOnlineStatus);
 
-      // Initial connection if socket is already connected
       if (socketInstance.connected) {
         handleConnect();
       }
     }
 
-    // Cleanup function
     return () => {
       if (socket) {
         console.log('Cleaning up socket listeners for conversation:', conversation._id);
         
         if (socket.connected) {
-          // Leave room
+
           socket.emit('leave', {
             userId: userId,
             conversationId: conversation._id
           });
         }
 
-        // Remove listeners
         socket.off('connect');
         socket.off('disconnect');
         socket.off('newMessage');

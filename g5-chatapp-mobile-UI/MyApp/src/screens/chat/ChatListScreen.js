@@ -57,7 +57,6 @@ const ChatListScreen = ({ navigation }) => {
     getUserData();
   }, []);
 
-  // Fetch conversations when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       console.log('Screen focused, fetching conversations for userId:', userId);
@@ -65,7 +64,6 @@ const ChatListScreen = ({ navigation }) => {
     }, [userId])
   );
 
-  // Socket connection handling
   useEffect(() => {
     if (socket && !socket.connected) {
       socket.connect();

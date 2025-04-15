@@ -9,10 +9,20 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import styles from "./styles";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BACKGROUND_COLORS = [
+  { name: 'Default', value: '#ffffff' },
+  { name: 'Light Blue', value: '#e3f2fd' },
+  { name: 'Mint Green', value: '#e8f5e9' },
+  { name: 'Lavender', value: '#f3e5f5' },
+  { name: 'Peach', value: '#fbe9e7' },
+  { name: 'Light Gray', value: '#f5f5f5' },
+];
 
 const UserInfoScreen = ({ navigation, route }) => {
   const [muted, setMuted] = useState(false);
@@ -22,29 +32,48 @@ const UserInfoScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [selectedColor, setSelectedColor] = useState(BACKGROUND_COLORS[0].value);
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff');
   
-  // Lấy thông tin người dùng từ route params
-  const friend = route.params?.friend;
+  const conversation = route.params?.conversation;
   
   useEffect(() => {
     const getUserId = async () => {
       try {
-        const id = await AsyncStorage.getItem('userId');
-        if (id) {
-          setUserId(id);
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserId(user._id || user.id);
         }
       } catch (error) {
-        console.error('Error getting userId:', error);
+        console.error('Error getting userData:', error);
       }
     };
     getUserId();
     
-    // Xử lý thông tin người dùng từ conversation
-    if (friend) {
-      processUserInfo(friend);
+    if (conversation) {
+      processUserInfo(conversation);
     }
-  }, [friend]);
-  
+  }, [conversation]);
+
+  useEffect(() => {
+    const loadChatBackground = async () => {
+      try {
+        const chatBackgrounds = await AsyncStorage.getItem('chatBackgrounds') || '{}';
+        const backgrounds = JSON.parse(chatBackgrounds);
+        const savedColor = backgrounds[conversation._id];
+        if (savedColor) {
+          setBackgroundColor(savedColor);
+        }
+      } catch (error) {
+        console.error('Error loading chat background:', error);
+      }
+    };
+    
+    loadChatBackground();
+  }, [conversation._id]);
+
   const processUserInfo = (conversation) => {
     if (!conversation) return;
     
@@ -66,16 +95,21 @@ const UserInfoScreen = ({ navigation, route }) => {
         : require("../../../../assets/chat/man.png");
     } 
     // Nếu là cuộc trò chuyện 1-1
-    else if (Array.isArray(conversation.members)) {
-      // Tìm người dùng khác (không phải người dùng hiện tại)
-      const otherMember = conversation.members.find(member => member?.userId !== userId);
+    else if (conversation.members) {
+      // Tìm thông tin người dùng khác
+      const otherUser = conversation.members.find(member => member._id !== userId);
       
-      if (otherMember) {
-        userData.name = otherMember.fullName || "Unknown";
-        userData.phone = otherMember.phone || "N/A";
-        userData.avatar = otherMember.avatar 
-          ? { uri: otherMember.avatar } 
-          : require("../../../../assets/chat/man.png");
+      if (otherUser) {
+        userData = {
+          ...userData,
+          name: `${otherUser.firstName} ${otherUser.lastName}`,
+          phone: otherUser.phone || "N/A",
+          avatar: otherUser.avatar 
+            ? { uri: otherUser.avatar } 
+            : require("../../../../assets/chat/man.png"),
+          isOnline: otherUser.isOnline || false,
+          email: otherUser.email,
+        };
       }
     }
     
@@ -93,12 +127,67 @@ const UserInfoScreen = ({ navigation, route }) => {
   };
 
   const handleChangeBackground = () => {
-    Alert.alert("Đổi hình nền", "Chức năng này chưa được triển khai.");
+    setShowColorPicker(true);
+  };
+
+  const handleSelectColor = async (color) => {
+    try {
+      setSelectedColor(color);
+      // Lưu màu nền cho cuộc trò chuyện này
+      const chatBackgrounds = await AsyncStorage.getItem('chatBackgrounds') || '{}';
+      const backgrounds = JSON.parse(chatBackgrounds);
+      backgrounds[conversation._id] = color;
+      await AsyncStorage.setItem('chatBackgrounds', JSON.stringify(backgrounds));
+      
+      setShowColorPicker(false);
+      Alert.alert("Thành công", "Đã thay đổi màu nền cuộc trò chuyện");
+    } catch (error) {
+      console.error('Error saving background color:', error);
+      Alert.alert("Lỗi", "Không thể thay đổi màu nền");
+    }
   };
 
   const handleToggleNotifications = () => {
     Alert.alert("Tắt thông báo", "Chức năng này chưa được triển khai.");
   };
+
+  const ColorPickerModal = () => (
+    <Modal
+      visible={showColorPicker}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowColorPicker(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.colorPickerContent}>
+          <Text style={styles.modalTitle}>Chọn màu nền</Text>
+          <View style={styles.colorGrid}>
+            {BACKGROUND_COLORS.map((color, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.colorOption,
+                  { backgroundColor: color.value },
+                  selectedColor === color.value && styles.selectedColor
+                ]}
+                onPress={() => handleSelectColor(color.value)}
+              >
+                {selectedColor === color.value && (
+                  <Icon name="check" size={20} color="#000" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setShowColorPicker(false)}
+          >
+            <Text style={styles.cancelButtonText}>Hủy</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
   if (loading) {
     return (
@@ -121,6 +210,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           <Image source={userInfo.avatar} style={styles.avatarLarge} />
           <Text style={styles.name}>{userInfo.name}</Text>
           <Text style={styles.phone}>{userInfo.phone}</Text>
+          {userInfo.isOnline && <Text style={styles.onlineStatus}>Đang hoạt động</Text>}
         </View>
 
         <View style={styles.quickActions}>
@@ -142,8 +232,8 @@ const UserInfoScreen = ({ navigation, route }) => {
             style={styles.quickActionButton}
             onPress={handleChangeBackground}
           >
-            <Icon name="image" size={18} />
-            <Text style={styles.textAction}>Đổi hình nền</Text>
+            <Icon name="palette" size={18} />
+            <Text style={styles.textAction}>Đổi màu nền</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.quickActionButton}
@@ -201,8 +291,70 @@ const UserInfoScreen = ({ navigation, route }) => {
           </View>
         </View>
       </ScrollView>
+      <ColorPickerModal />
     </SafeAreaView>
   );
 };
+
+// Thêm styles mới
+const additionalStyles = {
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  colorPickerContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+  },
+  colorOption: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    margin: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  selectedColor: {
+    borderWidth: 2,
+    borderColor: '#000',
+  },
+  cancelButton: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#135CAF',
+    fontWeight: 'bold',
+  },
+  onlineStatus: {
+    color: '#4CAF50',
+    marginTop: 5,
+    fontSize: 14,
+  },
+};
+
+// Merge styles
+Object.assign(styles, additionalStyles);
 
 export default UserInfoScreen;
