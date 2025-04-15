@@ -15,11 +15,9 @@ export class Message extends Document {
   @Prop({ type: [{ fileName: String, url: String }], required: false })
   files: [{ fileName: string; url: string }];
 
-  // Chỉ ẩn tin nhắn đến đối với những user tồn tại trong mảng này
   @Prop({ type: [Types.ObjectId], ref: 'User', default: [], required: false })
   deletedFor: Types.ObjectId[];
 
-  // Tin nhắn đã bị thu hồi trong cuộc thoại
   @Prop({ default: false })
   isRevoked: boolean;
   @Prop({
@@ -31,6 +29,20 @@ export class Message extends Document {
   forwardFrom: Types.ObjectId;
   @Prop({ type: String, default: [], required: false })
   type: MessageType;
+
+  @Prop({
+    type: [
+      {
+        user: { type: Types.ObjectId, ref: 'User', required: true },
+        reaction: { type: String, required: true },
+      },
+    ],
+    default: [],
+  })
+  reactions: {
+    user: Types.ObjectId;
+    reaction: string;
+  }[];
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

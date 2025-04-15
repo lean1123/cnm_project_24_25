@@ -40,6 +40,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
       const { data } = await api.post("/contact", {
         contactId: userId,
       });
+      console.log("Contact data:", data);
       if (data.success) {
         set((state) => ({
           myPendingContact: [...state.myPendingContact, data.data],
@@ -133,7 +134,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (socket) {
           console.log("Emitting cancel contact event...");
-          const receiverId = data.data.contactId === useAuthStore.getState().user?._id ? data.data.userId : data.data.contactId;
+          const receiverId = data.data.contact === useAuthStore.getState().user?._id ? data.data.user : data.data.contact;
           socket.emit("rejectRequestContact", {
             receiverId: receiverId,
             name: receiverId,
@@ -162,7 +163,8 @@ export const useContactStore = create<iContactStore>((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (socket) {
           console.log("Emitting cancel contact event...");
-          const receiverId = data.data.contactId === useAuthStore.getState().user?._id ? data.data.userId : data.data.contactId;
+          const receiverId = data.data.contact === useAuthStore.getState().user?._id ? data.data.user : data.data.contact;
+          console.log("Receiver ID:", receiverId);
           socket.emit("cancelRequestContact", {
             receiverId: receiverId,
             contactId: contactId,
@@ -196,6 +198,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
     if (socket) {
       console.log("Subscribing to contact events...");
       socket.on("newRequestContact", (data: Contact) => {
+        console.log("Received new contact request:", data);
         set((state) => ({
           myRequestContact: [...state.myRequestContact, data],
         }));
@@ -214,6 +217,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
     if (socket) {
       console.log("Subscribing to cancel contact events...");
       socket.on("cancelRequestContact", (contactId: string) => {
+        console.log("Received cancel contact request:", contactId);
         set((state) => ({
           myRequestContact: state.myRequestContact?.filter(
             (contact) => contact._id !== contactId

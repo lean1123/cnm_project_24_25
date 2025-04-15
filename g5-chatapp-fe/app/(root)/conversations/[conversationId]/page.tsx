@@ -10,6 +10,7 @@ import ConversationInfo from "./_components/info/ConversationInfo";
 import { useConversationStore } from "@/store/useConversationStore";
 import { root } from "postcss";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useCallStore } from "@/store/useCallStore";
 
 type Props = {
   params: Promise<{
@@ -24,6 +25,8 @@ function ConversationPage({ params }: Props) {
   const { selectedConversation, getConversation } = useConversationStore();
 
   const {user} = useAuthStore()
+
+  const {handleCall} = useCallStore();
 
   useEffect(() => {
     console.log("Conversation ID:", conversationId);
@@ -73,7 +76,7 @@ function ConversationPage({ params }: Props) {
             {
               label: "Voice call",
               icon: <Phone />,
-              onClick: () => setLeaveGroupDialogOpen(true),
+              onClick: () => handleCall(conversationId),
             },
             {
               label: "Video call",

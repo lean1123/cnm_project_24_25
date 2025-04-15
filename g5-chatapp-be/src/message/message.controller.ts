@@ -20,6 +20,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
+import { MessageReactionRequest } from './dtos/requests/messageReaction.request';
 
 @Controller('message')
 export class MessageController {
@@ -72,6 +73,38 @@ export class MessageController {
     );
   }
 
+  @Put('/reaction')
+  @UseGuards(AuthGuard('jwt'))
+  async reactionMessage(
+    @Body() body: MessageReactionRequest,
+    @UserDecorator() userPayload: JwtPayload,
+  ): Promise<Message> {
+    const messageReaction = await this.messageService.reactToMessage(
+      userPayload,
+      body,
+    );
+
+    this.chatGateway.handleReactToMessage(messageReaction);
+
+    return messageReaction;
+  }
+
+  @Put('/:messageId/un-reaction')
+  @UseGuards(AuthGuard('jwt'))
+  async unReactionMessage(
+    @Param('messageId') messageId: string,
+    @UserDecorator() userPayload: JwtPayload,
+  ): Promise<Message> {
+    const messageUnReaction = await this.messageService.unReactToMessage(
+      userPayload,
+      messageId,
+    );
+
+    this.chatGateway.handleUnReactToMessage(messageUnReaction);
+
+    return messageUnReaction;
+  }
+
   @Put(':messageId')
   async updateMessage(
     @Param('messageId') messageId: string,
@@ -116,16 +149,16 @@ export class MessageController {
    * @returns message
    */
   @UseGuards(AuthGuard('jwt'))
-  @Patch(':messageId/revoke-both/:conversationId')
+  @Patch(':messageId/revoke-both')
   async revokeMessageBoth(
     @Param('messageId') messageId: string,
-    @Param('conversationId') conversationId: string,
+    // @Param('conversationId') conversationId: string,
     @UserDecorator() req: JwtPayload,
   ) {
     const userId = req._id;
     const revorkedMessage = await this.messageService.revokeMessageBoth(
       messageId,
-      conversationId,
+      // conversationId,
       userId,
     );
 
