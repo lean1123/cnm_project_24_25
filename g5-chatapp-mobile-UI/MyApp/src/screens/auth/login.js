@@ -15,6 +15,7 @@ import NotificationModal from "../../components/CustomModal";
 import { signIn } from "../../services/auth/authService";
 import { validateSignIn } from "../../utils/validators";
 import { CommonActions } from "@react-navigation/native";
+import { initSocket } from '../../services/socket';
 
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -33,21 +34,45 @@ const SignInScreen = ({ navigation }) => {
 
     try {
       const result = await signIn(email, password);
-      // console.log("Sign in result:", result);
+      console.log("Sign in result:", result);
 
-      if (result.ok) {
-        // Lưu thông tin người dùng và token vào AsyncStorage
-        await AsyncStorage.setItem("user", JSON.stringify(result.user));
+      if (result.ok && result.user && result.user._id) {
+        // Store user data
+        const userData = {
+          _id: result.user._id,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+          avatar: result.user.avatar,
+          phone: result.user.phone,
+          status: result.user.status,
+          isOnline: true,
+          token: result.token
+        };
+
+        // Store user data in AsyncStorage
+        await AsyncStorage.setItem("userData", JSON.stringify(userData));
         await AsyncStorage.setItem("userToken", result.token);
-        await AsyncStorage.setItem("userId", result.user.id);
-        // console.log("User data saved to AsyncStorage");
+        await AsyncStorage.setItem("userId", result.user._id);
 
+        // Verify data was stored correctly
+        const storedUserData = await AsyncStorage.getItem("userData");
+        const storedToken = await AsyncStorage.getItem("userToken");
+        const storedUserId = await AsyncStorage.getItem("userId");
+
+        if (!storedUserData || !storedToken || !storedUserId) {
+          throw new Error("Failed to store user data");
+        }
+
+        console.log("User data stored successfully");
         setModalMessage("Login successful!");
         setModalVisible(true);
+
+        // Initialize socket connection
+        await initSocket(result.user._id);
         
-        // Chuyển hướng sau khi hiển thị modal
+        // Navigate after showing modal
         setTimeout(() => {
-          // console.log("Attempting to navigate to Home_Chat...");
           setModalVisible(false);
           navigation.dispatch(
             CommonActions.reset({

@@ -15,7 +15,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to change your avatar."
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to change your avatar.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos for your avatar.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages."
       }
     },
     "android": {

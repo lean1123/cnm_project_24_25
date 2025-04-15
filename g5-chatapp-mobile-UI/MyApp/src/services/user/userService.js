@@ -1,8 +1,31 @@
 // services/userService.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../config/api";
-{/* get Profile User */}
 
+{/* search users */}
+export const searchUsers = async (keyword) => {
+  try {
+    const response = await api.get(`/users/search?keyword=${keyword}`);
+    if (response.data.success) {
+      return {
+        ok: true,
+        data: response.data.data || []
+      };
+    }
+    return {
+      ok: false,
+      message: response.data.message || "Failed to search users"
+    };
+  } catch (error) {
+    console.error("Search users error:", error);
+    return {
+      ok: false,
+      message: error.response?.data?.message || error.message || "Failed to search users"
+    };
+  }
+};
+
+{/* get Profile User */}
 export const getUserProfile = async () => {
   try {
     const userId = await AsyncStorage.getItem("userId");
@@ -31,8 +54,8 @@ export const getUserProfile = async () => {
     };
   }
 };
-{/* update Profile User */}
 
+{/* update Profile User */}
 export const updateUserProfile = async (profileData, token) => {
   try {
     if (!token) throw new Error("No token provided");

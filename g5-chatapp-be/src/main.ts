@@ -24,6 +24,9 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:5174',
       'https://d3vkdcq3kcj9ec.cloudfront.net',
+      'http://localhost:3000',
+      'http://localhost:8082',
+      'http://localhost:8081',
     ], // Chỉ chấp nhận từ frontend này
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Cho phép gửi cookie & header xác thực
