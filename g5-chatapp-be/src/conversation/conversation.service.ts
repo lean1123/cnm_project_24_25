@@ -110,8 +110,9 @@ export class ConversationService {
     }
     const conversations = await this.convenstationModel
       .find({
-        members: new Types.ObjectId(userPayload._id.toString()),
+        members: userPayload._id,
       })
+      .sort({ updatedAt: -1 })
       .populate('members', 'firstName lastName email avatar')
       .populate('admin', 'firstName lastName email avatar')
       .populate({
