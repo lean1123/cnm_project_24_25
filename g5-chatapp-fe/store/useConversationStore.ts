@@ -180,55 +180,59 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   },
   subscribeToNewMessages: () => {
     const socket = getSocket();
-
+  
     if (!socket) return;
-
+  
     socket.on("newMessage", (message: Message) => {
       set((state) => {
         const selectedId = get().selectedConversation?._id;
-
-        const isInSelectedConversation = message.conversation === selectedId;
-
-        let updatedConversations = state.conversations;
-
-        // Chỉ cập nhật conversations nếu KHÔNG phải selectedConversation
-        if (!isInSelectedConversation) {
-          updatedConversations = state.conversations.map((conversation) => {
-            if (conversation._id === message.conversation) {
-              return {
-                ...conversation,
-                lastMessage: {
-                  _id: message._id,
-                  sender: message.sender,
-                  content: message.content,
-                  type: message.type,
-                  files: message.files,
-                },
-                updatedAt: new Date().toISOString(),
-              };
-            }
-            return conversation;
-          });
-
-          updatedConversations = updatedConversations.sort((a, b) => {
-            return (
-              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-            );
-          });
-        }
-
+        const isSelected = message.conversation === selectedId;
+        const isForward = message.forwardFrom !== null;
+        const isCurrentUser =
+          message.sender._id === useAuthStore.getState().user?.id;
+  
+        // ✅ Luôn cập nhật conversations
+        let updatedConversations = state.conversations.map((conversation) => {
+          if (conversation._id === message.conversation) {
+            return {
+              ...conversation,
+              lastMessage: {
+                _id: message._id,
+                sender: message.sender,
+                content: message.content,
+                type: message.type,
+                files: message.files,
+              },
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return conversation;
+        });
+  
+        updatedConversations = updatedConversations.sort((a, b) => {
+          return (
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+        });
+  
+        // ✅ Điều kiện thêm vào messages:
+        // 1. Thuộc selectedConversation
+        // 2. Nếu là forward, thì phải là từ người khác gửi
+        const shouldAddToMessages =
+          isSelected && (!isForward || (isForward && !isCurrentUser));
+  
         return {
-          // Chỉ cập nhật messages nếu message thuộc selectedConversation
-          messages: isInSelectedConversation
+          messages: shouldAddToMessages
             ? [message, ...state.messages.filter((m) => m._id !== "temp")]
             : state.messages,
-
+  
           messagesTemp: state.messagesTemp.filter((m) => m._id !== "temp"),
           conversations: updatedConversations,
         };
       });
     });
   },
+  
 
   unsubscribeFromNewMessages: () => {
     const socket = getSocket(); // Ensure socket is initialized
@@ -305,8 +309,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   subscribeToDeleteMessage: () => {
     const socket = getSocket(); // Ensure socket is initialized
     if (socket) {
-      socket.on("deleteMessage", (message: Message) => {
-      });
+      socket.on("deleteMessage", (message: Message) => {});
     }
   },
   unsubscribeFromDeleteMessage: () => {
@@ -363,7 +366,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       socket.on("reactToMessage", (message: Message) => {
         set((state) => ({
           messages: state.messages.map((m) =>
-            m._id === message._id ?  message : m
+            m._id === message._id ? message : m
           ),
         }));
       });
@@ -381,7 +384,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       socket.on("unReactToMessage", (message: Message) => {
         set((state) => ({
           messages: state.messages.map((m) =>
-            m._id === message._id ?  message : m
+            m._id === message._id ? message : m
           ),
         }));
       });
@@ -392,5 +395,5 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     if (socket) {
       socket.off("unReactToMessage");
     }
-  }
+  },
 }));

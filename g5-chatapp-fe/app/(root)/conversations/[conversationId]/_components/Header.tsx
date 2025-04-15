@@ -71,7 +71,7 @@ const Header = ({userId, imageUrl, firstName, lastName, options }: Props) => {
               <Button
                 key={index}
                 size={"icon"}
-                variant={"secondary"}
+                variant={"ghost"}
                 onClick={option.onClick}
               >
                 {option.icon}

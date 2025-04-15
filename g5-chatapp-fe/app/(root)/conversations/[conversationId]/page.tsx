@@ -93,7 +93,7 @@ function ConversationPage({ params }: Props) {
         <Body />
         <ChatInput />
       </div>
-      <ConversationInfo isOpen={isOpenRightBar} setOpen={setIsOpenRightBar} />
+      <ConversationInfo isOpen={isOpenRightBar} setOpen={setIsOpenRightBar} userSelected={userSelected || null}/>
     </ConversationContainer>
   );
 }
