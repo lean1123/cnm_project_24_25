@@ -27,6 +27,7 @@ import ImageGallery from "./ImageGallery";
 import ForwardMessageDialog from "@/components/common/dialog/ForwardMessageDialog";
 import { MessageOption } from "./MessageOption";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useConversationStore } from "@/store/useConversationStore";
 
 type Props = {
   message: Message | null;
@@ -143,6 +144,8 @@ const Message = ({
   const handleMouseLeave = () => {
     if (!isDropdownOpen) setIsHovered(false);
   };
+
+  const { reactionMessage, unReactionMessage } = useConversationStore();
 
   return (
     <div
@@ -367,8 +370,36 @@ const Message = ({
             </div>
           )}
         </div>
+        {message && message.reactions && message.reactions.length > 0 && (
+          <div
+            className={cn(
+              "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+              {
+                "right-auto left-2": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
+                "right-2": !fromCurrentUser, // Hiển thị bên phải nếu không phải user hiện tại
+              }
+            )}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full size-4 bg-background shadow-sm hover:bg-muted"
+              onClick={(e) => {
+                unReactionMessage(message!._id);
+              }}
+            >
+              {message.reactions.map((reaction, index) => {
+                return (
+                  <span key={index} className="text-sm text-foreground">
+                    {reaction.reaction}
+                  </span>
+                );
+              })}
+            </Button>
+          </div>
+        )}
 
-        {isHovered && (
+        {isHovered && message?.reactions?.length === 0 && (
           <div
             className={cn(
               "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
@@ -384,7 +415,7 @@ const Message = ({
               className="rounded-full size-4 bg-background shadow-sm hover:bg-muted"
               onClick={(e) => {
                 e.stopPropagation();
-                // Handle reply logic
+                reactionMessage(message!._id, "❤️");
               }}
             >
               <Heart className="size-4" />

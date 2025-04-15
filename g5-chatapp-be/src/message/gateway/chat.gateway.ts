@@ -341,10 +341,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 
   handleReactToMessage(@MessageBody() message: Message) {
-    const conversationId = message.conversation?.toString();
-    if (conversationId) {
-      this.server.to(conversationId).emit('reactToMessage', message);
-    }
+    // const conversationId = message.conversation?.toString();
+    // if (conversationId) {
+    //   this.server.to(conversationId).emit('reactToMessage', message);
+    // }
     this.server
       .to(message.conversation.toString())
       .emit('reactToMessage', message);

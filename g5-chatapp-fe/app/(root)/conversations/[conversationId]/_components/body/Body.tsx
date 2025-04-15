@@ -68,6 +68,10 @@ const Body = (props: Props) => {
     isTyping,
     subscribeToTyping,
     unsubscribeFromTyping,
+    subscribeToReaction,
+    unsubscribeFromReaction,
+    subscribeToUnReaction,
+    unsubscribeFromUnReaction
   } = useConversationStore();
   const { user } = useAuthStore();
   useEffect(() => {
@@ -81,11 +85,15 @@ const Body = (props: Props) => {
     subscribeToDeleteMessage();
     subscribeToRevokeMessage();
     subscribeToTyping();
+    subscribeToReaction();
+    subscribeToUnReaction();
     return () => {
       unsubscribeFromNewMessages();
       unsubscribeFromDeleteMessage();
       unsubscribeFromRevokeMessage();
       unsubscribeFromTyping();
+      unsubscribeFromReaction();
+      unsubscribeFromUnReaction();
     };
   }, [
     subscribeToNewMessages,
@@ -94,6 +102,12 @@ const Body = (props: Props) => {
     unsubscribeFromDeleteMessage,
     subscribeToRevokeMessage,
     unsubscribeFromRevokeMessage,
+    subscribeToTyping,
+    unsubscribeFromTyping,
+    subscribeToReaction,
+    unsubscribeFromReaction,
+    subscribeToUnReaction,
+    unsubscribeFromUnReaction,
   ]);
 
 

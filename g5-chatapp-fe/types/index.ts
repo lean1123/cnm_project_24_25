@@ -70,6 +70,7 @@ export type Message = {
     updatedAt: string;
     isTemp?: boolean;
     isError?: boolean;
+    reactions?: Reactions[];
 }
 
 export type MessageRequest = {
@@ -114,4 +115,9 @@ export type OngoingCallex = {
 export type OngoingCall = {
     sender: User;
     isRinging: boolean;
+}
+
+export type Reactions = {
+    user: string
+    reaction: string;
 }
