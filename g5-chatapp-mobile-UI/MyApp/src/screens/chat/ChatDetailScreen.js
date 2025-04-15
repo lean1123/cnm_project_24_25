@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,369 +13,1161 @@ import {
   Keyboard,
   Linking,
   SafeAreaView,
+  ActivityIndicator,
 } from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons"; // Cài bằng: npm install @expo/vector-icons
+import { Ionicons, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing"; // mở tệp
+import * as Sharing from "expo-sharing";
 import * as Location from "expo-location";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getSocket } from "../../services/socket";
+import axiosInstance from "../../config/axiosInstance";
+import { format } from "date-fns";
+import ChatOptions from "../chat/components/ChatOptions";
+import { chatService } from '../../services/chat.service';
+
 const ChatDetailScreen = ({ navigation, route }) => {
-  const { friend } = route.params;
+  const { conversation } = route.params;
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [tempMessages, setTempMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [otherUser, setOtherUser] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [isOnline, setIsOnline] = useState(false);
+  const flatListRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [showMessageOptions, setShowMessageOptions] = useState(false);
+  const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [friends, setFriends] = useState([]);
+  const [selectedFriends, setSelectedFriends] = useState([]);
 
-  //mở modal option
-  const handleOptionPress = () => {
-    setShowOptions(true);
+  const handleReturn = () => {
+    navigation.navigate("Home_Chat");
   };
 
-  const closeModal = () => {
-    setShowOptions(false);
-  };
-  // ham mo cameracamera
-  const openCamera = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+  useEffect(() => {
+    const initializeChat = async () => {
+      try {
+        console.log("Initializing chat with conversation:", conversation);
+        setLoading(true);
 
-    if (!permissionResult.granted) {
-      alert("Permission to access camera is required!");
-      return;
-    }
+        const userData = await AsyncStorage.getItem("userData");
+        if (userData) {
+          const currentUserData = JSON.parse(userData);
+          setCurrentUser(currentUserData);
+          console.log("Current user:", currentUserData);
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+          if (conversation) {
+            if (conversation.name) {
+              setOtherUser({
+                _id: conversation._id,
+                firstName: conversation.name.split(" ").slice(0, -1).join(" "),
+                lastName: conversation.name.split(" ").slice(-1)[0],
+                avatar: conversation.avatar,
+              });
+            } else if (conversation.user) {
+              setOtherUser(conversation.user);
+            }
+          }
 
-    if (!result.canceled) {
-      const capturedImageUri = result.assets[0].uri;
-      const newImageMessage = {
-        id: Date.now().toString(),
-        type: "image",
-        uri: capturedImageUri,
-        text: "📷 Image",
-        time: new Date().toLocaleTimeString().slice(0, 5),
-        sentByUser: true,
-      };
+          const socketInstance = getSocket();
+          console.log("Got existing socket:", socketInstance ? "yes" : "no");
 
-      setMessages((prevMessages) => [...prevMessages, newImageMessage]);
-    }
-    closeModal();
-  };
+          if (socketInstance) {
+            console.log(
+              "Socket connection status:",
+              socketInstance.connected ? "connected" : "disconnected"
+            );
 
-  // ham truy cap vao thu vien anh
-  const openGallery = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+            setSocket(socketInstance);
+            setIsOnline(socketInstance.connected);
 
-    if (!permissionResult.granted) {
-      alert("Permission to access gallery is required!");
-      return;
-    }
+            console.log("Joining conversation room:", conversation._id);
+            socketInstance.emit("join", {
+              conversationId: conversation._id,
+              userId: currentUserData._id,
+            });
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+            const handleNewMessage = (data) => {
+              console.log("New message received:", data);
 
-    if (!result.canceled) {
-      const selectedImageUri = result.assets[0].uri;
+              const messageData = data.message || data;
+              const messageConvId =
+                messageData.conversation?._id || messageData.conversation;
 
-      const newImageMessage = {
-        id: Date.now().toString(),
-        type: "image",
-        uri: selectedImageUri,
-        text: "📷 Image",
-        time: new Date().toLocaleTimeString().slice(0, 5),
-        sentByUser: true,
-      };
+              console.log("Message conversation:", messageConvId);
+              console.log("Current conversation:", conversation._id);
 
-      setMessages((prevMessages) => [...prevMessages, newImageMessage]);
-    }
-    closeModal();
-  };
+              if (messageConvId === conversation._id) {
+                setMessages((prevMessages) => {
+                  const messageExists = prevMessages.some(
+                    (msg) => msg._id === messageData._id
+                  );
+                  if (!messageExists) {
+                    console.log("Adding new message to state");
+                    const updatedMessages = [...prevMessages, messageData].sort(
+                      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+                    );
 
-  //
-  const [messages, setMessages] = useState([
-    {
-      id: "1",
-      type: "text",
-      text: "This is your delivery driver from Speedy Chow. I'm just around the corner from your place. 😊",
-      time: "10:10",
-      sentByUser: false,
-    },
-    { id: "2", type: "text", text: "Hi!", time: "10:10", sentByUser: true },
-  ]);
+                    requestAnimationFrame(() => {
+                      if (flatListRef.current) {
+                        flatListRef.current.scrollToEnd({ animated: true });
+                      }
+                    });
 
-  const sendMessage = () => {
-    if (newMessage.trim() === "") return;
+                    return updatedMessages;
+                  }
+                  return prevMessages;
+                });
+              }
+            };
 
-    const newMessageObject = {
-      id: Date.now().toString(),
-      type: "text",
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      sentByUser: true,
+            socketInstance.off("messageReceived");
+            socketInstance.off("newMessage");
+
+            socketInstance.on("messageReceived", handleNewMessage);
+            socketInstance.on("newMessage", handleNewMessage);
+
+            socketInstance.on("connect", () => {
+              console.log("Socket reconnected in chat detail");
+              setIsOnline(true);
+              socketInstance.emit("join", {
+                conversationId: conversation._id,
+                userId: currentUserData._id,
+              });
+            });
+
+            socketInstance.on("disconnect", () => {
+              console.log("Socket disconnected in chat detail");
+              setIsOnline(false);
+            });
+          } else {
+            console.error("No socket connection available");
+          }
+
+          await fetchMessages();
+        }
+      } catch (error) {
+        console.error("Error initializing chat:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setMessages((prevMessages) => [...prevMessages, newMessageObject]);
-    setNewMessage(""); // Xóa nội dung sau khi gửi
-    Keyboard.dismiss(); // Ẩn bàn phím
-  };
+    initializeChat();
 
-  // hàm chọn tài liệu mới
-  const pickDocument = async () => {
+    return () => {
+      const socketInstance = getSocket();
+      if (socketInstance && conversation?._id && currentUser?._id) {
+        console.log("Leaving conversation room:", conversation._id);
+        socketInstance.emit("leave", {
+          conversationId: conversation._id,
+          userId: currentUser._id,
+        });
+
+        socketInstance.off("messageReceived");
+        socketInstance.off("newMessage");
+        socketInstance.off("connect");
+        socketInstance.off("disconnect");
+      }
+    };
+  }, [conversation]);
+
+  useEffect(() => {
+    console.log("Messages changed, checking if scroll needed");
+    if (flatListRef.current && messages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  }, [messages]);
+
+  const fetchMessages = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*", // Chấp nhận tất cả các loại tệp
-        copyToCacheDirectory: true, // Lưu vào cache tạm thời
-      });
-
-      if (result.canceled) {
-        console.log("Người dùng đã huỷ");
+      if (!conversation?._id) {
+        console.log("No conversation ID available");
         return;
       }
 
-      const capturedFileUri = await saveFileLocally(result.assets[0]);
+      console.log("Fetching messages for conversation:", conversation._id);
+      const response = await chatService.getMessages(conversation._id);
+      console.log("Messages response:", response);
 
-      console.log(`file đã chọn ${result.assets[0].name}`);
+      if (response && response.data) {
+        let messagesData = response.data;
 
-      const newFileMessage = {
-        id: Date.now().toString(),
-        type: "document",
-        src: capturedFileUri,
-        text: `${capturedFileUri}`,
-        time: new Date().toLocaleTimeString().slice(0, 5),
-        sentByUser: true,
-      };
-      setMessages((prevMessages) => [...prevMessages, newFileMessage]);
-      closeModal();
-      return capturedFileUri; // Trả về tệp đã chọn
+        if (messagesData.data && Array.isArray(messagesData.data)) {
+          messagesData = messagesData.data;
+        }
+        const validMessages = messagesData.filter((msg) => {
+          if (!msg || !msg.sender || !msg._id) {
+            console.log("Invalid message format:", msg);
+            return false;
+          }
+          return true;
+        });
+
+        const sortedMessages = validMessages.sort(
+          (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+        );
+
+        console.log("Valid messages count:", validMessages.length);
+        setMessages(sortedMessages);
+
+        requestAnimationFrame(() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({ animated: true });
+          }
+        });
+      } else {
+        console.log("Invalid response format:", response);
+      }
     } catch (error) {
-      console.error("Lỗi chọn tệp:", error);
+      console.error("Error fetching messages:", error);
     }
   };
 
-  const openDocument = async (fileUri) => {
-    try {
-      await Sharing.shareAsync(fileUri);
-    } catch (error) {
-      console.error("Không thể mở tệp:", error);
-    }
+  const combinedMessages = useMemo(() => {
+    const allMessages = [...messages];
+
+    tempMessages.forEach((tempMsg) => {
+      if (!allMessages.find((msg) => msg._id === tempMsg._id)) {
+        allMessages.push(tempMsg);
+      }
+    });
+    return allMessages.sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
+  }, [messages, tempMessages]);
+
+  const addTempMessage = (message) => {
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const tempMessage = {
+      ...message,
+      _id: tempId,
+    };
+    setTempMessages(prev => [...prev, tempMessage]);
   };
 
-  // lưu file vừa upload vào cache
-  const saveFileLocally = async (file) => {
-    try {
-      const localUri = FileSystem.documentDirectory + file.name;
+  const removeTempMessage = (messageId) => {
+    console.log("Removing temp message with ID:", messageId);
+    setTempMessages((prev) => {
+      const updatedMessages = prev.filter((msg) => msg._id !== messageId);
+      console.log("Updated temp messages:", updatedMessages);
+      return updatedMessages;
+    });
+  };
 
-      await FileSystem.copyAsync({
-        from: file.uri,
-        to: localUri,
+  const sendMessage = async (messageData = null) => {
+    if (
+      (!newMessage.trim() && !messageData?.files?.length && !messageData?.content) ||
+      !socket ||
+      !currentUser ||
+      !conversation?._id
+    ) {
+      console.log("Invalid data, aborting message send.");
+      return;
+    }
+
+    const content = messageData?.content || newMessage.trim();
+    const files = messageData?.files || [];
+
+    let messageType = "TEXT";
+    if (files.length > 0) {
+      messageType = "IMAGE";
+    }
+
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const tempMessage = {
+      _id: tempId,
+      content,
+      sender: {
+        _id: currentUser._id,
+        avatar: currentUser.avatar,
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName
+      },
+      conversation: conversation._id,
+      createdAt: new Date().toISOString(),
+      status: "sending",
+      type: messageType,
+      files: files.map((file) => ({
+        fileName: file.name || file.fileName || file.uri.split('/').pop(),
+        url: file.uri,
+      })),
+    };
+
+    setTempMessages((prev) => [...prev, tempMessage]);
+    setNewMessage("");
+
+    try {
+      let response;
+      if (files.length > 0) {
+        const preparedFiles = files.map(file => ({
+          uri: file.uri,
+          type: file.type || 'image/jpeg',
+          name: file.name || file.fileName || file.uri.split('/').pop(),
+        }));
+
+        response = await chatService.sendMessageWithFiles(
+          conversation._id,
+          {
+            content,
+            type: messageType,
+            sender: currentUser._id,
+          },
+          preparedFiles
+        );
+      } else {
+        response = await chatService.sendMessageWithFile(
+          conversation._id,
+          {
+            content,
+            type: "TEXT",
+            sender: currentUser._id,
+          }
+        );
+      }
+
+      if (response.success) {
+        setTempMessages(prev => prev.filter(msg => msg._id !== tempId));
+        
+        const newMessage = {
+          ...response.data,
+          sender: {
+            _id: currentUser._id,
+            avatar: currentUser.avatar,
+            firstName: currentUser.firstName,
+            lastName: currentUser.lastName
+          }
+        };
+        
+        setMessages(prevMessages => [...prevMessages, newMessage]);
+
+        socket.emit("sendMessage", {
+          message: newMessage,
+          conversationId: conversation._id,
+          senderId: currentUser._id,
+        });
+      } else {
+        throw new Error(response.error || "Không thể gửi tin nhắn");
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setTempMessages(prev => prev.filter(msg => msg._id !== tempId));
+      alert("Không thể gửi tin nhắn. Vui lòng thử lại.");
+    }
+  };
+  
+
+  const handleSubmitEditing = () => {
+    if (newMessage.trim()) {
+      sendMessage();
+    }
+  };
+  
+  const handlePressSend = () => {
+    if (newMessage.trim()) {
+      sendMessage();
+    }
+  };
+  
+
+  const handlePressLike = () => {
+    sendMessage({ content: "👍" });
+  };
+  
+
+  const handleCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        alert("Xin lỗi, chúng tôi cần quyền truy cập camera để thực hiện điều này!");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.5,
+        allowsEditing: true,
       });
 
-      console.log(`Tệp đã lưu tại: ${localUri}`);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        
+        const preparedFile = {
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `photo-${Date.now()}.jpg`,
+          size: asset.fileSize || asset.size || 0
+        };
+        
+        console.log("Captured image for sending:", preparedFile);
+        
+        await sendMessage({ files: [preparedFile] });
+      }
+    } catch (err) {
+      console.error("Error using camera:", err);
+      alert("Không thể mở camera. Vui lòng thử lại.");
+    }
+  };
+  
 
-      return localUri; // Trả về đường dẫn tệp đã lưu
+  const handleGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        alert("Xin lỗi, chúng tôi cần quyền truy cập thư viện ảnh để thực hiện điều này!");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.5,
+        allowsMultipleSelection: true,
+        selectionLimit: 10,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const preparedFiles = result.assets.map(asset => ({
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `image-${Date.now()}-${Math.random()}.jpg`,
+          size: asset.fileSize || asset.size || 0
+        }));
+        
+        console.log("Prepared files for sending:", preparedFiles);
+        await sendMessage({ files: preparedFiles });
+      }
     } catch (error) {
-      console.error("Lỗi lưu tệp:", error);
+      console.error("Error picking images:", error);
+      alert("Có lỗi khi truy cập thư viện ảnh. Vui lòng thử lại.");
+    }
+  };
+  
+
+  const handleDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+  
+      if (
+        result.type === "success" ||
+        (Array.isArray(result.assets) && result.assets.length > 0)
+      ) {
+        const files = Array.isArray(result.assets) ? result.assets : [result];
+        await sendMessage({ files });
+      }
+    } catch (error) {
+      console.error("Error picking documents:", error);
+      alert("Error selecting documents");
+    }
+  };
+  
+
+  const handleLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        alert("Permission to access location was denied");
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      const locationMessage = {
+        type: "location",
+        content: `${latitude},${longitude}`,
+        preview: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`,
+      };
+
+      await sendMessage(locationMessage);
+    } catch (error) {
+      console.error("Error getting location:", error);
+      alert("Error getting location");
+    }
+  };
+
+  const renderMessageContent = (item) => {
+    if (!item || !item.sender) {
+      console.log("Invalid message item:", item);
+      return null;
+    }
+
+    const isMyMessage = currentUser && item.sender._id === currentUser._id;
+    const isTemp = item._id && item._id.startsWith("temp-");
+
+    switch (item.type) {
+      case "IMAGE":
+        if (!item.files || item.files.length === 0) {
+          console.warn("No image files found");
+          return null;
+        }
+
+        if (item.files.length > 1) {
+          return (
+            <View style={styles.imageGrid}>
+              {item.files.map((file, index) => (
+                <TouchableOpacity
+                  key={file._id || index}
+                  onPress={() => navigation.navigate("ImageViewer", { uri: file.url })}
+                  style={[
+                    styles.gridImageContainer,
+                    item.files.length === 3 && index === 2 && styles.gridImageLast,
+                    item.files.length >= 4 && index === 3 && styles.gridImageLast,
+                    item.files.length === 2 && { width: '50%' },
+                    item.files.length === 3 && { width: '33.33%' },
+                    item.files.length >= 4 && { width: '50%' },
+                  ]}
+                >
+                  <Image
+                    source={{ uri: file.url }}
+                    style={styles.gridImage}
+                    resizeMode="cover"
+                  />
+                  {item.files.length > 4 && index === 3 && (
+                    <View style={styles.remainingCount}>
+                      <Text style={styles.remainingCountText}>
+                        +{item.files.length - 4}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          );
+        }
+
+        return (
+          <TouchableOpacity
+            onPress={() => navigation.navigate("ImageViewer", { uri: item.files[0].url })}
+            style={styles.mediaContainer}
+          >
+            <Image
+              source={{ uri: item.files[0].url }}
+              style={styles.messageImage}
+              resizeMode="cover"
+            />
+            {isTemp && item.status === "sending" && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      case "video":
+        return (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("VideoPlayer", { uri: item.content })
+            }
+            style={styles.mediaContainer}
+          >
+            <Image
+              source={{ uri: item.thumbnail || item.content }}
+              style={styles.videoThumbnail}
+            />
+            <View style={styles.playButton}>
+              <Ionicons name="play" size={24} color="white" />
+            </View>
+            {isTemp && item.status === "sending" && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      case "FILE":
+        const file = item.files && item.files[0];
+        const fileName = file?.fileName || "File";
+        const fileUrl = file?.url || "";
+
+        if (!fileUrl) {
+          console.warn("No file URL found");
+          return null;
+        }
+
+        const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
+          fileUrl
+        )}&embedded=true`;
+        return (
+          <TouchableOpacity
+            style={styles.fileContainer}
+            onPress={() => Linking.openURL(viewerUrl)}
+          >
+            <View style={styles.rowContainer}>
+              <Ionicons
+                name={getFileIcon(fileName)}
+                size={27}
+                color={isMyMessage ? "white" : "#666"}
+              />
+              <Text
+                style={[
+                  styles.fileName,
+                  isMyMessage && styles.userMessageText,
+                ]}
+                numberOfLines={1}
+              >
+                {fileName || "Unnamed File"}
+              </Text>
+            </View>
+
+            {isTemp && item.status === "sending" && (
+              <ActivityIndicator
+                size="small"
+                color={isMyMessage ? "#fff" : "#666"}
+                style={{ marginTop: 5 }}
+              />
+            )}
+          </TouchableOpacity>
+        );
+
+      case "location":
+        return (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("MapViewer", {
+                latitude: parseFloat(item.content.split(",")[0]),
+                longitude: parseFloat(item.content.split(",")[1]),
+              })
+            }
+          >
+            <Image
+              source={{ uri: item.preview }}
+              style={styles.locationPreview}
+            />
+          </TouchableOpacity>
+        );
+      default:
+        return (
+          <Text
+            style={[
+              styles.messageText,
+              isMyMessage ? styles.userMessageText : styles.friendMessageText,
+            ]}
+          >
+            {item.content || ""}
+          </Text>
+        );
     }
   };
 
   const renderMessage = ({ item }) => {
-    switch (item.type) {
-      case "text":
-        return (
-          // Thêm return để trả về JSX
-          <View
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-          >
-            <Text>{item.text}</Text>
-            <Text style={styles.messageTime}>{item.time}</Text>
+    if (!item || !item.sender) {
+      console.log("Invalid message item:", item);
+      return null;
+    }
+
+    const isMyMessage = currentUser && item.sender._id === currentUser._id;
+    const isTemp = item._id && item._id.startsWith("temp-");
+    
+    const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
+    const defaultAvatar = require("../../../assets/chat/man.png");
+
+    return (
+      <View style={[
+        styles.messageRow,
+        isMyMessage ? styles.userMessageRow : styles.friendMessageRow
+      ]}>
+        {!isMyMessage && (
+          <Image
+            source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+            style={styles.messageAvatar}
+          />
+        )}
+        
+        <TouchableOpacity
+          style={[
+            styles.messageContainer,
+            isMyMessage ? styles.userMessage : styles.friendMessage,
+          ]}
+          onLongPress={() => {
+            if (!isTemp) {
+              setSelectedMessage(item);
+              setShowMessageOptions(true);
+            }
+          }}
+        >
+          <View style={styles.messageContent}>
+            {renderMessageContent(item)}
+            <View style={styles.messageFooter}>
+              <Text style={styles.messageTime}>
+                {item.createdAt ? format(new Date(item.createdAt), "HH:mm") : ""}
+              </Text>
+              {isTemp && (
+                <View style={styles.messageStatus}>
+                  {item.status === "sending" && (
+                    <ActivityIndicator size="small" color="#999" />
+                  )}
+                </View>
+              )}
+            </View>
           </View>
-        );
-      case "image":
-        return (
-          <View
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-          >
-            <TouchableOpacity onPress={() => Linking.openURL(item.uri)}>
-              <Image
-                source={{ uri: item.uri }}
-                style={{
-                  width: 200,
-                  height: 200,
-                  borderRadius: 10,
-                }}
-              />
-            </TouchableOpacity>
-            <Text style={styles.messageTime}>{item.time}</Text>
-          </View>
-        );
-      case "document":
-        return (
-          <View
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-          >
-            <TouchableOpacity onPress={() => openDocument(item.src)}>
-              <Text>{item.src}</Text>
-            </TouchableOpacity>
-            <Text style={styles.messageTime}>{item.time}</Text>
-          </View>
-        );
-      case "location":
-        return (
-          <TouchableOpacity
-            style={[
-              styles.messageContainer,
-              item.sentByUser ? styles.userMessage : styles.friendMessage,
-            ]}
-            onPress={pickLocation}
-          >
-            <Image
-              source={require("../../../assets/chat/OIP.jpg")} // Thêm hình ảnh mặc định
-              style={{
-                width: 250,
-                height: 200,
-                borderRadius: 10,
-              }}
-              resizeMode="contain"
-            />
-            <Text
-              style={{
-                color: "#fff",
-                fontWeight: "bold",
-                fontSize: 20,
-              }}
-            >
-              Vị trí của bạn 🗺️
-            </Text>
-          </TouchableOpacity>
-        );
+        </TouchableOpacity>
+
+        {isMyMessage && (
+          <Image
+            source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+            style={styles.messageAvatar}
+          />
+        )}
+      </View>
+    );
+  };
+
+  const getFileIcon = (fileName) => {
+    if (!fileName) return "document-outline";
+    const ext = fileName.split(".").pop().toLowerCase();
+    switch (ext) {
+      case "pdf":
+        return "document-text-outline";
+      case "doc":
+      case "docx":
+        return "document-text-outline";
+      case "xls":
+      case "xlsx":
+        return "document-text-outline";
+      case "zip":
+      case "rar":
+        return "archive-outline";
       default:
-        return <Text>message chưa có định dạng</Text>; // Thêm return ở đây cho trường hợp mặc định
+        return "document-outline";
     }
   };
 
-  const sentLocation = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      alert("Permission to access location was denied");
-      console.log("Permission to access location was denied");
-      return;
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  };
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchMessages();
+    } finally {
+      setRefreshing(false);
     }
-    const newImageMessage = {
-      id: Date.now().toString(),
-      type: "location",
-      uri: "../../assets/chat/OIP.jpg",
-      text: "📷 Image",
-      time: new Date().toLocaleTimeString().slice(0, 5),
-      sentByUser: true,
+  }, []);
+
+  const handleMessagePin = async (message) => {
+    try {
+      if (pinnedMessage?._id === message._id) {
+        setPinnedMessage(null);
+      } else {
+        setPinnedMessage(message);
+      }
+      setShowMessageOptions(false);
+    } catch (error) {
+      console.error("Error pinning/unpinning message:", error);
+      alert("Không thể ghim/bỏ ghim tin nhắn. Vui lòng thử lại.");
+    }
+  };
+
+  const PinnedMessageBar = () => {
+    if (!pinnedMessage) return null;
+
+    const renderPinnedContent = () => {
+      switch (pinnedMessage.type) {
+        case "IMAGE":
+          return (
+            <Image
+              source={{ uri: pinnedMessage.files[0]?.url }}
+              style={styles.pinnedImage}
+            />
+          );
+        case "FILE":
+          return (
+            <View style={styles.pinnedFileContainer}>
+              <Ionicons name={getFileIcon(pinnedMessage.files[0]?.fileName)} size={16} color="#666" />
+              <Text style={styles.pinnedFileName} numberOfLines={1}>
+                {pinnedMessage.files[0]?.fileName || "File"}
+              </Text>
+            </View>
+          );
+        default:
+          return (
+            <Text style={styles.pinnedText} numberOfLines={1}>
+              {pinnedMessage.content}
+            </Text>
+          );
+      }
     };
-    setMessages((prevMessages) => [...prevMessages, newImageMessage]);
-    closeModal();
+
+    return (
+      <View style={styles.pinnedMessageContainer}>
+        <View style={styles.pinnedMessageContent}>
+          <Ionicons name="pin" size={16} color="#666" style={styles.pinnedIcon} />
+          {renderPinnedContent()}
+        </View>
+        <TouchableOpacity
+          onPress={() => handleMessagePin(pinnedMessage)}
+          style={styles.unpinButton}
+        >
+          <Ionicons name="close" size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
+    );
   };
 
-  // lưu file vừa upload vào cache
-  const pickLocation = () => {
-    navigation.navigate("LocationScreen");
+  const fetchFriends = async () => {
+    try {
+      const response = await chatService.getMyConversations();
+      setFriends(response.data || []);
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+    }
   };
 
-  {/* Handle when click button 3dot */}
-  const hanldeMoreOption = () => {
-    navigation.navigate("UserInfoScreen", {
-      friend: friend,
-    });
-  }
-  {/* Handle when click button call */}
-  const handleCall = () => {
-    navigation.navigate("CallScreen", {
-      friend: friend,
-    });
-  }
-  {/* Handle when click button call video */}
-  const handleCallVideo = () => {
-    navigation.navigate("CallScreen", {
-      friend: friend,
-    });
-  }
+  const handleMessageForward = async (message) => {
+    try {
+      console.log('Selected message for forwarding:', message);
+      setSelectedMessage(message);
+      
+      const response = await chatService.getMyConversations();
+      console.log('Conversations response:', response);
+      
+      if (response.data) {
+        // Filter out current conversation and ensure conversation has required data
+        const availableConversations = response.data
+          .filter(conv => conv._id !== conversation._id)
+          .map(conv => {
+            let name = conv.name;
+            let avatar = conv.avatar;
 
+            // If no name/avatar, try to get from members
+            if ((!name || !avatar) && conv.members && conv.members.length > 0) {
+              const otherMember = conv.members.find(m => m._id !== currentUser._id);
+              if (otherMember) {
+                name = `${otherMember.firstName} ${otherMember.lastName}`;
+                avatar = otherMember.avatar;
+              }
+            }
+
+            return {
+              _id: conv._id,
+              name: name || 'Người dùng',
+              avatar: avatar
+            };
+          })
+          .filter(conv => conv.name !== 'Người dùng');
+        
+        console.log('Available conversations for forwarding:', availableConversations);
+        
+        if (availableConversations.length === 0) {
+          alert('Không có cuộc trò chuyện nào để chuyển tiếp');
+          return;
+        }
+        
+        setFriends(availableConversations);
+        setShowForwardModal(true);
+        setShowMessageOptions(false);
+      }
+    } catch (error) {
+      console.error("Error preparing forward:", error);
+      alert("Không thể tải danh sách bạn bè. Vui lòng thử lại.");
+    }
+  };
+
+  const handleSendForward = async () => {
+    try {
+      if (selectedFriends.length === 0) {
+        alert("Vui lòng chọn người nhận");
+        return;
+      }
+
+      if (!selectedMessage || !selectedMessage._id) {
+        console.error('No message selected for forwarding');
+        alert("Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.");
+        return;
+      }
+
+      if (!currentUser || !currentUser._id) {
+        console.error('No current user');
+        alert("Vui lòng đăng nhập lại.");
+        return;
+      }
+
+      // Format dữ liệu theo cấu trúc CSDL
+      const forwardData = {
+        originalMessageId: selectedMessage._id,
+        conversationIds: selectedFriends.map(f => f._id),
+        sender: currentUser._id,
+        type: selectedMessage.type || "TEXT",
+        content: selectedMessage.content,
+        files: selectedMessage.files || []
+      };
+
+      console.log('Sending forward request with data:', forwardData);
+
+      const response = await chatService.forwardMessage(forwardData);
+      console.log('Forward response:', response);
+
+      if (response.success) {
+        setShowForwardModal(false);
+        setSelectedFriends([]);
+        alert("Đã chuyển tiếp tin nhắn thành công");
+      } else {
+        throw new Error(response.error || "Không thể chuyển tiếp tin nhắn");
+      }
+    } catch (error) {
+      console.error("Error forwarding message:", error);
+      alert(error.message || "Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.");
+    } finally {
+      setShowForwardModal(false);
+      setSelectedFriends([]);
+    }
+  };
+
+  const handleMessageDelete = async (message) => {
+    try {
+      if (!message || !message._id) {
+        throw new Error('Invalid message');
+      }
+
+      const response = await chatService.revokeMessageBoth(message._id, conversation._id);
+      
+      setMessages((prevMessages) => 
+        prevMessages.filter((msg) => msg._id !== message._id)
+      );
+      
+      socket.emit("revokeMessage", {
+        messageId: message._id,
+        conversationId: conversation._id,
+      });
+      
+      setShowMessageOptions(false);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      alert('Không thể xóa tin nhắn. Vui lòng thử lại.');
+    }
+  };
+
+  useEffect(() => {
+    if (socket) {
+      socket.on("messageRevoked", (data) => {
+        if (data.conversationId === conversation._id) {
+          setMessages((prevMessages) =>
+            prevMessages.filter((msg) => msg._id !== data.messageId)
+          );
+        }
+      });
+
+      return () => {
+        socket.off("messageRevoked");
+      };
+    }
+  }, [socket, conversation]);
+
+  const toggleSelectFriend = (friend) => {
+    setSelectedFriends(prev => {
+      const isSelected = prev.some(f => f._id === friend._id);
+      if (isSelected) {
+        return prev.filter(f => f._id !== friend._id);
+      } else {
+        return [...prev, friend];
+      }
+    });
+  };
+
+  const ForwardModal = () => {
+    if (!showForwardModal) return null;
+    
+    return (
+      <Modal
+        visible={true}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setShowForwardModal(false);
+          setSelectedFriends([]);
+        }}
+      >
+        <View style={styles.forwardModalContainer}>
+          <View style={styles.forwardModalContent}>
+            <View style={styles.forwardModalHeader}>
+              <Text style={styles.forwardModalTitle}>Chuyển tiếp tin nhắn</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowForwardModal(false);
+                  setSelectedFriends([]);
+                }}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {friends.length > 0 ? (
+              <FlatList
+                data={friends}
+                keyExtractor={(item) => item._id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.friendItem,
+                      selectedFriends.some(f => f._id === item._id) && styles.friendItemSelected
+                    ]}
+                    onPress={() => toggleSelectFriend(item)}
+                  >
+                    <Image
+                      source={
+                        item.avatar
+                          ? { uri: item.avatar }
+                          : require("../../../assets/chat/man.png")
+                      }
+                      style={styles.friendAvatar}
+                    />
+                    <Text style={styles.friendName}>
+                      {item.name || "Người dùng"}
+                    </Text>
+                    {selectedFriends.some(f => f._id === item._id) && (
+                      <Ionicons name="checkmark-circle" size={24} color="#0099ff" />
+                    )}
+                  </TouchableOpacity>
+                )}
+                style={styles.friendsList}
+              />
+            ) : (
+              <View style={styles.noFriendsContainer}>
+                <Text style={styles.noFriendsText}>Không có cuộc trò chuyện nào</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.forwardButton,
+                selectedFriends.length === 0 && styles.forwardButtonDisabled
+              ]}
+              onPress={handleSendForward}
+              disabled={selectedFriends.length === 0}
+            >
+              <Text style={styles.forwardButtonText}>
+                Chuyển tiếp ({selectedFriends.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleReturn}>
+            <Icon name="chevron-left" size={30} color="white" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.friendName}>Loading...</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0099ff" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-
       <View style={styles.header}>
-        {/* arrow back */}
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={handleReturn}>
           <Icon name="chevron-left" size={30} color="white" />
         </TouchableOpacity>
-        {/* avt */}
-        <Image source={friend.avatar} style={styles.avatar} />
-        {/* name + phoneNumber */}
+        <Image
+          source={
+            otherUser?.avatar
+              ? { uri: otherUser.avatar }
+              : require("../../../assets/chat/man.png")
+          }
+          style={styles.avatar}
+        />
         <View style={{ flex: 1 }}>
-          <Text style={styles.friendName}>{friend.name}</Text>
-          {/* <Text style={styles.phoneNumber}>+44 50 9285 3022</Text> */}
-          <Text style={styles.statusUser}>Online</Text>
+          <Text style={styles.friendName}>
+            {otherUser
+              ? otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`
+              : "Chat"}
+          </Text>
+          <Text style={styles.statusUser}>
+            {isOnline ? "Online" : "Offline"}
+          </Text>
         </View>
-        {/* icon call + 3dot */}
         <View style={styles.actionIcons}>
           <TouchableOpacity style={styles.iconButton}>
-            <AntDesign name="videocamera" size={24} color="white" onPress={handleCallVideo}/>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="call-outline" size={24} color="white" onPress={handleCall}/>
+            <AntDesign name="videocamera" size={24} color="white" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton}>
-            <Feather
-              name="more-horizontal"
-              size={24}
-              color="white"
-              onPress={() => hanldeMoreOption()} //more screen
-            />
+            <Ionicons name="call-outline" size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => {
+              if (otherUser && conversation) {
+                navigation.navigate("UserInfo", { 
+                  conversation: {
+                    _id: conversation._id,
+                    name: otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`,
+                    members: conversation.members || [],
+                    avatar: otherUser.avatar,
+                    isGroup: false,
+                    isOnline: isOnline,
+                    user: otherUser
+                  }
+                });
+              }
+            }}
+          >
+            <Feather name="more-horizontal" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </View>
-      {/* Header */}
-      {/* Message List */}
+
+      <PinnedMessageBar />
+
       <FlatList
-        data={messages}
+        data={combinedMessages}
         renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        style={styles.messageList}
+        keyExtractor={(item) => item._id}
+        style={[styles.messageList, pinnedMessage && { marginTop: 50 }]}
+        contentContainerStyle={pinnedMessage ? { paddingTop: 50 } : null}
+        inverted={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        onContentSizeChange={() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({ animated: true });
+          }
+        }}
+        onLayout={() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToEnd({ animated: true });
+          }
+        }}
+        ref={flatListRef}
       />
 
-      {/* Input Box */}
       <View style={styles.inputContainer}>
-        <TouchableOpacity onPress={handleOptionPress}>
-          <View
-            style={{
-              position: "relative",
-              width: 32,
-              height: 32,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+        <TouchableOpacity onPress={() => setShowOptions(true)}>
+          <View style={styles.addButton}>
             <Ionicons name="add-circle" size={32} color="#0099ff" />
             <Ionicons
               name="add"
@@ -385,185 +1177,178 @@ const ChatDetailScreen = ({ navigation, route }) => {
             />
           </View>
         </TouchableOpacity>
+
         <TextInput
           style={styles.input}
           placeholder="Type a message..."
           value={newMessage}
-          onChangeText={setNewMessage}
-          onSubmitEditing={sendMessage}
+          onChangeText={(text) => setNewMessage(text)}
+          onSubmitEditing={handleSubmitEditing}
         />
-        <TouchableOpacity onPress={sendMessage}>
-          <Ionicons name="send" size={28} color="#0099ff" />
-        </TouchableOpacity>
+
+        {newMessage.trim().length > 0 ? (
+          <TouchableOpacity onPress={handlePressSend}>
+            <Ionicons name="send" size={28} color="#0099ff" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={handlePressLike}>
+            <Ionicons name="thumbs-up" size={28} color="#0099ff" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Modal Options */}
-      <Modal visible={showOptions} transparent={true} animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.optionsBox}>
-            <View style={styles.optionRow}>
-              <TouchableOpacity style={styles.option} onPress={openCamera}>
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#0099ff",
-                    borderRadius: 50,
-                    padding: 10,
-                    backgroundColor: "#0099ff",
-                  }}
-                >
-                  <Ionicons name="camera-outline" size={32} color="#ffffff" />
-                </View>
+      <ChatOptions
+        visible={showOptions}
+        onClose={() => setShowOptions(false)}
+        onCamera={handleCamera}
+        onGallery={handleGallery}
+        onLocation={handleLocation}
+        onDocument={handleDocument}
+      />
 
-                <Text style={styles.optionText}>Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.option}>
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#0099ff",
-                    borderRadius: 50,
-                    padding: 10,
-                    backgroundColor: "#0099ff",
-                  }}
-                >
-                  <Ionicons name="mic-outline" size={32} color="#ffffff" />
-                </View>
-                <Text style={styles.optionText}>Record</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.option}>
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#0099ff",
-                    borderRadius: 50,
-                    padding: 10,
-                    backgroundColor: "#0099ff",
-                  }}
-                >
-                  <Ionicons name="person-outline" size={32} color="#ffffff" />
-                </View>
-                <Text style={styles.optionText}>Contact</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.optionRow}>
-              <TouchableOpacity style={styles.option} onPress={openGallery}>
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#0099ff",
-                    borderRadius: 50,
-                    padding: 10,
-                    backgroundColor: "#0099ff",
-                  }}
-                >
-                  <Ionicons name="image-outline" size={32} color="#ffffff" />
-                </View>
-                <Text style={styles.optionText}>Gallery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.option} onPress={sentLocation}>
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#0099ff",
-                    borderRadius: 50,
-                    padding: 10,
-                    backgroundColor: "#0099ff",
-                  }}
-                >
-                  <Ionicons name="location-outline" size={32} color="#ffffff" />
-                </View>
-
-                <Text style={styles.optionText}>My Location</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.option} onPress={pickDocument}>
-                <View
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#0099ff",
-                    borderRadius: 50,
-                    padding: 10,
-                    backgroundColor: "#0099ff",
-                  }}
-                >
-                  <Ionicons name="document-outline" size={32} color="#ffffff" />
-                </View>
-
-                <Text style={styles.optionText}>Document</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
-              <Text style={styles.closeText}>Close</Text>
+      <Modal
+        visible={showMessageOptions}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMessageOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMessageOptions(false)}
+        >
+          <View style={styles.messageOptionsContainer}>
+            <TouchableOpacity
+              style={styles.messageOptionItem}
+              onPress={() => handleMessagePin(selectedMessage)}
+            >
+              <Ionicons name="pin" size={22} color="#333" />
+              <Text style={styles.messageOptionText}>Ghim tin nhắn</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.messageOptionItem}
+              onPress={() => handleMessageForward(selectedMessage)}
+            >
+              <Ionicons name="arrow-redo" size={22} color="#333" />
+              <Text style={styles.messageOptionText}>Chuyển tiếp</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.messageOptionItem}
+              onPress={() => handleMessageDelete(selectedMessage)}
+            >
+              <Ionicons name="trash" size={22} color="#e74c3c" />
+              <Text style={[styles.messageOptionText, { color: '#e74c3c' }]}>Xóa tin nhắn</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
-      
-    
+      <ForwardModal />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f9f9f9",
     flex: 1,
+    backgroundColor: "#f9f9f9",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
     backgroundColor: "#135CAF",
-    elevation: 2,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginHorizontal: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginHorizontal: 10,
+  },
+  messageAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  userAvatar: {
+    order: 2,
+  },
+  friendAvatar: {
+    order: 0,
   },
   friendName: {
-    fontWeight: "bold",
     fontSize: 16,
+    fontWeight: "bold",
     color: "white",
   },
   statusUser: {
-    color: "white",
     fontSize: 12,
+    color: "white",
   },
   actionIcons: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
   },
   iconButton: {
-    padding: 10,
+    padding: 8,
   },
-  messageList: { flex: 1, paddingHorizontal: 20, backgroundColor: "#FFFFFF " },
+  messageList: {
+    flex: 1,
+    padding: 15,
+    backgroundColor: "#FFFFFF",
+  },
+  messageRow: {
+    flexDirection: 'row',
+    marginVertical: 8,
+    alignItems: 'flex-end',
+    paddingHorizontal: 8,
+  },
+  userMessageRow: {
+    justifyContent: 'flex-end',
+  },
+  friendMessageRow: {
+    justifyContent: 'flex-start',
+  },
   messageContainer: {
-    maxWidth: "75%",
-    marginVertical: 5,
+    maxWidth: '70%',
+    marginHorizontal: 8,
+  },
+  messageContent: {
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 15,
   },
   userMessage: {
-    backgroundColor: "#0099ff",
     alignSelf: "flex-end",
+    backgroundColor: "#0099ff",
+    marginLeft: 'auto',
   },
   friendMessage: {
-    backgroundColor: "#D3D3D3",
     alignSelf: "flex-start",
+    backgroundColor: "#e4e4e4",
+    marginRight: 'auto',
   },
   messageText: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  userMessageText: {
     color: "white",
+  },
+  friendMessageText: {
+    color: "#333",
   },
   messageTime: {
     fontSize: 10,
-    color: "white",
-    marginTop: 5,
+    color: "#666",
+    marginTop: 4,
     alignSelf: "flex-end",
   },
   inputContainer: {
@@ -571,64 +1356,285 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 10,
     backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
   },
-  inputContainer: {
-    flexDirection: "row",
+  addButton: {
+    position: "relative",
+    width: 32,
+    height: 32,
     alignItems: "center",
-    padding: 5,
-    backgroundColor: "white",
+    justifyContent: "center",
   },
   input: {
     flex: 1,
-    paddingHorizontal: 10,
+    marginHorizontal: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     backgroundColor: "#f0f0f0",
     borderRadius: 20,
-    marginHorizontal: 10,
-    paddingVertical: 15,
+    fontSize: 16,
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  optionsBox: {
-    backgroundColor: "white",
-    padding: 20,
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
-  },
-  optionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  option: {
-    padding: 10,
-    alignItems: "center",
+  messageImage: {
+    width: 200,
+    height: 200,
     borderRadius: 10,
-    justifyContent: "center",
-    width: 100,
+    marginVertical: 5,
   },
-  optionText: {
-    marginTop: 5,
-    color: "#0099ff",
-    fontSize: 12,
-    fontWeight: "bold",
-    textAlign: "center",
+  videoContainer: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    position: "relative",
+    marginVertical: 5,
+  },
+  videoThumbnail: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 10,
+  },
+  playButton: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: -12 }, { translateY: -12 }],
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+    padding: 8,
+  },
+  fileContainer: {
+    padding: 10,
+    marginVertical: 5,
+    backgroundColor: "transparent",
+    maxWidth: "100%",
+    borderRadius: 8,
+  },
+  rowContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fileName: {
+    fontSize: 14,
+    color: "#000",
+    marginLeft: 10,
+    flexShrink: 1,
+    overflow: "hidden",
+  },
+  messageFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 4,
+  },
+  messageStatus: {
+    marginLeft: 4,
+  },
+  mediaContainer: {
+    position: "relative",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  uploadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageOptionsContainer: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  messageOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  messageOptionText: {
+    fontSize: 16,
+    marginLeft: 16,
+    color: '#333',
+  },
+  pinnedMessageContainer: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    zIndex: 999,
+    elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  pinnedMessageContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pinnedIcon: {
+    marginRight: 8,
+    transform: [{ rotate: '45deg' }],
+  },
+  pinnedText: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  pinnedImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  pinnedFileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pinnedFileName: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    flex: 1,
+  },
+  unpinButton: {
+    padding: 4,
+  },
+  forwardModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  forwardModalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  forwardModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  forwardModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
   },
   closeButton: {
-    alignItems: "center",
-    marginTop: 10,
-    borderWidth: 2,
-    borderColor: "white",
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: "red",
+    padding: 8,
   },
-  closeText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 13,
+  friendsList: {
+    flex: 1,
+  },
+  friendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  friendItemSelected: {
+    backgroundColor: '#f0f8ff',
+  },
+  friendAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  friendName: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+  },
+  noFriendsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noFriendsText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  forwardButton: {
+    backgroundColor: '#0099ff',
+    margin: 16,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  forwardButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  forwardButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    margin: -2,
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
+  gridImageContainer: {
+    padding: 2,
+  },
+  gridImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
+  },
+  gridImageLast: {
+    position: 'relative',
+  },
+  remainingCount: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    margin: 2,
+  },
+  remainingCountText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });
 

@@ -50,8 +50,9 @@ const ProfileScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      // Lấy token từ AsyncStorage
       const token = await AsyncStorage.getItem("userToken");
+      const userId = await AsyncStorage.getItem("userId");
+      console.log("userId:", userId);
       console.log("Token:", token);
       if (!token) {
         showNotification("Please login again");
@@ -59,7 +60,6 @@ const ProfileScreen = ({ navigation }) => {
         return;
       }
 
-      // Gọi API
       const response = await fetch(`${API_URL}/auth/get-my-profile`, {
         method: "GET",
         headers: {
@@ -190,7 +190,7 @@ const ProfileScreen = ({ navigation }) => {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Sử dụng MediaTypeOptions.Images
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, 
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
@@ -199,9 +199,9 @@ const ProfileScreen = ({ navigation }) => {
       if (!result.canceled && result.assets && result.assets[0]?.uri) {
         const token = await AsyncStorage.getItem("userToken");
         const file = {
-          uri: result.assets[0].uri, // Chỉnh lại URI từ assets
+          uri: result.assets[0].uri, 
           name: "avatar.jpg",
-          type: result.assets[0].mimeType, // Sử dụng đúng mimeType
+          type: result.assets[0].mimeType, 
         };
 
         const response = await changeAvatar(file, token);
@@ -392,7 +392,6 @@ const ProfileScreen = ({ navigation }) => {
 };
 
 const InfoRow = ({ label, value }) => {
-  // Xử lý giá trị trước khi hiển thị
   const displayValue = Array.isArray(value) ? value.join(", ") : value;
   return (
     <View style={styles.infoRow}>

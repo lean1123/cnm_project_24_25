@@ -1,5 +1,7 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
+import { useAuth } from "../contexts/AuthContext";
+import { ActivityIndicator, View } from "react-native";
 
 // Import màn hình
 import Loading_start from "../screens/onboarding/Loading_start";
@@ -18,6 +20,8 @@ import FriendsListScreen from "../screens/chat/FriendsListScreen";
 import LocationScreen from "../screens/othersScreen/location";
 import SettingsScreen from "../screens/othersScreen/more";
 import UserInfoScreen from "../screens/chat/info/infoChat";
+import ContactRequestsScreen from "../screens/chat/ContactRequests";
+import ImageViewerScreen from "../components/ImageViewerScreen";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
@@ -30,123 +34,121 @@ import ForgotPasswordScreen from "../screens/account/forgotPassword";
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0099ff" />
+      </View>
+    );
+  }
+
   return (
-    <Stack.Navigator initialRouteName="SignInScreen">
+    <Stack.Navigator 
+      initialRouteName={"SignInScreen"}
+      screenOptions={{
+        headerShown: false,
+        gestureEnabled: true,
+      }}
+    >
       {/* Auth Screens */}
       <Stack.Screen
         name="SignUpScreen"
         component={SignUpScreen}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="SignInScreen"
         component={SignInScreen}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="VerifyOTPScreen"
         component={VerifyOTPScreen}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ForgotPasswordScreen"
         component={ForgotPasswordScreen}
-        options={{ headerShown: false }}
       />
 
       {/* Onboarding Screens */}
       <Stack.Screen
         name="Loading_start"
         component={Loading_start}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Loading_Middle"
         component={Loading_Middle}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Loading_done"
         component={Loading_done}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Introduce"
         component={Introduce}
-        options={{ headerShown: false }}
       />
 
-      {/* Main App Screens */}
-      <Stack.Screen
-        name="Home_Chat"
-        component={Home_Chat}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="AddFriend"
-        component={AddFriendScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="AddGroupScreen"
-        component={AddGroupScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="GroupCallScreen"
-        component={GroupCallScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="LoginScreen"
-        component={LoginScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="RegisterScreen"
-        component={RegisterScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="ChatDetail"
-        component={chatDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="LocationScreen"
-        component={LocationScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="ProfileScreen"
-        component={ProfileScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="FriendsListScreen"
-        component={FriendsListScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="SettingsScreen"
-        component={SettingsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="UserInfoScreen"
-        component={UserInfoScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="CallScreen"
-        component={CallScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="CallingScreen"
-        component={CallingScreen}
-        options={{ headerShown: false }}
-      />
+      {/* Main App Screens - Only accessible when logged in */}
+      {user && (
+        <>
+          <Stack.Screen
+            name="Home_Chat"
+            component={Home_Chat}
+          />
+          <Stack.Screen
+            name="AddFriend"
+            component={AddFriendScreen}
+          />
+          <Stack.Screen
+            name="AddGroupScreen"
+            component={AddGroupScreen}
+          />
+          <Stack.Screen
+            name="GroupCallScreen"
+            component={GroupCallScreen}
+          />
+          <Stack.Screen
+            name="ChatDetail"
+            component={chatDetailScreen}
+          />
+          <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+          />
+          <Stack.Screen
+            name="FriendsList"
+            component={FriendsListScreen}
+          />
+          <Stack.Screen
+            name="Location"
+            component={LocationScreen}
+          />
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
+          />
+          <Stack.Screen
+            name="UserInfo"
+            component={UserInfoScreen}
+          />
+          <Stack.Screen
+            name="ContactRequests"
+            component={ContactRequestsScreen}
+          />
+          <Stack.Screen
+            name="Call"
+            component={CallScreen}
+          />
+          <Stack.Screen
+            name="Calling"
+            component={CallingScreen}
+          />
+          <Stack.Screen
+            name="ImageViewer"
+            component={ImageViewerScreen}
+          />
+        </>
+      )}
     </Stack.Navigator>
   );
 };

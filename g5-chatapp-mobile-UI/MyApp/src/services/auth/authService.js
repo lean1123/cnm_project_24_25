@@ -37,15 +37,42 @@ export const verifyOTP = async (userId, otp) => {
 export const signIn = async (email, password) => {
   try {
     const response = await axiosInstance.post("/auth/sign-in", { email, password });
+    console.log('Raw server response:', response.data); // Debug log
+
     const { data, success, message } = response.data;
-    if (!success || !data) return { ok: false, message: message || "Login failed" };
+    if (!success || !data) {
+      return { ok: false, message: message || "Login failed" };
+    }
 
     const { user, token } = data;
-    await AsyncStorage.setItem("user", JSON.stringify(user));
-    await AsyncStorage.setItem("userToken", token);
+    // Kiểm tra cấu trúc user object
+    console.log('User data:', user); // Debug log
 
-    return { ok: true, message: message || "Login successful", user, token };
+    // Kiểm tra các định dạng ID có thể có
+    const userId = user?._id || user?.id || user?.userId;
+    if (!userId) {
+      console.error('User data structure:', user); // Debug log
+      return { ok: false, message: "User ID not found in response" };
+    }
+
+    // Chuẩn hóa dữ liệu user trước khi lưu
+    const normalizedUser = {
+      ...user,
+      _id: userId // Đảm bảo luôn có _id
+    };
+
+    await AsyncStorage.setItem("user", JSON.stringify(normalizedUser));
+    await AsyncStorage.setItem("userToken", token);
+    await AsyncStorage.setItem("userId", userId);
+
+    return { 
+      ok: true, 
+      message: message || "Login successful", 
+      user: normalizedUser, 
+      token 
+    };
   } catch (error) {
+    console.error('Sign-in error details:', error.response?.data || error);
     return { ok: false, message: error.response?.data?.message || "Login failed" };
   }
 };

@@ -19,9 +19,9 @@ const Footer = () => {
 
   const tabs = [
     { name: 'Chats', icon: 'message-text', screen: 'Home_Chat' },
-    { name: 'Contacts', icon: 'account-box', screen: 'FriendsListScreen' },
-    { name: 'Profile', icon: 'account-circle', screen: 'ProfileScreen' },
-    { name: 'More', icon: 'dots-horizontal-circle', screen: 'SettingsScreen' }
+    { name: 'Contacts', icon: 'account-box', screen: 'FriendsList' },
+    { name: 'Profile', icon: 'account-circle', screen: 'Profile' },
+    { name: 'More', icon: 'dots-horizontal-circle', screen: 'Settings' }
   ];
 
   return (
