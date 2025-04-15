@@ -33,14 +33,13 @@ export class ContactService {
     });
 
     if (matchedContact && matchedContact.status !== Status.ACTIVE) {
-      return this.contactModel
-        .findByIdAndUpdate(
-          matchedContact._id,
-          { status: Status.PENDING },
-          { new: true },
-        )
-        .populate('user', 'firstName lastName email avatar')
-        .populate('contact', 'firstName lastName email avatar');
+      const updatedContact = await this.contactModel.findByIdAndUpdate(
+        matchedContact._id,
+        { status: Status.PENDING },
+        { new: true },
+      );
+
+      return this.getContactById(updatedContact._id as string);
     }
 
     const contactSchema = {

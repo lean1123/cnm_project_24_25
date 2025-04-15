@@ -20,6 +20,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
+import { MessageReactionRequest } from './dtos/requests/messageReaction.request';
 
 @Controller('message')
 export class MessageController {
@@ -70,6 +71,38 @@ export class MessageController {
     return await this.messageService.getNewestMessageByConversation(
       conversationId,
     );
+  }
+
+  @Put('/reaction')
+  @UseGuards(AuthGuard('jwt'))
+  async reactionMessage(
+    @Body() body: MessageReactionRequest,
+    @UserDecorator() userPayload: JwtPayload,
+  ): Promise<Message> {
+    const messageReaction = await this.messageService.reactToMessage(
+      userPayload,
+      body,
+    );
+
+    this.chatGateway.handleReactToMessage(messageReaction);
+
+    return messageReaction;
+  }
+
+  @Put('/:messageId/un-reaction')
+  @UseGuards(AuthGuard('jwt'))
+  async unReactionMessage(
+    @Param('messageId') messageId: string,
+    @UserDecorator() userPayload: JwtPayload,
+  ): Promise<Message> {
+    const messageUnReaction = await this.messageService.unReactToMessage(
+      userPayload,
+      messageId,
+    );
+
+    this.chatGateway.handleUnReactToMessage(messageUnReaction);
+
+    return messageUnReaction;
   }
 
   @Put(':messageId')
