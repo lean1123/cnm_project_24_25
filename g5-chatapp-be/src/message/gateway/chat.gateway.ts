@@ -18,6 +18,7 @@ import { Message } from '../schema/messege.chema';
 import { TypinationRequest } from '../dtos/requests/typination.request';
 import { UserService } from 'src/user/user.service';
 import { ContactService } from '../../contact/contact.service';
+import { User } from 'src/user/schema/user.schema';
 
 @WebSocketGateway({
   cors: {
@@ -167,10 +168,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { userId, conversationId } = typinationDto;
 
-    const user = await this.userService.findById(userId);
-    const fullName = `${user.firstName} ${user.lastName}`;
+    // const user = await this.userService.findById(userId);
+    // const fullName = `${user.firstName} ${user.lastName}`;
 
-    client.to(conversationId).emit('typing', fullName);
+    this.server.to(conversationId).emit('typing', {
+      userId: userId,
+      // fullName: fullName,
+      conversationId: conversationId,
+    });
   }
 
   @SubscribeMessage('stopTyping')
@@ -243,11 +248,103 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  // call
+  @SubscribeMessage('call')
+  handleCall(
+    @MessageBody()
+    { sender, conversationId }: { sender: User; conversationId: string},
+  ) {
+    this.server.to(conversationId).emit('goingCall', {
+      sender,
+    });
+  }
+
+  @SubscribeMessage('joinCall')
+  handleJoinCall(
+    @MessageBody()
+    { userId, conversationId }: { userId: string; conversationId: string; },
+  ) {
+    this.server.to(conversationId).emit('newUser', {
+      userId: userId,
+    });
+  }
+
+  @SubscribeMessage('acceptCall')
+  handleAcceptCall(
+    @MessageBody()
+    { userId, conversationId }: { userId: string; conversationId: string;},
+  ) {
+    this.server.to(conversationId).emit('newUserJoinCall', {
+      sender: userId,
+    });
+  }
+  @SubscribeMessage('rejectCall')
+  handleRejectCall(
+    @MessageBody()
+    { userId, conversationId, callData }: { userId: string; conversationId: string; callData: any },
+  ) {
+    this.server.to(userId).emit('rejectCall', {
+      conversationId,
+      callData,
+    });
+  }
+  @SubscribeMessage('endCall')
+  handleEndCall(
+    @MessageBody()
+    { userId, conversationId, callData }: { userId: string; conversationId: string; callData: any },
+  ) {
+    this.server.to(userId).emit('endCall', {
+      conversationId,
+      callData,
+    });
+  }
+  @SubscribeMessage('cancelCall')
+  handleCancelCall(
+    @MessageBody()
+    { userId, conversationId, callData }: { userId: string; conversationId: string; callData: any },
+  ) {
+    this.server.to(userId).emit('cancelCall', {
+      conversationId,
+      callData,
+    });
+  }
+
+  @SubscribeMessage('newUserJoinCall')
+  handleNewUserStartCall(
+    @MessageBody()
+    data: { to: string; sender: string},
+  ) {
+    this.server.to(data.to).emit('newUserJoinCall', {
+      sender: data.sender,
+    });
+  }
+  @SubscribeMessage('sdp')
+  handleSdp(
+    @MessageBody()
+    data: { to: string; description: any; sender: string },
+  ) {
+    this.server.to(data.to).emit('sdp', {
+      description: data.description,
+      sender: data.sender,
+    });
+  }
+  @SubscribeMessage('iceCandidate')
+  handleIceCandidate(
+    @MessageBody()
+    data: { to: string; candidate: any; sender: string },
+  ) {
+    this.server.to(data.to).emit('iceCandidate', {
+      candidate: data.candidate,
+      sender: data.sender,
+    });
+  }
+
+
   handleReactToMessage(@MessageBody() message: Message) {
-    const conversationId = message.conversation?.toString();
-    if (conversationId) {
-      this.server.to(conversationId).emit('reactToMessage', message);
-    }
+    // const conversationId = message.conversation?.toString();
+    // if (conversationId) {
+    //   this.server.to(conversationId).emit('reactToMessage', message);
+    // }
     this.server
       .to(message.conversation.toString())
       .emit('reactToMessage', message);
@@ -262,4 +359,5 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .to(message.conversation.toString())
       .emit('unReactToMessage', message);
   }
+
 }

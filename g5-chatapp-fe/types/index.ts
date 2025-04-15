@@ -64,12 +64,13 @@ export type Message = {
     files: MessageFile[] | null;
     deletedFor: any[];
     isRevoked: boolean;
-    forwardFrom: string | null;
+    forwardFrom?: string | null;
     type: string;
     createdAt: string;
     updatedAt: string;
     isTemp?: boolean;
     isError?: boolean;
+    reactions?: Reactions[];
 }
 
 export type MessageRequest = {
@@ -98,4 +99,25 @@ export type UserUpdate = {
     lastName: string;
     gender: string;
     dob: string;
+}
+
+// 
+export type OngoingCallex = {
+    callId: string;
+    conversationId: string;
+    callType: "audio" | "video";
+    isCallActive: boolean;
+    isCallAccepted: boolean;
+    callStatus: string;
+    callDuration: number;
+}
+
+export type OngoingCall = {
+    sender: User;
+    isRinging: boolean;
+}
+
+export type Reactions = {
+    user: string
+    reaction: string;
 }

@@ -169,16 +169,12 @@ export class MessageService {
       throw new NotFoundException('Message not found');
     }
 
-    const deletedForUser = await this.userService.findById(userId);
-    if (!deletedForUser) {
-      throw new NotFoundException('User not found in revoke message');
-    }
 
-    const deletedFor = message.deletedFor;
-    const isDeletedForUser = deletedFor?.some((user) => {
-      console.log('user', user);
-      return null;
-    });
+    const deletedFor = message.deletedFor || [];
+    const isDeletedForUser = deletedFor.some((user) => String(user) === String(userId));
+
+
+
     if (isDeletedForUser) {
       throw new NotFoundException('Message already deleted for this user');
     }
@@ -190,7 +186,7 @@ export class MessageService {
           updatedAt: new Date(),
         },
         $addToSet: {
-          deletedFor: deletedForUser._id,
+          deletedFor: userId, // ✅ Thêm userId vào mảng deletedFor
         },
       },
       { new: true },
@@ -200,15 +196,18 @@ export class MessageService {
   // xoa msg -> an tin nhan o ca 2 ben
   async revokeMessageBoth(
     messageId: string,
-    conversationId: string,
+    // conversationId: string,
     userRequestId: string,
   ): Promise<Message> {
-    const conversation =
-      await this.conversationService.getConvensationById(conversationId);
+    // const conversation =  await this.conversationService.getConvensationById(conversationId);
 
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
+    // if (!conversation) {
+    //   throw new NotFoundException('Conversation not found');
+    // }
+
+    // ✅ Lấy tất cả userId từ members
+    // const memberIds = conversation.members;
+
 
     const updatedMessage = await this.messageModel.findOneAndUpdate(
       {
@@ -263,10 +262,7 @@ export class MessageService {
       // Tạo bản sao của tin nhắn gốc cho mỗi cuộc trò chuyện
       const forwardedMessage = await this.messageModel.create({
         conversation: new Types.ObjectId(newConversationId),
-        sender: {
-          userId: userPayload._id,
-          fullName: `${sender.firstName} ${sender.lastName}`,
-        },
+        sender: sender._id,
         content: originalMessage.content,
         files: originalMessage.files,
         type: originalMessage.type,

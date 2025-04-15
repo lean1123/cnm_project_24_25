@@ -1,7 +1,9 @@
 import api from "@/api/api";
 import { getSocket } from "@/lib/socket";
 import { Conversation, Message, MessageRequest, User } from "@/types";
+import { toast } from "sonner";
 import { create } from "zustand";
+import { useAuthStore } from "./useAuthStore";
 
 interface iConversationStore {
   conversations: Conversation[];
@@ -26,8 +28,28 @@ interface iConversationStore {
   isSuccessSendMessage: boolean;
   addTempMessage: (message: Message) => void;
   removeTempMessage: (messageId: string) => void;
+  typing: (conversationId: string) => void;
+  isTyping: boolean;
   subscribeToNewMessages: () => void;
   unsubscribeFromNewMessages: () => void;
+  forwardMessage: (
+    originalMessageId: string,
+    conversationIds: string[]
+  ) => void;
+  deleteMessage: (message: Message) => void;
+  revokeMessage: (message: Message) => void;
+  reactionMessage: (messageId: string, reaction: string) => void;
+  unReactionMessage: (messageId: string) => void;
+  subscribeToDeleteMessage: () => void;
+  unsubscribeFromDeleteMessage: () => void;
+  subscribeToRevokeMessage: () => void;
+  unsubscribeFromRevokeMessage: () => void;
+  subscribeToTyping: () => void;
+  unsubscribeFromTyping: () => void;
+  subscribeToReaction: () => void;
+  unsubscribeFromReaction: () => void;
+  subscribeToUnReaction: () => void;
+  unsubscribeFromUnReaction: () => void;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -42,28 +64,16 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   isLoadingSendMessage: false,
   errorSendMessage: null,
   isSuccessSendMessage: false,
-  //   socket: null,
-  //   connectSocket: () => {
-  //     const { user } = useAuthStore.getState();
-  //     const socket = io("http://localhost:3000");
-  //     set({ socket });
-  //     socket.on("connect", () => {
-  //       console.log("Connected to socket server:", socket.id);
-  //       if (user && get().selectedConversation) {
-  //         socket.emit("join", {
-  //           userId: user.id,
-  //           conversationId: get().selectedConversation?._id,
-  //         });
-  //       }
-  //     });
-  //   },
-  //   disconnectSocket: () => {
-  //     const { socket } = get();
-  //     if (socket) {
-  //       socket.disconnect();
-  //       set({ socket: null });
-  //     }
-  //   },
+  isTyping: false,
+  typing: (conversationId: string) => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.emit("typing", {
+        conversationId,
+        userId: useAuthStore.getState().user?.id,
+      });
+    }
+  },
   fetchingUser: async (userId: string) => {
     set({ isLoading: true, error: null });
     try {
@@ -169,29 +179,21 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     }));
   },
   subscribeToNewMessages: () => {
-    const socket = getSocket(); // Ensure socket is initialized
-    if (socket) {
-      socket.on("newMessage", (message: Message) => {
-        set((state) => ({
-          messages: [
-            message,
-            ...state.messages.filter((m) => m._id !== "temp"),
-          ],
-          messagesTemp: state.messagesTemp.filter((m) => m._id !== "temp"),
-          // conversations: state.conversations.map((conversation) => {
-          //   if (conversation._id === message.conversation) {
-          //     return {
-          //       ...conversation,
-          //       lastMessage: {
-          //         _id: message._id,
-          //         sender: message.sender.userId,
-          //         message: message.content,
-          //       },
-          //     };
-          //   }
-          //   return conversation;
-          // }),
-          conversations: state.conversations.map((conversation) => {
+    const socket = getSocket();
+
+    if (!socket) return;
+
+    socket.on("newMessage", (message: Message) => {
+      set((state) => {
+        const selectedId = get().selectedConversation?._id;
+
+        const isInSelectedConversation = message.conversation === selectedId;
+
+        let updatedConversations = state.conversations;
+
+        // Chỉ cập nhật conversations nếu KHÔNG phải selectedConversation
+        if (!isInSelectedConversation) {
+          updatedConversations = state.conversations.map((conversation) => {
             if (conversation._id === message.conversation) {
               return {
                 ...conversation,
@@ -202,19 +204,193 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
                   type: message.type,
                   files: message.files,
                 },
+                updatedAt: new Date().toISOString(),
               };
             }
             return conversation;
-          })
-          
-        }));
+          });
+
+          updatedConversations = updatedConversations.sort((a, b) => {
+            return (
+              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            );
+          });
+        }
+
+        return {
+          // Chỉ cập nhật messages nếu message thuộc selectedConversation
+          messages: isInSelectedConversation
+            ? [message, ...state.messages.filter((m) => m._id !== "temp")]
+            : state.messages,
+
+          messagesTemp: state.messagesTemp.filter((m) => m._id !== "temp"),
+          conversations: updatedConversations,
+        };
       });
-    }
+    });
   },
+
   unsubscribeFromNewMessages: () => {
     const socket = getSocket(); // Ensure socket is initialized
     if (socket) {
       socket.off("newMessage");
     }
   },
+  forwardMessage: async (
+    originalMessageId: string,
+    conversationIds: string[]
+  ) => {
+    try {
+      const response = await api.patch("/message/forward", {
+        originalMessageId,
+        conversationIds,
+      });
+      toast.success("Message forwarded successfully!");
+      console.log("Forwarded message:", response.data);
+    } catch (error) {
+      console.error("Failed to forward message:", error);
+      toast.error("Failed to forward message");
+    }
+  },
+  deleteMessage: async (message: Message) => {
+    try {
+      const response = await api.patch(`/message/${message._id}/revoke-self`);
+      // toast.success("Message deleted successfully!");
+      const user = useAuthStore.getState().user;
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === message._id ? { ...m, deletedFor: [user?._id] } : m
+        ),
+      }));
+      console.log("Deleted message:", response.data);
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+      toast.error("Failed to delete message");
+    }
+  },
+  revokeMessage: async (message: Message) => {
+    try {
+      const response = await api.patch(`/message/${message._id}/revoke-both`);
+      // toast.success("Message revoked successfully!");
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === message._id ? { ...m, isRevoked: true } : m
+        ),
+      }));
+      console.log("Revoked message:", response.data);
+    } catch (error) {
+      console.error("Failed to revoke message:", error);
+      toast.error("Failed to revoke message");
+    }
+  },
+  reactionMessage: async (messageId: string, reaction: string) => {
+    try {
+      const response = await api.put(`/message/reaction`, {
+        messageId,
+        reaction,
+      });
+      console.log("Reaction added:", response.data);
+    } catch (error) {
+      console.error("Failed to add reaction:", error);
+    }
+  },
+  unReactionMessage: async (messageId: string) => {
+    try {
+      const response = await api.put(`/message/${messageId}/un-reaction`);
+      console.log("Reaction removed:", response.data);
+    } catch (error) {
+      console.error("Failed to remove reaction:", error);
+    }
+  },
+  subscribeToDeleteMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.on("deleteMessage", (message: Message) => {
+      });
+    }
+  },
+  unsubscribeFromDeleteMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.off("deleteMessage");
+    }
+  },
+  subscribeToRevokeMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.on("revokeMessage", (message: Message) => {
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m._id === message._id ? { ...m, isRevoked: true } : m
+          ),
+        }));
+      });
+    }
+  },
+  unsubscribeFromRevokeMessage: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.off("revokeMessage");
+    }
+  },
+  subscribeToTyping: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.on(
+        "typing",
+        (data: { userId: string; conversationId: string }) => {
+          console.log("User is typing:", data);
+          const { userId, conversationId } = data;
+          if (userId === useAuthStore.getState().user?.id) return;
+          if (conversationId !== get().selectedConversation?._id) return; // Ignore own typing event
+          set({ isTyping: true });
+          setTimeout(() => {
+            set({ isTyping: false });
+          }, 3000);
+        }
+      );
+    }
+  },
+  unsubscribeFromTyping: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.off("typing");
+    }
+  },
+  subscribeToReaction: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.on("reactToMessage", (message: Message) => {
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m._id === message._id ?  message : m
+          ),
+        }));
+      });
+    }
+  },
+  unsubscribeFromReaction: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.off("reactToMessage");
+    }
+  },
+  subscribeToUnReaction: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.on("unReactToMessage", (message: Message) => {
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m._id === message._id ?  message : m
+          ),
+        }));
+      });
+    }
+  },
+  unsubscribeFromUnReaction: () => {
+    const socket = getSocket(); // Ensure socket is initialized
+    if (socket) {
+      socket.off("unReactToMessage");
+    }
+  }
 }));

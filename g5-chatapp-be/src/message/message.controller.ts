@@ -149,16 +149,16 @@ export class MessageController {
    * @returns message
    */
   @UseGuards(AuthGuard('jwt'))
-  @Patch(':messageId/revoke-both/:conversationId')
+  @Patch(':messageId/revoke-both')
   async revokeMessageBoth(
     @Param('messageId') messageId: string,
-    @Param('conversationId') conversationId: string,
+    // @Param('conversationId') conversationId: string,
     @UserDecorator() req: JwtPayload,
   ) {
     const userId = req._id;
     const revorkedMessage = await this.messageService.revokeMessageBoth(
       messageId,
-      conversationId,
+      // conversationId,
       userId,
     );
 

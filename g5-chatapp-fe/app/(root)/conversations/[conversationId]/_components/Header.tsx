@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 // } from "@/components/ui/dropdown-menu";
 import { cn, getInitials, getNameFallBack } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useCallStore } from "@/store/useCallStore";
 import { useConversationStore } from "@/store/useConversationStore";
 import { CircleArrowLeft, Settings, User } from "lucide-react";
 import Link from "next/link";
@@ -28,6 +29,7 @@ type Props = {
 
 const Header = ({userId, imageUrl, firstName, lastName, options }: Props) => {
   const { activeUsers } = useAuthStore();
+  const {handleCall} = useCallStore();
   const [isOnline, setIsOnline] = React.useState(false);
   useEffect(() => {
     console.log("userSelected", userId);
