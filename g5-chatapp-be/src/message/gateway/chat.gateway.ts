@@ -24,6 +24,8 @@ import { ContactService } from '../../contact/contact.service';
     origin: [
       'http://localhost:5173',
       'http://localhost:5174',
+      'http://localhost:8081',
+      'http://localhost:8082',
       'https://d3vkdcq3kcj9ec.cloudfront.net',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
