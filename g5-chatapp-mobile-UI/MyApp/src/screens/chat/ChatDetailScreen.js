@@ -15,11 +15,11 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from "react-native";
-import { Ionicons, Feather } from "@expo/vector-icons"; // Cài bằng: npm install @expo/vector-icons
+import { Ionicons, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing"; // mở tệp
+import * as Sharing from "expo-sharing";
 import * as Location from "expo-location";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
@@ -34,7 +34,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [tempMessages, setTempMessages] = useState([]); // Tin nhắn tạm thời
+  const [tempMessages, setTempMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [otherUser, setOtherUser] = useState(null);
@@ -42,27 +42,26 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [isOnline, setIsOnline] = useState(false);
   const flatListRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [capturedImage, setCapturedImage] = useState(null);
 
-  // Hàm xử lý quay lại
   const handleReturn = () => {
     navigation.navigate("Home_Chat");
   };
 
-  // Initialize chat and fetch data
   useEffect(() => {
     const initializeChat = async () => {
       try {
         console.log("Initializing chat with conversation:", conversation);
         setLoading(true);
 
-        // Lấy data người dùng hiện tại từ AsyncStorage
+        // Data from AsyncStorage
         const userData = await AsyncStorage.getItem("userData");
         if (userData) {
           const currentUserData = JSON.parse(userData);
           setCurrentUser(currentUserData);
           console.log("Current user:", currentUserData);
 
-          // Thiết lập thông tin người dùng khác từ cuộc trò chuyện
+          // User data
           if (conversation) {
             if (conversation.name) {
               setOtherUser({
@@ -76,7 +75,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
             }
           }
 
-          // Lấy instance socket đã có sẵn
+          // Set socket state
           const socketInstance = getSocket();
           console.log("Got existing socket:", socketInstance ? "yes" : "no");
 
@@ -211,12 +210,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
       if (response.data && response.data.data) {
         let messagesData = response.data.data;
 
-        // Kiểm tra xem messages có nằm trong data.data không
         if (messagesData.data && Array.isArray(messagesData.data)) {
           messagesData = messagesData.data;
         }
-
-        // Validate message format
         const validMessages = messagesData.filter((msg) => {
           if (!msg || !msg.sender || !msg._id) {
             console.log("Invalid message format:", msg);
@@ -233,7 +229,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
         console.log("Valid messages count:", validMessages.length);
         setMessages(sortedMessages);
 
-        // Scroll to bottom after fetching new messages
         requestAnimationFrame(() => {
           if (flatListRef.current) {
             flatListRef.current.scrollToEnd({ animated: true });
@@ -247,18 +242,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
-  // Combine messages and temp messages
   const combinedMessages = useMemo(() => {
     const allMessages = [...messages];
 
-    // Add temp messages that don't exist in regular messages
     tempMessages.forEach((tempMsg) => {
       if (!allMessages.find((msg) => msg._id === tempMsg._id)) {
         allMessages.push(tempMsg);
       }
     });
-
-    // Sắp xếp tin nhắn từ cũ đến mới
     return allMessages.sort(
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
     );
@@ -285,114 +276,317 @@ const ChatDetailScreen = ({ navigation, route }) => {
   };
 
   const sendMessage = async (messageData = null) => {
-    // Kiểm tra điều kiện trước khi gửi
     if (
       (!newMessage.trim() && !messageData) ||
       !socket ||
       !currentUser ||
       !conversation?._id
     ) {
+      console.log("Invalid data, aborting message send.");
       return;
     }
 
-    let tempMessage;
     const currentContent = newMessage.trim();
-    const tempId = `temp-${Date.now()}`;
-    console.log("Sending message with temp ID-----:", tempId);
 
     try {
-      if (messageData) {
-        // Handle media message
-        tempMessage = {
-          _id: tempId,
-          ...messageData,
-          sender: currentUser,
-          conversation: conversation._id,
-          createdAt: new Date().toISOString(),
-          status: "sending",
-        };
-      } else {
-        // Handle text message
-        setNewMessage(""); // Clear input first
-        Keyboard.dismiss();
+      // --- GỬI ẢNH ---
+      if (messageData?.type === "image") {
+        const files = messageData.files || [];
+        if (files.length === 0) return;
 
-        tempMessage = {
-          _id: tempId,
-          content: currentContent,
-          sender: currentUser,
-          conversation: conversation._id,
-          createdAt: new Date().toISOString(),
-          status: "sending",
-        };
+        for (const media of files) {
+          const tempId = `temp-${Date.now()}-${Math.random()}`;
+
+          const tempMessage = {
+            _id: tempId,
+            url: media.url,
+            fileName: media.fileName || "image.jpg",
+            sender: currentUser,
+            conversation: conversation._id,
+            createdAt: new Date().toISOString(),
+            status: "sending",
+            type: "image",
+          };
+
+          setTempMessages((prev) => [...prev, tempMessage]);
+
+          const formData = new FormData();
+          formData.append("files", {
+            uri: media.url,
+            name: media.fileName || "image.jpg",
+            type: media.type || "image/jpeg",
+          });
+          formData.append("conversationId", conversation._id);
+          formData.append("type", "image");
+
+          try {
+            const response = await axiosInstance.post(
+              `/message/send-message/${conversation._id}`,
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              }
+            );
+
+            console.log("Image message send response:", response.data);
+            removeTempMessage(tempId);
+
+            if (response.data?.data) {
+              const newMessage = response.data.data;
+
+              setMessages((prevMessages) =>
+                prevMessages
+                  .filter((msg) => msg._id !== tempId)
+                  .concat({
+                    ...newMessage,
+                    sender: currentUser,
+                  })
+              );
+
+              socket.emit("sendMessage", {
+                message: newMessage,
+                conversationId: conversation._id,
+                senderId: currentUser._id,
+              });
+
+              requestAnimationFrame(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+              });
+            }
+          } catch (error) {
+            console.error("Error sending image:", error);
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg._id === tempId ? { ...msg, status: "error" } : msg
+              )
+            );
+          }
+        }
+
+        return;
       }
 
-      // Add temporary message to state
-      setTempMessages((prev) => [...prev, tempMessage]); // Chỉnh sửa để thêm vào tempMessages
+      // --- GỬI FILE ---
+if (messageData?.type === "file") {
+  const file = messageData.files?.[0];
+  if (!file) return;
 
-      // Send to API
-      const response = await axiosInstance.post(
-        `/message/send-message/${conversation._id}`,
-        messageData || { content: tempMessage.content }
+  const tempId = `temp-${Date.now()}`;
+  const tempMessage = {
+    _id: tempId,
+    url: file.url,
+    fileName: file.fileName || "file.txt",
+    sender: currentUser,
+    conversation: conversation._id,
+    createdAt: new Date().toISOString(),
+    status: "sending",
+    type: "FILE",  // Đảm bảo type là "file"
+  };
+
+  // Lưu tin nhắn tạm thời để hiển thị trong UI
+  setTempMessages((prev) => [...prev, tempMessage]);
+
+  const formData = new FormData();
+  formData.append("files", {
+    uri: file.url,
+    name: file.fileName || "file.txt",
+    type: file.type || "application/octet-stream", // Đảm bảo MIME type là chuẩn
+  });
+  formData.append("conversationId", conversation._id);
+  formData.append("type", "FILE");  // Gửi đúng loại tệp
+
+  try {
+    // Gửi tệp tin lên server
+    const response = await axiosInstance.post(
+      `/message/send-message/${conversation._id}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    console.log("Upload response:", response.data); // Debugging the response
+
+    if (response.data?.data?.url) {
+      // Xóa tin nhắn tạm thời sau khi gửi thành công
+      removeTempMessage(tempId);
+
+      const newMessage = response.data.data;
+
+      // Đảm bảo rằng bạn cập nhật đúng loại tệp khi lưu vào state
+      setMessages((prevMessages) =>
+        prevMessages
+          .filter((msg) => msg._id !== tempId) // Xóa tin nhắn tạm
+          .concat({
+            ...newMessage,
+            sender: currentUser, // Gắn thông tin người gửi
+            type: "file",  // Đảm bảo type là "file"
+          })
       );
 
-      console.log("Message send response:", response.data);
-      // Xóa tin nhắn tạm sau khi gửi thành công
-      console.log("Removing temp message after send---------:", tempId);
-      removeTempMessage(tempId); // Gọi hàm xóa tin nhắn tạm
-      // Log để kiểm tra
-      console.log("Temporary message removed:", tempId);
-      if (response.data && response.data.data) {
-        const newMessage = response.data.data;
+      // Gửi tin nhắn qua socket
+      socket.emit("sendMessage", {
+        message: newMessage,
+        conversationId: conversation._id,
+        senderId: currentUser._id,
+      });
 
-        // Xóa tin nhắn tạm và thêm tin nhắn thực
-        setMessages((prevMessages) =>
-          prevMessages
-            .filter((msg) => msg._id !== tempId)
-            .concat({
-              ...newMessage,
-              sender: currentUser, // Đảm bảo sender được thiết lập đúng
-            })
-        );
-
-        // Emit socket event
-        socket.emit("sendMessage", {
-          message: newMessage,
-          conversationId: conversation._id,
-          senderId: currentUser._id,
-        });
-
-        // Scroll to bottom
-        requestAnimationFrame(() => {
-          if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      console.log("Error details:", error.response?.data);
-
-      // Update message to error state
+      // Cuộn xuống cuối danh sách tin nhắn
+      requestAnimationFrame(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      });
+    } else {
+      console.error("Upload response is invalid or missing URL");
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg._id === tempId ? { ...msg, status: "error" } : msg
         )
       );
     }
+  } catch (error) {
+    console.error("Error sending file:", error);
+
+    // Xử lý lỗi bằng cách thay đổi trạng thái của tin nhắn tạm thời
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg._id === tempId ? { ...msg, status: "error" } : msg
+      )
+    );
+  }
+
+  return;
+}
+
+
+      // --- GỬI VỊ TRÍ ---
+      if (messageData?.type === "location") {
+        const tempId = `temp-${Date.now()}`;
+        const tempMessage = {
+          _id: tempId,
+          content: messageData.content,
+          preview: messageData.preview,
+          sender: currentUser,
+          conversation: conversation._id,
+          createdAt: new Date().toISOString(),
+          status: "sending",
+          type: "location",
+        };
+
+        setTempMessages((prev) => [...prev, tempMessage]);
+
+        const response = await axiosInstance.post(
+          `/message/send-message/${conversation._id}`,
+          {
+            content: messageData.content,
+            preview: messageData.preview,
+          }
+        );
+
+        removeTempMessage(tempId);
+
+        if (response.data?.data) {
+          const newMessage = response.data.data;
+
+          setMessages((prevMessages) =>
+            prevMessages
+              .filter((msg) => msg._id !== tempId)
+              .concat({
+                ...newMessage,
+                sender: currentUser,
+              })
+          );
+
+          socket.emit("sendMessage", {
+            message: newMessage,
+            conversationId: conversation._id,
+            senderId: currentUser._id,
+          });
+
+          requestAnimationFrame(() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          });
+        }
+
+        return;
+      }
+
+      // --- GỬI VĂN BẢN ---
+
+      const finalContent = messageData?.content || currentContent;
+
+      if (!finalContent.trim()) return;
+
+      setNewMessage("");
+      Keyboard.dismiss();
+
+      const tempId = `temp-${Date.now()}`;
+      const tempMessage = {
+        _id: tempId,
+        content: finalContent,
+        sender: currentUser,
+        conversation: conversation._id,
+        createdAt: new Date().toISOString(),
+        status: "sending",
+        type: "text",
+      };
+
+      setTempMessages((prev) => [...prev, tempMessage]);
+
+      const response = await axiosInstance.post(
+        `/message/send-message/${conversation._id}`,
+        { content: finalContent }
+      );
+
+      removeTempMessage(tempId);
+
+      if (response.data?.data) {
+        const newMessage = response.data.data;
+
+        setMessages((prevMessages) =>
+          prevMessages
+            .filter((msg) => msg._id !== tempId)
+            .concat({
+              ...newMessage,
+              sender: currentUser,
+            })
+        );
+
+        socket.emit("sendMessage", {
+          message: newMessage,
+          conversationId: conversation._id,
+          senderId: currentUser._id,
+        });
+
+        requestAnimationFrame(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        });
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      console.log("Error details:", error.response?.data);
+    }
   };
 
-  // Thêm hàm xử lý submit riêng cho TextInput
+  //submit  TextInput
   const handleSubmitEditing = () => {
     if (newMessage.trim()) {
       sendMessage();
     }
   };
 
-  // Thêm hàm xử lý press send button
+  //  press send button
   const handlePressSend = () => {
     if (newMessage.trim()) {
       sendMessage();
     }
+  };
+
+  const handlePressLike = () => {
+    sendMessage({ type: "text", content: "👍" });
   };
 
   const retryMessage = async (tempMessage) => {
@@ -400,13 +594,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
       updateTempMessageStatus(tempMessage._id, "sending");
 
       const messageData = {
-        content: tempMessage.content, // Đổi từ message thành content
+        content: tempMessage.content,
       };
 
       // Send through socket for real-time
       socket.emit("sendMessage", {
         conversationId: conversation._id,
-        content: tempMessage.content, // Đổi từ message thành content
+        content: tempMessage.content,
       });
 
       // Send to API
@@ -416,7 +610,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       );
 
       if (response.data) {
-        // Remove temp message and add real message
         removeTempMessage(tempMessage._id);
         setMessages((prev) => [...prev, response.data]);
       }
@@ -428,6 +621,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
   };
 
   const handleCamera = async () => {
+    setCapturedImage(null);
+    console.log("reset capturedImage");
+
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
@@ -436,18 +632,78 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
-        allowsEditing: true,
+        allowsEditing: false,
       });
 
       if (!result.canceled) {
-        await handleMediaUpload(result.assets[0], "image");
+        const asset = result.assets[0];
+
+        // Tạo fileName nếu asset không có
+        const timestamp = Date.now();
+        const fileName = asset.fileName || `image_${timestamp}.jpg`;
+
+        // Đường dẫn mới (lưu trữ ảnh ở thư mục riêng)
+        const newPath = `${FileSystem.documentDirectory}${fileName}`;
+
+        try {
+          // Sao chép file ảnh sang thư mục mới để đảm bảo là ảnh mới
+          await FileSystem.copyAsync({
+            from: asset.uri,
+            to: newPath,
+          });
+
+          // Cập nhật asset với uri mới
+          const copiedAsset = {
+            ...asset,
+            uri: newPath,
+            fileName,
+          };
+
+          setCapturedImage(copiedAsset); // Hiển thị ảnh preview
+          setIsUploading(true);
+
+          // Tiến hành upload ảnh mới
+          const uploadResponse = await handleMediaUpload(
+            copiedAsset,
+            "image",
+            fileName
+          );
+
+          if (uploadResponse && uploadResponse.url) {
+            console.log("✅ Upload successful, image URL:", uploadResponse.url);
+
+            const messageData = {
+              files: [
+                {
+                  _id: uploadResponse._id,
+                  fileName: fileName,
+                  url: uploadResponse.url, // Không cần thêm `?t=`
+                },
+              ],
+              type: "image",
+            };
+
+            // Gửi tin nhắn với ảnh
+            await sendMessage(messageData);
+            console.log("✅ Message sent with image:", uploadResponse.url);
+            setCapturedImage(null); // Dọn sạch ảnh đã chụp sau khi gửi xong
+          } else {
+            console.error("❌ Upload response is invalid or missing URL");
+          }
+        } catch (err) {
+          console.error("❌ Error uploading image:", err);
+          alert("Upload thất bại");
+        } finally {
+          setIsUploading(false);
+        }
       }
-    } catch (error) {
-      console.error("Error taking photo:", error);
-      alert("Error taking photo");
+    } catch (err) {
+      console.error("❌ Error using camera:", err);
+      alert("Không thể mở camera");
     }
+
     setShowOptions(false);
   };
 
@@ -461,7 +717,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
         allowsMultipleSelection: true,
         selectionLimit: 10,
@@ -470,31 +726,49 @@ const ChatDetailScreen = ({ navigation, route }) => {
       if (!result.canceled) {
         setIsUploading(true);
         try {
-          // Process each selected asset
           const uploadPromises = result.assets.map(async (asset) => {
-            // Determine type based on file extension
-            const type =
-              asset.type ||
-              (asset.uri.match(/\.(jpg|jpeg|png|gif)$/i)
-                ? "image"
-                : asset.uri.match(/\.(mp4|mov|avi)$/i)
-                ? "video"
-                : "file");
+            console.log("Selected image asset:", asset);
 
-            return handleMediaUpload(asset, type);
+            const uploadResponse = await handleMediaUpload(asset, "image");
+
+            if (uploadResponse && uploadResponse.url) {
+              console.log("Upload successful, image URL:", uploadResponse.url);
+
+              const messageData = {
+                files: [
+                  {
+                    _id: uploadResponse._id,
+                    fileName: asset.fileName,
+                    url: uploadResponse.url,
+                  },
+                ],
+                type: "image",
+              };
+
+              console.log("Prepared message data to send:", messageData);
+
+              await sendMessage(messageData);
+
+              console.log(
+                "Message sent successfully with image:",
+                uploadResponse.url
+              );
+            } else {
+              console.error("Upload response is invalid or missing URL");
+            }
           });
 
           await Promise.all(uploadPromises);
         } catch (error) {
-          console.error("Error processing media:", error);
-          alert("Error processing media files");
+          console.error("Error uploading images:", error);
+          alert("Error uploading images");
         } finally {
           setIsUploading(false);
         }
       }
     } catch (error) {
-      console.error("Error picking media:", error);
-      alert("Error accessing media library");
+      console.error("Error picking images:", error);
+      alert("Error accessing gallery");
       setIsUploading(false);
     }
     setShowOptions(false);
@@ -507,7 +781,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         multiple: true,
         copyToCacheDirectory: true,
       });
-
+  
       if (
         result.type === "success" ||
         (Array.isArray(result.assets) && result.assets.length > 0)
@@ -515,9 +789,38 @@ const ChatDetailScreen = ({ navigation, route }) => {
         setIsUploading(true);
         try {
           const files = Array.isArray(result.assets) ? result.assets : [result];
-          const uploadPromises = files.map((file) =>
-            handleMediaUpload(file, "file")
-          );
+          const uploadPromises = files.map(async (file) => {
+            console.log("Selected file asset:", file);
+  
+            const uploadResponse = await handleMediaUpload(file, "file");
+  
+            if (uploadResponse && uploadResponse.url) {
+              console.log("Upload successful, file URL:", uploadResponse.url);
+  
+              const messageData = {
+                files: [
+                  {
+                    fileName: file.name,
+                    url: uploadResponse.url,
+                    // Nếu cần _id, bạn có thể truyền từ backend về kèm với URL
+                  },
+                ],
+                type: "file",
+              };
+  
+              console.log("Prepared message data to send:", messageData);
+  
+              await sendMessage(messageData);
+  
+              console.log(
+                "Message sent successfully with file:",
+                uploadResponse.url
+              );
+            } else {
+              console.error("Upload response is invalid or missing URL");
+            }
+          });
+  
           await Promise.all(uploadPromises);
         } catch (error) {
           console.error("Error processing documents:", error);
@@ -533,6 +836,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
     setShowOptions(false);
   };
+  
 
   const handleLocation = async () => {
     try {
@@ -545,14 +849,17 @@ const ChatDetailScreen = ({ navigation, route }) => {
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
 
-      // Create location message
       const locationMessage = {
         type: "location",
         content: `${latitude},${longitude}`,
-        preview: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`,
+        preview: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`, // Ảnh xem trước vị trí
       };
 
+      console.log("Prepared location message to send:", locationMessage);
+
       await sendMessage(locationMessage);
+
+      console.log("Location message sent successfully");
     } catch (error) {
       console.error("Error getting location:", error);
       alert("Error getting location");
@@ -560,125 +867,98 @@ const ChatDetailScreen = ({ navigation, route }) => {
     setShowOptions(false);
   };
 
-  const handleMediaUpload = async (file, type) => {
+  const handleMediaUpload = async (asset, type) => {
     try {
-      // Get file info
-      const fileInfo = await FileSystem.getInfoAsync(file.uri);
-
-      // Check file size (limit to 25MB)
-      if (fileInfo.size > 25 * 1024 * 1024) {
-        throw new Error("File size exceeds 25MB limit");
+      if (!asset || !asset.uri) {
+        throw new Error("Invalid asset provided");
       }
-
-      // Create form data
+  
+      // Kiểm tra loại file dựa trên `type` và các đuôi file hoặc MIME type
+      let fileExtension, mimeType;
+  
+      // Nếu `type` là ảnh
+      if (type === "image") {
+        fileExtension = "jpg"; // Mặc định ảnh là jpg
+        mimeType = "image/jpeg";
+      }
+      // Nếu `type` là video
+      else if (type === "video") {
+        fileExtension = "mp4"; // Mặc định video là mp4
+        mimeType = "video/mp4";
+      }
+      // Nếu `type` là các file tài liệu (pdf, txt, ppt, ...)
+      else {
+        // Tìm phần mở rộng dựa trên tên file nếu không có `type`
+        const extension = asset.name.split(".").pop().toLowerCase();
+  
+        // Kiểm tra đuôi file và quyết định loại
+        if (["pdf", "txt", "doc", "docx", "ppt", "pptx"].includes(extension)) {
+          fileExtension = extension;
+          mimeType = "application/octet-stream"; // Hoặc thay bằng mimeType chính xác cho các tài liệu
+          type = "file"; // Cập nhật lại type cho file
+        } else {
+          throw new Error("Unsupported file type");
+        }
+      }
+  
+      const fallbackName = `media.${fileExtension || "txt"}`;
+      const fallbackMime = mimeType || "application/octet-stream";
+  
       const formData = new FormData();
       formData.append("file", {
-        uri: file.uri,
-        type:
-          file.mimeType ||
-          `${type}/${file.uri.split(".").pop()}` ||
-          "application/octet-stream",
-        name: file.name || `${type}-${Date.now()}.${file.uri.split(".").pop()}`,
+        uri: asset.uri,
+        name: asset.name || asset.fileName || fallbackName,
+        type: asset.mimeType || fallbackMime,
       });
-
-      // Create temporary message
-      const tempMessage = {
-        _id: `temp-${Date.now()}`,
-        type,
-        content: file.uri,
-        sender: currentUser,
-        conversation: conversation._id,
-        createdAt: new Date().toISOString(),
-        status: "sending",
-        fileName: file.name,
-        fileSize: fileInfo.size,
-        mimeType: file.mimeType,
-      };
-
-      // Add temporary message
-      setMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages, tempMessage].sort(
-          (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-        );
-
-        // Scroll to bottom
-        setTimeout(() => {
-          if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
-          }
-        }, 100);
-
-        return updatedMessages;
-      });
-
-      // Upload file
-      const response = await axiosInstance.post("/message/upload", formData, {
+  
+      // Thực hiện upload file
+      const response = await axiosInstance.post("/upload-test/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-
-      console.log("Upload response:", response.data);
-
-      if (response.data && response.data.data) {
-        // Remove temporary message
-        setMessages((prevMessages) =>
-          prevMessages.filter((msg) => msg._id !== tempMessage._id)
-        );
-
-        // Send message with file URL
-        const messageData = {
-          type,
-          content: response.data.data.url,
-          fileName: file.name,
-          fileSize: fileInfo.size,
-          mimeType: file.mimeType || `${type}/${file.uri.split(".").pop()}`,
-          conversationId: conversation._id,
-        };
-
-        // If it's a video, add thumbnail
-        if (type === "video" && response.data.data.thumbnail) {
-          messageData.thumbnail = response.data.data.thumbnail;
-        }
-
-        // Send to API
-        const messageResponse = await axiosInstance.post(
-          `/message/send-message/${conversation._id}`,
-          messageData
-        );
-
-        if (messageResponse.data && messageResponse.data.data) {
-          const newMessage = messageResponse.data.data;
-
-          // Add new message to state
-          setMessages((prevMessages) => {
-            return [...prevMessages, newMessage].sort(
-              (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-            );
-          });
-
-          // Emit socket event
-          socket.emit("sendMessage", {
-            message: newMessage,
-            conversationId: conversation._id,
-            senderId: currentUser._id,
-          });
-        }
+  
+      console.log("Response from upload:", response);
+  
+      const fileUrl = response?.data?.data;
+      const success = response?.data?.success;
+  
+      if (success && fileUrl && typeof fileUrl === "string") {
+        console.log("✅ File URL:", fileUrl);
+        return { url: fileUrl };
+      } else {
+        throw new Error("Upload failed: Missing success flag or file URL in response");
       }
     } catch (error) {
-      console.error("Error uploading media:", error);
-      console.log("Error details:", error.response?.data);
-
-      // Update temporary message to show error
-      setMessages((prevMessages) =>
-        prevMessages.map((msg) =>
-          msg._id === tempMessage._id ? { ...msg, status: "error" } : msg
-        )
-      );
-
-      alert(error.message || "Error uploading media. Please try again.");
+      console.error("❌ Error uploading media:", error);
+      alert("⚠️ Failed to upload media");
+      throw error;
     }
   };
+  
+
+  const getFileTypeForDatabase = (mimeType = "", fileName = "") => {
+    const ext = fileName.split(".").pop()?.toLowerCase(); // Lấy đuôi file
+  
+    // Các định dạng hình ảnh
+    const imageTypes = ["jpg", "jpeg", "png", "gif", "webp"];
+  
+    // Các định dạng file (PDF, DOCX, PPTX, TXT, ...)
+    const fileTypes = ["pdf", "doc", "docx", "txt", "xlsx", "xls", "ppt", "pptx"];
+  
+    // Nếu là hình ảnh
+    if (mimeType.startsWith("image/") || imageTypes.includes(ext)) {
+      return "IMAGE";
+    }
+  
+    // Nếu là file (PDF, DOCX, PPTX, TXT,...)
+    if (fileTypes.includes(ext) || mimeType.startsWith("application/")) {
+      return "FILE";
+    }
+  
+    return "FILE"; // Fallback mặc định là FILE nếu không xác định được
+  };
+  
 
   const renderMessage = ({ item }) => {
     if (!item || !item.sender) {
@@ -691,16 +971,23 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     const renderMessageContent = () => {
       switch (item.type) {
-        case "image":
+        case "IMAGE":
+          const imageUrl = item.files.length > 0 ? item.files[0].url : "";
+
+          if (!imageUrl) {
+            console.warn("No image URL found");
+            return null;
+          }
+
           return (
             <TouchableOpacity
               onPress={() =>
-                navigation.navigate("ImageViewer", { uri: item.content })
+                navigation.navigate("ImageViewer", { uri: imageUrl })
               }
               style={styles.mediaContainer}
             >
               <Image
-                source={{ uri: item.content }}
+                source={{ uri: imageUrl }}
                 style={styles.messageImage}
                 resizeMode="cover"
               />
@@ -733,18 +1020,31 @@ const ChatDetailScreen = ({ navigation, route }) => {
               )}
             </TouchableOpacity>
           );
-        case "file":
+        case "FILE":
+          const file = item.files && item.files[0];
+          const fileName = file?.fileName || "File";
+          const fileUrl = file?.url || "";
+          // console.log("file name ---:", fileName);
+
+          if (!fileUrl) {
+            console.warn("No file URL found");
+            return null;
+          }
+
+          const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
+            fileUrl
+          )}&embedded=true`;
           return (
             <TouchableOpacity
               style={styles.fileContainer}
-              onPress={() => Linking.openURL(item.content)}
+              onPress={() => Linking.openURL(viewerUrl)}
             >
-              <Ionicons
-                name={getFileIcon(item.fileName)}
-                size={24}
-                color={isMyMessage ? "white" : "#666"}
-              />
-              <View style={styles.fileInfo}>
+              <View style={styles.rowContainer}>
+                <Ionicons
+                  name={getFileIcon(fileName)}
+                  size={27}
+                  color={isMyMessage ? "white" : "#666"}
+                />
                 <Text
                   style={[
                     styles.fileName,
@@ -752,25 +1052,20 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   ]}
                   numberOfLines={1}
                 >
-                  {item.fileName || "File"}
-                </Text>
-                <Text
-                  style={[
-                    styles.fileSize,
-                    isMyMessage && styles.userMessageText,
-                  ]}
-                >
-                  {formatFileSize(item.fileSize)}
+                  {fileName || "Unnamed File"}
                 </Text>
               </View>
+
               {isTemp && item.status === "sending" && (
                 <ActivityIndicator
                   size="small"
                   color={isMyMessage ? "#fff" : "#666"}
+                  style={{ marginTop: 5 }}
                 />
               )}
             </TouchableOpacity>
           );
+
         case "location":
           return (
             <TouchableOpacity
@@ -876,7 +1171,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
-  // Add pull to refresh functionality
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = React.useCallback(async () => {
@@ -944,7 +1238,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
               color="white"
               onPress={() => {
                 if (otherUser) {
-                  navigation.navigate("UserInfoScreen", { user: otherUser });
+                  navigation.navigate("UserInfo", { user: otherUser });
                 }
               }}
             />
@@ -985,6 +1279,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
             />
           </View>
         </TouchableOpacity>
+
         <TextInput
           style={styles.input}
           placeholder="Type a message..."
@@ -992,9 +1287,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
           onChangeText={(text) => setNewMessage(text)}
           onSubmitEditing={handleSubmitEditing}
         />
-        <TouchableOpacity onPress={handlePressSend}>
-          <Ionicons name="send" size={28} color="#0099ff" />
-        </TouchableOpacity>
+
+        {newMessage.trim().length > 0 ? (
+          <TouchableOpacity onPress={handlePressSend}>
+            <Ionicons name="send" size={28} color="#0099ff" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={handlePressLike}>
+            <Ionicons name="thumbs-up" size={28} color="#0099ff" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ChatOptions
@@ -1063,11 +1365,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     marginVertical: 4,
-    maxWidth: "80%",
+    maxWidth: "100%",
+    width: "auto",
+    flexWrap: "wrap",
   },
   messageContent: {
     padding: 10,
     borderRadius: 15,
+    maxWidth: "90%",
   },
   userMessage: {
     alignSelf: "flex-end",
@@ -1117,12 +1422,14 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 10,
+    marginVertical: 5,
   },
   videoContainer: {
     width: 200,
     height: 200,
     borderRadius: 10,
     position: "relative",
+    marginVertical: 5,
   },
   videoThumbnail: {
     width: "100%",
@@ -1139,20 +1446,27 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   fileContainer: {
+    padding: 10,
+    marginVertical: 5,
+    backgroundColor: "transparent",
+    maxWidth: "100%",
+    borderRadius: 8,
+  },
+  rowContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
   },
   fileName: {
-    marginLeft: 8,
     fontSize: 14,
-    color: "#666",
+    color: "#000",
+    marginLeft: 10,
+    flexShrink: 1,
+    overflow: "hidden",
   },
-  locationPreview: {
-    width: 200,
-    height: 150,
-    borderRadius: 10,
+  userMessageText: {
+    color: "white",
   },
+
   messageFooter: {
     flexDirection: "row",
     alignItems: "center",
@@ -1176,16 +1490,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  fileInfo: {
-    flex: 1,
-    marginLeft: 10,
-    marginRight: 10,
-  },
-  fileSize: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 2,
   },
 });
 

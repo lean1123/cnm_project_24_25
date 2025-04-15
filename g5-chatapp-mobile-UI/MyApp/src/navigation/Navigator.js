@@ -21,6 +21,7 @@ import LocationScreen from "../screens/othersScreen/location";
 import SettingsScreen from "../screens/othersScreen/more";
 import UserInfoScreen from "../screens/chat/info/infoChat";
 import ContactRequestsScreen from "../screens/chat/ContactRequests";
+import ImageViewerScreen from "../components/ImageViewerScreen";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
@@ -141,6 +142,10 @@ const MainNavigator = () => {
           <Stack.Screen
             name="Calling"
             component={CallingScreen}
+          />
+          <Stack.Screen
+            name="ImageViewer"
+            component={ImageViewerScreen}
           />
         </>
       )}
