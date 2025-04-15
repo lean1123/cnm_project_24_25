@@ -14,6 +14,7 @@ import { MessageRequest } from './dtos/requests/message.request';
 import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 import { MessageType } from './schema/messageType.enum';
 import { Message } from './schema/messege.chema';
+import { MessageReactionRequest } from './dtos/requests/messageReaction.request';
 
 @Injectable()
 export class MessageService {
@@ -98,7 +99,6 @@ export class MessageService {
       convensationId,
       messageSaved._id as string,
     );
-    console.log('messageSaved', messageSaved);
     return messageSaved;
   }
 
@@ -169,15 +169,28 @@ export class MessageService {
       throw new NotFoundException('Message not found');
     }
 
+    const deletedForUser = await this.userService.findById(userId);
+    if (!deletedForUser) {
+      throw new NotFoundException('User not found in revoke message');
+    }
+
+    const deletedFor = message.deletedFor;
+    const isDeletedForUser = deletedFor?.some((user) => {
+      console.log('user', user);
+      return null;
+    });
+    if (isDeletedForUser) {
+      throw new NotFoundException('Message already deleted for this user');
+    }
+
     return await this.messageModel.findByIdAndUpdate(
       messageId,
       {
         $set: {
-          isRevoked: true,
           updatedAt: new Date(),
         },
         $addToSet: {
-          deletedFor: userId,
+          deletedFor: deletedForUser._id,
         },
       },
       { new: true },
@@ -197,9 +210,6 @@ export class MessageService {
       throw new NotFoundException('Conversation not found');
     }
 
-    // ✅ Lấy tất cả userId từ members
-    const memberIds = conversation.members.map((m) => m._id);
-
     const updatedMessage = await this.messageModel.findOneAndUpdate(
       {
         _id: new Types.ObjectId(messageId),
@@ -209,9 +219,6 @@ export class MessageService {
         $set: {
           isRevoked: true,
           updatedAt: new Date(),
-        },
-        $addToSet: {
-          deletedFor: { $each: memberIds }, // ✅ Thêm toàn bộ userId
         },
       },
       { new: true },
@@ -279,5 +286,99 @@ export class MessageService {
 
     // Trả về tất cả các tin nhắn đã được forward
     return forwardedMessages as Message[];
+  }
+
+  async reactToMessage(
+    userPayload: JwtPayload,
+    messageReactionDto: MessageReactionRequest,
+  ) {
+    const matchedMessage = await this.messageModel.findById(
+      messageReactionDto.messageId,
+    );
+
+    if (!matchedMessage) {
+      throw new NotFoundException('Message not found to react');
+    }
+
+    const reacter = await this.userService.findById(userPayload._id);
+    if (!reacter) {
+      throw new NotFoundException('User not found to react');
+    }
+
+    // check user đã react chưa
+    const existingReaction = matchedMessage.reactions.find((reaction) =>
+      reaction.user.equals(reacter._id as Types.ObjectId),
+    );
+
+    if (existingReaction) {
+      // Nếu đã có reaction, cập nhật lại reaction
+      matchedMessage.reactions = matchedMessage.reactions.map((reaction) => {
+        if (reaction.user.equals(reacter._id as Types.ObjectId)) {
+          return { ...reaction, reaction: messageReactionDto.reaction };
+        }
+        return reaction;
+      });
+    } else {
+      // Nếu chưa có reaction, thêm mới
+      matchedMessage.reactions.push({
+        user: reacter._id as Types.ObjectId,
+        reaction: messageReactionDto.reaction,
+      });
+    }
+
+    // Lưu lại tin nhắn đã được react
+
+    const updatedMessage = await this.messageModel.findByIdAndUpdate(
+      matchedMessage._id,
+      { reactions: matchedMessage.reactions },
+      { new: true },
+    );
+    if (!updatedMessage) {
+      throw new NotFoundException('Failed to update message reaction');
+    }
+
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
+  }
+
+  async unReactToMessage(userPayload: JwtPayload, messageId: string) {
+    const matchedMessage = await this.messageModel.findById(
+      new Types.ObjectId(messageId),
+    );
+
+    if (!matchedMessage) {
+      throw new NotFoundException('Message not found to unreact');
+    }
+
+    const reacter = await this.userService.findById(userPayload._id);
+    if (!reacter) {
+      throw new NotFoundException('User not found to unreact');
+    }
+
+    // check user đã react chưa
+    const existingReaction = matchedMessage.reactions.find((reaction) =>
+      reaction.user.equals(reacter._id as Types.ObjectId),
+    );
+
+    if (!existingReaction) {
+      throw new NotFoundException('User not reacted to this message yet');
+    }
+
+    // Nếu đã có reaction, xóa reaction
+    matchedMessage.reactions = matchedMessage.reactions.filter(
+      (reaction) => !reaction.user.equals(reacter._id as Types.ObjectId),
+    );
+
+    // Lưu lại tin nhắn đã được react
+
+    const updatedMessage = await this.messageModel.findByIdAndUpdate(
+      matchedMessage._id,
+      { reactions: matchedMessage.reactions },
+      { new: true },
+    );
+    if (!updatedMessage) {
+      throw new NotFoundException('Failed to update message reaction');
+    }
+
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
   }
 }

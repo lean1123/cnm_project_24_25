@@ -242,4 +242,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       name,
     });
   }
+
+  handleReactToMessage(@MessageBody() message: Message) {
+    const conversationId = message.conversation?.toString();
+    if (conversationId) {
+      this.server.to(conversationId).emit('reactToMessage', message);
+    }
+    this.server
+      .to(message.conversation.toString())
+      .emit('reactToMessage', message);
+  }
+
+  handleUnReactToMessage(@MessageBody() message: Message) {
+    const conversationId = message.conversation?.toString();
+    if (conversationId) {
+      this.server.to(conversationId).emit('unReactToMessage', message);
+    }
+    this.server
+      .to(message.conversation.toString())
+      .emit('unReactToMessage', message);
+  }
 }
