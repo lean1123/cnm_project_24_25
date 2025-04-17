@@ -1983,20 +1983,25 @@ const styles = StyleSheet.create({
   messageContainer: {
     maxWidth: "70%",
     marginHorizontal: 8,
+    borderRadius: 15,
   },
   messageContent: {
-    padding: 10,
+    padding: 8,
     borderRadius: 15,
   },
   userMessage: {
     alignSelf: "flex-end",
     backgroundColor: "#0099ff",
     marginLeft: "auto",
+    borderWidth: 1,
+    borderColor: "#0099ff",
   },
   friendMessage: {
     alignSelf: "flex-start",
     backgroundColor: "#e4e4e4",
     marginRight: "auto",
+    borderWidth: 1,
+    borderColor: "#e4e4e4",
   },
   messageText: {
     fontSize: 15,
