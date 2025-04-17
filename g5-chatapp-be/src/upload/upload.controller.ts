@@ -20,6 +20,7 @@ export class UploadController {
       return await this.uploadService.uploadFile(
         file.originalname,
         file.buffer,
+        file.mimetype,
       );
     } catch (error) {
       const err = error as Error;
