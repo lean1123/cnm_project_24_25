@@ -66,7 +66,7 @@ const ChatOptions = ({
         <View style={styles.modalContainer}>
           <View style={styles.optionsBox}>
             <View style={styles.header}>
-              <Text style={styles.headerText}>Share Content</Text>
+              <Text style={styles.headerText}>Options Chat</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
@@ -123,6 +123,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+    marginLeft: '8%',
   },
   closeButton: {
     padding: 5,

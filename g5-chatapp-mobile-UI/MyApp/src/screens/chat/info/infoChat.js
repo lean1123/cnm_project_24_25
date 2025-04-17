@@ -4,348 +4,265 @@ import {
   Text,
   Image,
   TouchableOpacity,
-  ScrollView,
-  Switch,
   SafeAreaView,
-  Alert,
   ActivityIndicator,
-  Modal,
+  FlatList,
+  Dimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import styles from "./styles";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const BACKGROUND_COLORS = [
-  { name: 'Default', value: '#ffffff' },
-  { name: 'Light Blue', value: '#e3f2fd' },
-  { name: 'Mint Green', value: '#e8f5e9' },
-  { name: 'Lavender', value: '#f3e5f5' },
-  { name: 'Peach', value: '#fbe9e7' },
-  { name: 'Light Gray', value: '#f5f5f5' },
-];
+import { chatService } from "../../../services/chat.service";
 
 const UserInfoScreen = ({ navigation, route }) => {
-  const [muted, setMuted] = useState(false);
-  const [pinned, setPinned] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const [callAlerts, setCallAlerts] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState(null);
-  const [userInfo, setUserInfo] = useState(null);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [selectedColor, setSelectedColor] = useState(BACKGROUND_COLORS[0].value);
-  const [backgroundColor, setBackgroundColor] = useState('#ffffff');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [mediaMessages, setMediaMessages] = useState({
+    images: [],
+    videos: [],
+    files: []
+  });
   
   const conversation = route.params?.conversation;
-  
+  const otherUser = conversation?.user || {};
+
   useEffect(() => {
-    const getUserId = async () => {
+    const initialize = async () => {
       try {
         const userData = await AsyncStorage.getItem('userData');
         if (userData) {
-          const user = JSON.parse(userData);
-          setUserId(user._id || user.id);
+          setCurrentUser(JSON.parse(userData));
+        }
+
+        if (conversation?._id) {
+          const response = await chatService.getMessages(conversation._id);
+          if (response?.data) {
+            const messages = Array.isArray(response.data) ? response.data : response.data.data;
+            
+            const images = [];
+            const videos = [];
+            const files = [];
+
+            messages.forEach(message => {
+              if (message.files && message.files.length > 0) {
+                message.files.forEach(file => {
+                  const fileType = file.type || file.fileName?.split('.').pop()?.toLowerCase();
+                  
+                  if (message.type === 'IMAGE' || /\.(jpg|jpeg|png|gif)$/i.test(file.fileName)) {
+                    images.push(file);
+                  } else if (message.type === 'VIDEO' || /\.(mp4|mov|avi)$/i.test(file.fileName)) {
+                    videos.push(file);
+                  } else {
+                    files.push(file);
+                  }
+                });
+              }
+            });
+
+            setMediaMessages({ images, videos, files });
+          }
         }
       } catch (error) {
-        console.error('Error getting userData:', error);
+        console.error('Error initializing:', error);
+      } finally {
+        setLoading(false);
       }
     };
-    getUserId();
-    
-    if (conversation) {
-      processUserInfo(conversation);
-    }
+
+    initialize();
   }, [conversation]);
 
-  useEffect(() => {
-    const loadChatBackground = async () => {
-      try {
-        const chatBackgrounds = await AsyncStorage.getItem('chatBackgrounds') || '{}';
-        const backgrounds = JSON.parse(chatBackgrounds);
-        const savedColor = backgrounds[conversation._id];
-        if (savedColor) {
-          setBackgroundColor(savedColor);
-        }
-      } catch (error) {
-        console.error('Error loading chat background:', error);
-      }
-    };
+  const renderMediaGrid = ({ item }) => {
+    const isVideo = item.type === 'video' || /\.(mp4|mov|avi)$/i.test(item.fileName);
     
-    loadChatBackground();
-  }, [conversation._id]);
-
-  const processUserInfo = (conversation) => {
-    if (!conversation) return;
-    
-    let userData = {
-      avatar: require("../../../../assets/chat/man.png"),
-      name: "Unknown",
-      phone: "N/A",
-      commonGroups: [],
-      sharedMedia: [],
-      sharedFiles: [],
-      sharedLinks: [],
-    };
-    
-    // Nếu là cuộc trò chuyện nhóm
-    if (conversation.isGroup) {
-      userData.name = conversation.name || "Unknown Group";
-      userData.avatar = conversation.avatar 
-        ? { uri: conversation.avatar } 
-        : require("../../../../assets/chat/man.png");
-    } 
-    // Nếu là cuộc trò chuyện 1-1
-    else if (conversation.members) {
-      // Tìm thông tin người dùng khác
-      const otherUser = conversation.members.find(member => member._id !== userId);
-      
-      if (otherUser) {
-        userData = {
-          ...userData,
-          name: `${otherUser.firstName} ${otherUser.lastName}`,
-          phone: otherUser.phone || "N/A",
-          avatar: otherUser.avatar 
-            ? { uri: otherUser.avatar } 
-            : require("../../../../assets/chat/man.png"),
-          isOnline: otherUser.isOnline || false,
-          email: otherUser.email,
-        };
-      }
-    }
-    
-    setUserInfo(userData);
-    setLoading(false);
-  };
-
-  //   hanlde gim tin nhăn
-  const hanldeSearchMessage = () => {
-    Alert.alert("Tìm kiếm tin nhắn", "Chức năng này chưa được triển khai.");
-  };
-
-  const handleUserInfo = () => {
-    Alert.alert("Thông tin người dùng", "Chức năng này chưa được triển khai.");
-  };
-
-  const handleChangeBackground = () => {
-    setShowColorPicker(true);
-  };
-
-  const handleSelectColor = async (color) => {
-    try {
-      setSelectedColor(color);
-      // Lưu màu nền cho cuộc trò chuyện này
-      const chatBackgrounds = await AsyncStorage.getItem('chatBackgrounds') || '{}';
-      const backgrounds = JSON.parse(chatBackgrounds);
-      backgrounds[conversation._id] = color;
-      await AsyncStorage.setItem('chatBackgrounds', JSON.stringify(backgrounds));
-      
-      setShowColorPicker(false);
-      Alert.alert("Thành công", "Đã thay đổi màu nền cuộc trò chuyện");
-    } catch (error) {
-      console.error('Error saving background color:', error);
-      Alert.alert("Lỗi", "Không thể thay đổi màu nền");
-    }
-  };
-
-  const handleToggleNotifications = () => {
-    Alert.alert("Tắt thông báo", "Chức năng này chưa được triển khai.");
-  };
-
-  const ColorPickerModal = () => (
-    <Modal
-      visible={showColorPicker}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={() => setShowColorPicker(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.colorPickerContent}>
-          <Text style={styles.modalTitle}>Chọn màu nền</Text>
-          <View style={styles.colorGrid}>
-            {BACKGROUND_COLORS.map((color, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.colorOption,
-                  { backgroundColor: color.value },
-                  selectedColor === color.value && styles.selectedColor
-                ]}
-                onPress={() => handleSelectColor(color.value)}
-              >
-                {selectedColor === color.value && (
-                  <Icon name="check" size={20} color="#000" />
-                )}
-              </TouchableOpacity>
-            ))}
+    return (
+      <TouchableOpacity 
+        style={styles.mediaItem}
+        onPress={() => {
+          if (isVideo) {
+            navigation.navigate("VideoPlayer", { uri: item.url });
+          } else {
+            navigation.navigate("ImageViewer", { uri: item.url });
+          }
+        }}
+      >
+        <Image 
+          source={{ uri: item.url }} 
+          style={styles.mediaThumbnail}
+        />
+        {isVideo && (
+          <View style={styles.videoOverlay}>
+            <Icon name="play" size={20} color="#fff" />
           </View>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => setShowColorPicker(false)}
-          >
-            <Text style={styles.cancelButtonText}>Hủy</Text>
-          </TouchableOpacity>
-        </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFileItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.fileItem}
+      onPress={() => {
+        // Handle file opening
+      }}
+    >
+      <Icon name="file" size={24} color="#666" />
+      <Text style={styles.fileName} numberOfLines={1}>
+        {item.fileName || 'Unnamed file'}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderHeader = () => (
+    <>
+      <View style={styles.avatarSection}>
+        <Image 
+          source={
+            otherUser.avatar 
+              ? { uri: otherUser.avatar }
+              : require("../../../../assets/chat/man.png")
+          } 
+          style={styles.avatarLarge} 
+        />
+        <Text style={styles.name}>
+          {otherUser.firstName} {otherUser.lastName}
+        </Text>
+        {otherUser.isOnline && (
+          <Text style={styles.onlineStatus}>Đang hoạt động</Text>
+        )}
       </View>
-    </Modal>
+
+      {mediaMessages.images.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Ảnh đã chia sẻ</Text>
+          <FlatList
+            data={mediaMessages.images}
+            renderItem={renderMediaGrid}
+            keyExtractor={(item, index) => `image-${index}`}
+            numColumns={3}
+            scrollEnabled={false}
+          />
+        </View>
+      )}
+
+      {mediaMessages.videos.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Video đã chia sẻ</Text>
+          <FlatList
+            data={mediaMessages.videos}
+            renderItem={renderMediaGrid}
+            keyExtractor={(item, index) => `video-${index}`}
+            numColumns={3}
+            scrollEnabled={false}
+          />
+        </View>
+      )}
+
+      {mediaMessages.files.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>File đã chia sẻ</Text>
+        </View>
+      )}
+    </>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#135CAF" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="chevron-left" size={20} color="white" />
+          <Icon name="chevron-left" size={18} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tùy chọn</Text>
+        <Text style={styles.headerTitle}>Info Chat</Text>
       </View>
-      <ScrollView style={styles.container}>
-        <View style={styles.avatarSection}>
-          <Image source={userInfo.avatar} style={styles.avatarLarge} />
-          <Text style={styles.name}>{userInfo.name}</Text>
-          <Text style={styles.phone}>{userInfo.phone}</Text>
-          {userInfo.isOnline && <Text style={styles.onlineStatus}>Đang hoạt động</Text>}
-        </View>
 
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={hanldeSearchMessage}
-          >
-            <Icon name="search" size={18} />
-            <Text style={styles.textAction}>Tìm tin nhắn</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={handleUserInfo}
-          >
-            <Icon name="user" size={18} />
-            <Text style={styles.textAction}>Trang cá nhân</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={handleChangeBackground}
-          >
-            <Icon name="palette" size={18} />
-            <Text style={styles.textAction}>Đổi màu nền</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={handleToggleNotifications}
-          >
-            <Icon name="bell-slash" size={18} />
-            <Text style={styles.textAction}>Tắt thông báo</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.optionsSection}>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Đổi tên gọi nhớ</Text>
-          </TouchableOpacity>
-          <View style={styles.optionRow}>
-            <Text>Đánh dấu bạn thân</Text>
-            <Switch value={pinned} onValueChange={setPinned} />
-          </View>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Nhật ký chung</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ảnh, file, link</Text>
-          <ScrollView horizontal>
-            {userInfo.sharedMedia.length > 0 ? (
-              userInfo.sharedMedia.map((media, index) => (
-                <Image key={index} source={media} style={styles.mediaThumbnail} />
-              ))
-            ) : (
-              <Text style={{ padding: 10 }}>Không có ảnh, file hoặc link nào</Text>
-            )}
-          </ScrollView>
-        </View>
-
-        <View style={styles.optionsSection}>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Tạo nhóm với {userInfo.name}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Thêm {userInfo.name} vào nhóm</Text>
-          </TouchableOpacity>
-          <View style={styles.optionRow}>
-            <Text>Ghim trò chuyện</Text>
-            <Switch value={muted} onValueChange={setMuted} />
-          </View>
-          <View style={styles.optionRow}>
-            <Text>Ẩn trò chuyện</Text>
-            <Switch value={hidden} onValueChange={setHidden} />
-          </View>
-          <View style={styles.optionRow}>
-            <Text>Báo cuộc gọi đến</Text>
-            <Switch value={callAlerts} onValueChange={setCallAlerts} />
-          </View>
-        </View>
-      </ScrollView>
-      <ColorPickerModal />
+      <FlatList
+        data={mediaMessages.files}
+        renderItem={renderFileItem}
+        keyExtractor={(item, index) => `file-${index}`}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.contentContainer}
+      />
     </SafeAreaView>
   );
 };
 
-// Thêm styles mới
 const additionalStyles = {
-  modalContainer: {
+  loadingContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  colorPickerContent: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-  },
-  colorOption: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    margin: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
   },
-  selectedColor: {
-    borderWidth: 2,
-    borderColor: '#000',
+  contentContainer: {
+    flexGrow: 1,
   },
-  cancelButton: {
-    marginTop: 20,
+  section: {
     padding: 15,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    marginTop: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  mediaItem: {
+    flex: 1/3,
+    aspectRatio: 1,
+    margin: 1,
+    position: 'relative',
+  },
+  mediaThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#135CAF',
+  fileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  fileName: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  avatarLarge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+  },
+  name: {
+    fontSize: 20,
     fontWeight: 'bold',
+    color: '#333',
   },
   onlineStatus: {
     color: '#4CAF50',
@@ -354,7 +271,6 @@ const additionalStyles = {
   },
 };
 
-// Merge styles
 Object.assign(styles, additionalStyles);
 
 export default UserInfoScreen;
