@@ -22,6 +22,7 @@ import SettingsScreen from "../screens/othersScreen/more";
 import UserInfoScreen from "../screens/chat/info/infoChat";
 import ContactRequestsScreen from "../screens/chat/ContactRequests";
 import ImageViewerScreen from "../components/ImageViewerScreen";
+import VideoPlayer from "../screens/chat/components/VideoPlayer";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
@@ -30,6 +31,7 @@ import SignUpScreen from "../screens/auth/register";
 import SignInScreen from "../screens/auth/login";
 import VerifyOTPScreen from "../screens/auth/verifyOTP";
 import ForgotPasswordScreen from "../screens/account/forgotPassword";
+
 
 const Stack = createStackNavigator();
 
@@ -146,6 +148,10 @@ const MainNavigator = () => {
           <Stack.Screen
             name="ImageViewer"
             component={ImageViewerScreen}
+          />
+          <Stack.Screen
+            name="VideoPlayer"
+            component={VideoPlayer}
           />
         </>
       )}

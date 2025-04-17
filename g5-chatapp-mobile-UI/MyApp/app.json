@@ -18,6 +18,9 @@
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to change your avatar.",
         "NSCameraUsageDescription": "This app needs access to your camera to take photos for your avatar.",
         "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus"
       }
     },
     "android": {
@@ -29,10 +32,18 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-video"
+    ]
   }
 }
