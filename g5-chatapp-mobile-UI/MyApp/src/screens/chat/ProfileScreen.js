@@ -70,6 +70,8 @@ const ProfileScreen = ({ navigation }) => {
 
       const result = await response.json();
 
+      console.log("Profile fetch result:", result); // Debug log
+
       if (!response.ok) {
         throw new Error(result.message || "Failed to fetch user profile");
       }
@@ -190,7 +192,7 @@ const ProfileScreen = ({ navigation }) => {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
@@ -199,9 +201,9 @@ const ProfileScreen = ({ navigation }) => {
       if (!result.canceled && result.assets && result.assets[0]?.uri) {
         const token = await AsyncStorage.getItem("userToken");
         const file = {
-          uri: result.assets[0].uri, 
+          uri: result.assets[0].uri,
           name: "avatar.jpg",
-          type: result.assets[0].mimeType, 
+          type: result.assets[0].mimeType,
         };
 
         const response = await changeAvatar(file, token);
@@ -212,7 +214,7 @@ const ProfileScreen = ({ navigation }) => {
             avatar: response.data.avatar,
           }));
           showNotification("Avatar changed successfully");
-            fetchUserProfile();
+          fetchUserProfile();
         } else {
           showNotification(response.message || "Failed to change avatar");
         }

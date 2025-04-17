@@ -14,13 +14,17 @@ export class UploadService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async uploadFile(fileName: string, fileBuffer: Buffer): Promise<string> {
+  async uploadFile(
+    fileName: string,
+    fileBuffer: Buffer,
+    contentType: string,
+  ): Promise<string> {
     await this.s3Client.send(
       new PutObjectCommand({
         Bucket: this.configService.getOrThrow('AWS_BUCKET_NAME'),
         Key: fileName,
         Body: fileBuffer,
-        ContentType: 'image/jpeg',
+        ContentType: contentType,
       }),
     );
 

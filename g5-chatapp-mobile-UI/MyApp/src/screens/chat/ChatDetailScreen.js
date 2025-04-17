@@ -14,8 +14,11 @@ import {
   Linking,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
+  Animated,
 } from "react-native";
-import { Video } from "expo-av";
+import WebView from "react-native-webview";
+
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -31,9 +34,395 @@ import { format } from "date-fns";
 import ChatOptions from "../chat/components/ChatOptions";
 import { chatService } from "../../services/chat.service";
 import useAuthStore from "../../store/useAuthStore";
+import { Video } from "expo-av";
+import { Audio } from "expo-av";
+
+const AudioMessage = ({ file, isMyMessage }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const soundRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const initAudio = async () => {
+      try {
+        // First unload any existing sound
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+
+        // Configure audio mode
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        console.log("Creating sound object...");
+        const { sound: newSound, status } = await Audio.Sound.createAsync(
+          { uri: file.url },
+          {
+            shouldPlay: false,
+            isLooping: false,
+            progressUpdateIntervalMillis: 100,
+          },
+          onPlaybackStatusUpdate
+        );
+
+        console.log("Sound created:", newSound);
+        console.log("Initial status:", status);
+
+        if (isMounted) {
+          soundRef.current = newSound;
+          if (status.isLoaded) {
+            setDuration(status.durationMillis);
+            setPosition(status.positionMillis);
+            setError(null);
+          } else {
+            setError("Failed to load audio");
+          }
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error("Audio initialization error:", err);
+        if (isMounted) {
+          setError("Could not load audio");
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initAudio();
+
+    return () => {
+      isMounted = false;
+      const cleanup = async () => {
+        try {
+          if (soundRef.current) {
+            console.log("Unloading sound...");
+            await soundRef.current.unloadAsync();
+            soundRef.current = null;
+          }
+        } catch (err) {
+          console.error("Cleanup error:", err);
+        }
+      };
+      cleanup();
+    };
+  }, [file.url]);
+
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.isLoaded) {
+      setPosition(status.positionMillis);
+      setIsPlaying(status.isPlaying);
+      setDuration(status.durationMillis);
+
+      if (status.didJustFinish) {
+        setIsPlaying(false);
+        setPosition(0);
+      }
+    }
+  };
+
+  const handlePlayPause = async () => {
+    try {
+      const sound = soundRef.current;
+      console.log("Current sound object:", sound);
+
+      if (!sound) {
+        console.error("No sound object available");
+        setError("Audio not ready");
+        return;
+      }
+
+      const status = await sound.getStatusAsync();
+      console.log("Current status:", status);
+
+      if (!status.isLoaded) {
+        console.error("Sound not loaded");
+        setError("Audio not ready");
+        return;
+      }
+
+      console.log("Attempting to play/pause...");
+      if (status.isPlaying) {
+        await soundRef.current.setStatusAsync({ shouldPlay: false });
+        console.log("Paused successfully");
+      } else {
+        if (!soundRef.current._loaded) {
+          const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: file.url },
+            { shouldPlay: true },
+            onPlaybackStatusUpdate
+          );
+          soundRef.current = newSound;
+        } else {
+          await soundRef.current.setStatusAsync({
+            shouldPlay: true,
+            positionMillis: position,
+            isLooping: false,
+            volume: 1.0,
+            rate: 1.0,
+          });
+        }
+        console.log("Playing successfully");
+      }
+    } catch (err) {
+      console.error("Playback error:", err);
+      setError("Playback failed");
+
+      try {
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+        }
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: file.url },
+          { shouldPlay: true },
+          onPlaybackStatusUpdate
+        );
+        soundRef.current = newSound;
+      } catch (recoveryErr) {
+        console.error("Recovery failed:", recoveryErr);
+        setError("Could not recover playback");
+      }
+    }
+  };
+
+  const formatTime = (milliseconds) => {
+    if (!milliseconds) return "0:00";
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const progress = duration > 0 ? (position / duration) * 100 : 0;
+
+  return (
+    <View
+      style={[
+        styles.audioContainer,
+        isMyMessage ? styles.userMessage : styles.friendMessage,
+      ]}
+    >
+      <TouchableOpacity
+        onPress={handlePlayPause}
+        style={styles.audioPlayButton}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator
+            color={isMyMessage ? "#fff" : "#666"}
+            size="small"
+          />
+        ) : (
+          <Ionicons
+            name={isPlaying ? "pause" : "play"}
+            size={24}
+            color={isMyMessage ? "#fff" : "#666"}
+          />
+        )}
+      </TouchableOpacity>
+
+      <View style={styles.audioContent}>
+        <View style={styles.audioProgressBar}>
+          <View
+            style={[
+              styles.audioProgress,
+              { width: `${progress}%` },
+              isMyMessage
+                ? { backgroundColor: "#fff" }
+                : { backgroundColor: "#135CAF" },
+            ]}
+          />
+        </View>
+        <Text
+          style={[
+            styles.audioDuration,
+            isMyMessage ? styles.userMessageText : styles.friendMessageText,
+          ]}
+        >
+          {error ? error : `${formatTime(position)} / ${formatTime(duration)}`}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+const AudioRecordingModal = ({ visible, onClose, onSend }) => {
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordedUri, setRecordedUri] = useState(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (recording) {
+        recording.stopAndUnloadAsync();
+      }
+    };
+  }, []);
+
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "Please grant microphone permission to record audio."
+        );
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      timerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error("Failed to start recording", error);
+      Alert.alert("Error", "Could not start recording. Please try again.");
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (!recording) return;
+
+      clearInterval(timerRef.current);
+      setIsRecording(false);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecordedUri(uri);
+      setRecording(null);
+    } catch (error) {
+      console.error("Failed to stop recording", error);
+      Alert.alert("Error", "Could not save the recording. Please try again.");
+    }
+  };
+
+  const handleSend = async () => {
+    if (recordedUri) {
+      const audioMessage = {
+        files: [
+          {
+            uri: recordedUri,
+            type: "audio/m4a",
+            name: `audio-${Date.now()}.m4a`,
+          },
+        ],
+        type: "AUDIO",
+      };
+      await onSend(audioMessage);
+      onClose();
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.audioRecordingContainer}>
+          <View style={styles.audioRecordingHeader}>
+            <Text style={styles.audioRecordingTitle}>Ghi âm tin nhắn</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.audioRecordingContent}>
+            <Text style={styles.recordingDuration}>
+              {formatDuration(recordingDuration)}
+            </Text>
+
+            <View style={styles.recordingControls}>
+              {!recordedUri ? (
+                <TouchableOpacity
+                  onPress={isRecording ? stopRecording : startRecording}
+                  style={[
+                    styles.recordButton,
+                    isRecording && styles.recordingActive,
+                  ]}
+                >
+                  <Ionicons
+                    name={isRecording ? "stop" : "mic"}
+                    size={32}
+                    color={isRecording ? "#fff" : "#ff4444"}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.recordingActions}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setRecordedUri(null);
+                      setRecordingDuration(0);
+                    }}
+                    style={styles.recordingActionButton}
+                  >
+                    <Ionicons name="refresh" size={24} color="#666" />
+                    <Text style={styles.recordingActionText}>Ghi lại</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSend}
+                    style={[styles.recordingActionButton, styles.sendButton]}
+                  >
+                    <Ionicons name="send" size={24} color="#fff" />
+                    <Text
+                      style={[styles.recordingActionText, { color: "#fff" }]}
+                    >
+                      Gửi
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 const ChatDetailScreen = ({ navigation, route }) => {
-  const { conversation } = route.params;
+  console.log("ChatDetailScreen mounted with route params:", route.params);
+  const { conversation } = route.params || {};
+  console.log("Extracted conversation:", conversation);
+
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState([]);
@@ -54,6 +443,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [selectedFriends, setSelectedFriends] = useState([]);
 
   const [authenticated, setAuthenticated] = useState("");
+  const video = useRef(null);
+
+  const [showAudioRecording, setShowAudioRecording] = useState(false);
 
   const handleReturn = () => {
     navigation.navigate("Home_Chat");
@@ -63,6 +455,17 @@ const ChatDetailScreen = ({ navigation, route }) => {
     const initializeChat = async () => {
       try {
         console.log("Initializing chat with conversation:", conversation);
+
+        if (!conversation || !conversation._id) {
+          console.error(
+            "Invalid or missing conversation object:",
+            conversation
+          );
+          alert("Error: Invalid conversation data. Please try again.");
+          navigation.goBack();
+          return;
+        }
+
         setLoading(true);
 
         const userData = await AsyncStorage.getItem("userData");
@@ -273,11 +676,45 @@ const ChatDetailScreen = ({ navigation, route }) => {
     });
   };
 
+  const handleLocation = () => {
+    setShowOptions(false);
+    navigation.navigate("Location", {
+      conversation: conversation,
+    });
+  };
+
+  // Add this useEffect to handle location messages
+  useEffect(() => {
+    if (route.params?.locationMessage) {
+      console.log("Received location message:", route.params.locationMessage);
+      const locationData = route.params.locationMessage;
+
+      // Clear the params first to prevent duplicate sends
+      navigation.setParams({ locationMessage: undefined });
+
+      if (locationData.isLocation) {
+        sendMessage({
+          ...locationData,
+          type: "TEXT", // Keep as TEXT type for location messages
+        });
+      }
+    }
+  }, [route.params?.locationMessage]);
+
   const sendMessage = async (messageData = null) => {
+    console.log("SendMessage called with data:", messageData);
+
+    // Special handling for location messages
+    const isLocationMessage =
+      messageData?.isLocation &&
+      messageData.content &&
+      /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(messageData.content);
+
     if (
       (!newMessage.trim() &&
         !messageData?.files?.length &&
-        !messageData?.content) ||
+        !messageData?.content &&
+        !isLocationMessage) ||
       !socket ||
       !currentUser ||
       !conversation?._id
@@ -291,7 +728,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     let messageType = "TEXT";
     if (files.length > 0) {
-      messageType = "IMAGE";
+      const mimetype = files[0]?.type;
+      if (mimetype.startsWith("image/") || mimetype === "image") {
+        messageType = "IMAGE";
+      } else if (mimetype.startsWith("video/") || mimetype === "video") {
+        messageType = "VIDEO";
+      } else if (mimetype.startsWith("audio/") || mimetype === "audio") {
+        messageType = "AUDIO";
+      } else {
+        messageType = "FILE";
+      }
     }
 
     const tempId = `temp-${Date.now()}-${Math.random()
@@ -311,40 +757,56 @@ const ChatDetailScreen = ({ navigation, route }) => {
       createdAt: new Date().toISOString(),
       status: "sending",
       type: messageType,
+      address: messageData?.address,
+      isLocation: messageData?.isLocation,
       files: files.map((file) => ({
         fileName: file.name || file.fileName || file.uri.split("/").pop(),
         url: file.uri,
       })),
     };
 
+    console.log("Creating temp message:", tempMessage);
     setTempMessages((prev) => [...prev, tempMessage]);
     setNewMessage("");
 
     try {
       let response;
+      const messagePayload = {
+        content,
+        type: messageType,
+        sender: currentUser._id,
+        address: messageData?.address,
+        isLocation: messageData?.isLocation,
+      };
+
       if (files.length > 0) {
         const preparedFiles = files.map((file) => ({
           uri: file.uri,
-          type: file.type || "image/jpeg",
+          type: file.type?.includes("/")
+            ? file.type
+            : file.name?.endsWith(".mp4")
+            ? "video/mp4"
+            : file.name?.endsWith(".mp3")
+            ? "audio/mpeg"
+            : file.name?.endsWith(".pdf")
+            ? "application/pdf"
+            : "application/octet-stream", // đảm bảo là kiểu MIME
           name: file.name || file.fileName || file.uri.split("/").pop(),
         }));
 
         response = await chatService.sendMessageWithFiles(
           conversation._id,
-          {
-            content,
-            type: messageType,
-            sender: currentUser._id,
-          },
+          messagePayload,
           preparedFiles
         );
       } else {
-        response = await chatService.sendMessageWithFile(conversation._id, {
-          content,
-          type: "TEXT",
-          sender: currentUser._id,
-        });
+        response = await chatService.sendMessageWithFile(
+          conversation._id,
+          messagePayload
+        );
       }
+
+      console.log("Send message response:", response);
 
       if (response.success) {
         setTempMessages((prev) => prev.filter((msg) => msg._id !== tempId));
@@ -358,8 +820,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
             lastName: currentUser.lastName,
           },
         };
-
-        // setMessages((prevMessages) => [...prevMessages, newMessage]);
 
         socket.emit("sendMessage", {
           message: newMessage,
@@ -484,27 +944,81 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleLocation = async () => {
+  const handleVideo = async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        alert("Permission to access location was denied");
+        alert("Sorry, we need camera roll permissions to make this work!");
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 1,
+      });
 
-      const locationMessage = {
-        type: "location",
-        content: `${latitude},${longitude}`,
-        preview: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${latitude},${longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`,
-      };
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const videoAsset = result.assets[0];
+        console.log("Selected video:", videoAsset);
 
-      await sendMessage(locationMessage);
+        // Create a video message
+        const videoMessage = {
+          files: [
+            {
+              uri: videoAsset.uri,
+              type: "video/mp4",
+              name: `video-${Date.now()}.mp4`,
+            },
+          ],
+          type: "VIDEO",
+        };
+
+        await sendMessage(videoMessage);
+      }
     } catch (error) {
-      console.error("Error getting location:", error);
-      alert("Error getting location");
+      console.error("Error picking video:", error);
+      alert("Could not select video. Please try again.");
+    }
+  };
+
+  const handleVideoPick = async () => {
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        alert("Permission to access media library was denied");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos, // ✅ Sửa lại chỗ này
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        const videoAsset = result.assets[0];
+        const { uri, fileName, type } = videoAsset;
+
+        const file = {
+          uri,
+          name: fileName || uri.split("/").pop() || "video.mp4",
+          type: type || "video/mp4", // ✅ MIME type phù hợp
+        };
+
+        const messageData = {
+          content: "", // hoặc chú thích nếu muốn
+          files: [file],
+        };
+
+        await sendMessage(messageData); // ✅ truyền đúng định dạng mà sendMessage yêu cầu
+      }
+    } catch (error) {
+      console.error("Error picking video:", error);
+      alert("Error picking video");
     }
   };
 
@@ -516,6 +1030,142 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     const isMyMessage = currentUser && item.sender._id === currentUser._id;
     const isTemp = item._id && item._id.startsWith("temp-");
+
+    // Check if it's a location message either by content format or isLocation flag
+    const isLocationMessage =
+      (item.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.content)) ||
+      item.isLocation;
+
+    // If it's a location message, handle it
+    if (isLocationMessage) {
+      const [latitude, longitude] = item.content
+        ? item.content.split(",").map(Number)
+        : [0, 0];
+
+      return (
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate("Location", {
+              conversation: conversation,
+              initialLocation: { latitude, longitude },
+            })
+          }
+          style={[
+            styles.locationMessageContainer,
+            isMyMessage ? styles.userMessage : styles.friendMessage,
+          ]}
+        >
+          <View style={styles.mapPreviewContainer}>
+            <WebView
+              source={{
+                html: `
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+                    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+                    <style>
+                      html, body {
+                        margin: 0;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                      }
+                      #map {
+                        width: 100%;
+                        height: 100%;
+                        background: #f0f0f0;
+                      }
+                      .leaflet-control-container {
+                        display: none;
+                      }
+                    </style>
+                  </head>
+                  <body>
+                    <div id="map"></div>
+                    <script>
+                      try {
+                        const map = L.map('map', {
+                          zoomControl: false,
+                          attributionControl: false,
+                          dragging: false,
+                          touchZoom: false,
+                          scrollWheelZoom: false,
+                          doubleClickZoom: false
+                        }).setView([${latitude}, ${longitude}], 15);
+
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          maxZoom: 19,
+                        }).addTo(map);
+
+                        const marker = L.marker([${latitude}, ${longitude}]).addTo(map);
+                      } catch (e) {
+                        document.body.innerHTML = 'Error loading map: ' + e.message;
+                      }
+                    </script>
+                  </body>
+                </html>
+              `,
+              }}
+              style={styles.locationMapPreview}
+              scrollEnabled={false}
+              bounces={false}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              onError={(error) => console.error("Error loading map:", error)}
+              androidHardwareAccelerationDisabled={true}
+              onNavigationStateChange={(event) => {
+                if (event.url !== "about:blank") {
+                  return false;
+                }
+              }}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.mapOverlay}>
+                  <ActivityIndicator size="small" color="#666" />
+                </View>
+              )}
+            />
+          </View>
+          <View
+            style={[
+              styles.locationDetailsContainer,
+              isMyMessage
+                ? styles.userLocationDetails
+                : styles.friendLocationDetails,
+            ]}
+          >
+            <View
+              style={[
+                styles.locationIconContainer,
+                isMyMessage
+                  ? styles.userLocationIcon
+                  : styles.friendLocationIcon,
+              ]}
+            >
+              <Ionicons
+                name="location"
+                size={20}
+                color={isMyMessage ? "#fff" : "#666"}
+              />
+            </View>
+            <Text
+              style={[
+                styles.locationAddressText,
+                isMyMessage ? styles.userMessageText : styles.friendMessageText,
+              ]}
+              numberOfLines={2}
+            >
+              {item.address || "Đã chia sẻ vị trí"}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
 
     switch (item.type) {
       case "IMAGE":
@@ -583,39 +1233,55 @@ const ChatDetailScreen = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         );
-      // case "video":
-      //   return (
-      //     <TouchableOpacity
-      //       onPress={() =>
-      //         navigation.navigate("VideoPlayer", { uri: item.files[0].url })
-      //       }
-      //       style={styles.mediaContainer}
-      //     >
-      //       <Image
-      //         source={{ uri: item.thumbnail || item.content }}
-      //         style={styles.videoThumbnail}
-      //       />
-      //       <View style={styles.playButton}>
-      //         <Ionicons name="play" size={24} color="white" />
-      //       </View>
-      //       {isTemp && item.status === "sending" && (
-      //         <View style={styles.uploadingOverlay}>
-      //           <ActivityIndicator color="#fff" />
-      //         </View>
-      //       )}
-      //     </TouchableOpacity>
-      //   );
       case "VIDEO":
-        console.log("VIDEO URL:", item.files[0]?.url);
-
         return (
-          <Video
-            source={{ uri: item.files[0]?.url }}
-            style={styles.videoMessage}
-            useNativeControls
-            resizeMode="CONTAIN"
-            isLooping
+          // <TouchableOpacity style={styles.mediaContainer}>
+          //   <Video
+          //     ref={video}
+          //     source={{
+          //       uri: item.files[0].url,
+          //     }}
+          //     style={{
+          //       width: "100%",
+          //       height: 200,
+          //     }}
+          //     useNativeControls
+          //     resizeMode="cover"
+          //     isLooping={false}
+          //     shouldPlay={false}
+          //   />
+          // </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.videoContainer}
+            onPress={() =>
+              navigation.navigate("VideoPlayer", { uri: item.files[0]?.url })
+            }
+          >
+            <Video
+              source={{ uri: item.files[0]?.url }}
+              style={styles.videoMessage}
+              useNativeControls
+              resizeMode="contain"
+              shouldPlay={false}
+            />
+            <View style={styles.playButton}>
+              <Ionicons name="play" size={24} color="white" />
+            </View>
+            {isTemp && item.status === "sending" && (
+              <View style={styles.uploadingOverlay}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      case "AUDIO":
+        return (
+          <AudioMessage
+            file={item.files[0]}
+            isMyMessage={currentUser && item.sender._id === currentUser._id}
           />
+          // >>>>>>> baa7bf156d484bb1b8161122c4e8a8c081047262
         );
       case "FILE":
         const file = item.files && item.files[0];
@@ -659,23 +1325,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         );
 
-      case "location":
-        return (
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("MapViewer", {
-                latitude: parseFloat(item.content.split(",")[0]),
-                longitude: parseFloat(item.content.split(",")[1]),
-              })
-            }
-          >
-            <Image
-              source={{ uri: item.preview }}
-              style={styles.locationPreview}
-            />
-          </TouchableOpacity>
-        );
-
       default:
         if (item.isRevoked) {
           return (
@@ -714,16 +1363,78 @@ const ChatDetailScreen = ({ navigation, route }) => {
       return null;
     }
 
+    const isMyMessage = currentUser && item.sender._id === currentUser._id;
+
+    const isTemp = item._id && item._id.startsWith("temp-");
+
+    const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
+    const defaultAvatar = require("../../../assets/chat/man.png");
+
     // Ẩn tin nhắn nếu user hiện tại đã xóa
     if (item.deletedFor?.includes(authenticated)) {
       return null;
     }
 
-    const isMyMessage = currentUser && item.sender._id === currentUser._id;
-    const isTemp = item._id && item._id.startsWith("temp-");
+    if (item.isRevoked) {
+      return (
+        <View
+          style={[
+            styles.messageRow,
+            isMyMessage ? styles.userMessageRow : styles.friendMessageRow,
+          ]}
+        >
+          {!isMyMessage && (
+            <Image
+              source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+              style={styles.messageAvatar}
+            />
+          )}
 
-    const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
-    const defaultAvatar = require("../../../assets/chat/man.png");
+          <TouchableOpacity
+            style={[
+              styles.messageContainer,
+              isMyMessage ? styles.userMessage : styles.friendMessage,
+            ]}
+          >
+            <View style={styles.messageContent}>
+              <Text
+                style={[
+                  styles.messageText,
+                  isMyMessage
+                    ? styles.userMessageText
+                    : styles.friendMessageText,
+                  { fontStyle: "italic", color: "#888" }, // ví dụ: style cho tin bị thu hồi
+                ]}
+              >
+                Tin nhắn đã được xóa
+              </Text>
+
+              <View style={styles.messageFooter}>
+                <Text style={styles.messageTime}>
+                  {item.createdAt
+                    ? format(new Date(item.createdAt), "HH:mm")
+                    : ""}
+                </Text>
+                {isTemp && (
+                  <View style={styles.messageStatus}>
+                    {item.status === "sending" && (
+                      <ActivityIndicator size="small" color="#999" />
+                    )}
+                  </View>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {isMyMessage && (
+            <Image
+              source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+              style={styles.messageAvatar}
+            />
+          )}
+        </View>
+      );
+    }
 
     return (
       <View
@@ -1022,9 +1733,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.emit("revokeMessage", {
-        messageId: message._id,
-        conversationId: conversation._id,
+      socket.on("revokeMessage", (deletedMessage) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === deletedMessage._id ? deletedMessage : msg
+          )
+        );
       });
 
       setShowMessageOptions(false);
@@ -1036,19 +1750,19 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (socket) {
-      socket.on("messageRevoked", (data) => {
-        if (data.conversationId === conversation._id) {
-          setMessages((prevMessages) =>
-            prevMessages.filter((msg) => msg._id !== data.messageId)
-          );
-        }
+      socket.on("revokeMessage", (deletedMessage) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === deletedMessage._id ? deletedMessage : msg
+          )
+        );
       });
 
       return () => {
-        socket.off("messageRevoked");
+        socket.off("revokeMessage");
       };
     }
-  }, [socket, conversation]);
+  }, [socket]);
 
   const handleDeleteForMe = async (message) => {
     try {
@@ -1066,9 +1780,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.emit("revokeMessage", {
-        messageId: message._id,
-        conversationId: conversation._id,
+      socket.on("deleteMessage", (deletedMessage) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === deletedMessage._id ? deletedMessage : msg
+          )
+        );
       });
 
       setShowMessageOptions(false);
@@ -1313,8 +2030,19 @@ const ChatDetailScreen = ({ navigation, route }) => {
         onClose={() => setShowOptions(false)}
         onCamera={handleCamera}
         onGallery={handleGallery}
-        onLocation={handleLocation}
+        onLocation={handleVideoPick}
         onDocument={handleDocument}
+        onVideo={handleVideo}
+        onAudio={() => {
+          setShowOptions(false);
+          setShowAudioRecording(true);
+        }}
+      />
+
+      <AudioRecordingModal
+        visible={showAudioRecording}
+        onClose={() => setShowAudioRecording(false)}
+        onSend={sendMessage}
       />
 
       <Modal
@@ -1405,7 +2133,10 @@ const styles = StyleSheet.create({
     order: 2,
   },
   friendAvatar: {
-    order: 0,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
   },
   friendName: {
     fontSize: 16,
@@ -1441,12 +2172,13 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   messageContainer: {
-    maxWidth: "70%",
+    maxWidth: "100%",
     marginHorizontal: 8,
   },
   messageContent: {
     padding: 10,
     borderRadius: 15,
+    width: 200,
   },
   userMessage: {
     alignSelf: "flex-end",
@@ -1508,10 +2240,12 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 10,
+    overflow: "hidden",
     position: "relative",
+    backgroundColor: "#000",
     marginVertical: 5,
   },
-  videoThumbnail: {
+  videoMessage: {
     width: "100%",
     height: "100%",
     borderRadius: 10,
@@ -1524,6 +2258,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: 20,
     padding: 8,
+    zIndex: 1,
   },
   fileContainer: {
     padding: 10,
@@ -1692,16 +2427,102 @@ const styles = StyleSheet.create({
   friendItemSelected: {
     backgroundColor: "#f0f8ff",
   },
-  friendAvatar: {
+  audioContainer: {
+    minWidth: 150,
+    maxWidth: 250,
+    borderRadius: 15,
+    padding: 10,
+    marginVertical: 5,
+  },
+  audioContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 5,
+  },
+  audioInfo: {
+    marginLeft: 10,
+    flex: 1,
+  },
+  audioText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  audioPlayButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginRight: 10,
   },
-  friendName: {
+  audioProgressBar: {
+    height: 3,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 2,
     flex: 1,
+    marginRight: 10,
+  },
+  audioProgress: {
+    height: "100%",
+    backgroundColor: "#0099ff",
+    borderRadius: 2,
+  },
+  audioDuration: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+    minWidth: 80,
+    textAlign: "right",
+  },
+  imageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    margin: -2,
+  },
+  gridImageContainer: {
+    padding: 2,
+  },
+  gridImage: {
+    width: "100%",
+    height: 150,
+    borderRadius: 8,
+  },
+  gridImageLast: {
+    position: "relative",
+  },
+  remainingCount: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 8,
+  },
+  remainingCountText: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  forwardButton: {
+    backgroundColor: "#0099ff",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  forwardButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  forwardButtonText: {
+    color: "white",
     fontSize: 16,
-    color: "#000",
+    fontWeight: "600",
   },
   noFriendsContainer: {
     flex: 1,
@@ -1712,52 +2533,140 @@ const styles = StyleSheet.create({
   noFriendsText: {
     fontSize: 16,
     color: "#666",
+    textAlign: "center",
   },
-  forwardButton: {
-    backgroundColor: "#0099ff",
-    margin: 16,
-    padding: 12,
-    borderRadius: 8,
+  audioRecordingContainer: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    width: "100%",
+    position: "absolute",
+    bottom: 0,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  audioRecordingHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  audioRecordingTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  audioRecordingContent: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  recordingDuration: {
+    fontSize: 48,
+    fontWeight: "200",
+    color: "#000",
+    marginBottom: 30,
+  },
+  recordingControls: {
     alignItems: "center",
   },
-  forwardButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  forwardButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  imageGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    margin: -2,
-    borderRadius: 15,
-    overflow: "hidden",
-  },
-  gridImageContainer: {
-    padding: 2,
-  },
-  gridImage: {
-    width: "100%",
-    aspectRatio: 1,
-    borderRadius: 8,
-  },
-  gridImageLast: {
-    position: "relative",
-  },
-  remainingCount: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
+  recordButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 8,
-    margin: 2,
+    borderWidth: 2,
+    borderColor: "#ff4444",
   },
-  remainingCountText: {
-    color: "white",
-    fontSize: 20,
+  recordingActive: {
+    backgroundColor: "#ff4444",
+    borderColor: "#ff4444",
+  },
+  recordingActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    gap: 20,
+  },
+  recordingActionButton: {
+    alignItems: "center",
+    padding: 10,
+  },
+  recordingActionText: {
+    marginTop: 5,
+    color: "#666",
+  },
+  sendButton: {
+    backgroundColor: "#0099ff",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  locationMessageContainer: {
+    width: 220,
+    borderRadius: 15,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+  mapPreviewContainer: {
+    height: 150,
+    width: "100%",
+    backgroundColor: "#f0f0f0",
+  },
+  locationMapPreview: {
+    flex: 1,
+  },
+  mapOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  locationDetailsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    backgroundColor: "#fff",
+  },
+  locationIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  userLocationIcon: {
+    backgroundColor: "rgba(0,153,255,0.1)",
+    width: 32,
+    height: 32,
+  },
+  friendLocationIcon: {
+    backgroundColor: "rgba(102,102,102,0.1)",
+    width: 32,
+    height: 32,
+  },
+  locationAddressText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 18,
+    color: "#333",
     fontWeight: "bold",
+  },
+  userLocationDetails: {
+    backgroundColor: "#0099ff",
+  },
+  friendLocationDetails: {
+    backgroundColor: "#e4e4e4",
   },
 });
 

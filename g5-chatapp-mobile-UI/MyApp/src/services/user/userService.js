@@ -2,37 +2,45 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../config/api";
 
-{/* search users */}
+{
+  /* search users */
+}
 export const searchUsers = async (keyword) => {
   try {
     const response = await api.get(`/users/search?keyword=${keyword}`);
     if (response.data.success) {
       return {
         ok: true,
-        data: response.data.data || []
+        data: response.data.data || [],
       };
     }
     return {
       ok: false,
-      message: response.data.message || "Failed to search users"
+      message: response.data.message || "Failed to search users",
     };
   } catch (error) {
     console.error("Search users error:", error);
     return {
       ok: false,
-      message: error.response?.data?.message || error.message || "Failed to search users"
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to search users",
     };
   }
 };
 
-{/* get Profile User */}
+{
+  /* get Profile User */
+}
 export const getUserProfile = async () => {
   try {
     const userId = await AsyncStorage.getItem("userId");
     if (!userId) return { ok: false, message: "No userId found" };
 
-    const response = await api.get(`/users/${userId}`);
-    if (!response.data) return { ok: false, message: "No data received from server" };
+    const response = await api.get(`/auth/get-my-profile`);
+    if (!response.data)
+      return { ok: false, message: "No data received from server" };
 
     const userData = response.data;
     return {
@@ -42,20 +50,29 @@ export const getUserProfile = async () => {
         lastName: userData.lastName || userData.last_name || "",
         email: userData.email || "",
         gender: userData.gender || "",
-        role: Array.isArray(userData.role) ? userData.role : (userData.role ? [userData.role] : []),
-        avatar: userData.avatar || null
-      }
+        role: Array.isArray(userData.role)
+          ? userData.role
+          : userData.role
+          ? [userData.role]
+          : [],
+        avatar: userData.avatar || null,
+      },
     };
   } catch (error) {
     console.error("Get user profile error:", error);
     return {
       ok: false,
-      message: error.response?.data?.message || error.message || "Failed to fetch user profile"
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to fetch user profile",
     };
   }
 };
 
-{/* update Profile User */}
+{
+  /* update Profile User */
+}
 export const updateUserProfile = async (profileData, token) => {
   try {
     if (!token) throw new Error("No token provided");
@@ -69,12 +86,17 @@ export const updateUserProfile = async (profileData, token) => {
     console.error("Update user profile error:", error);
     return {
       ok: false,
-      message: error.response?.data?.message || error.message || "Failed to update profile"
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update profile",
     };
   }
 };
 
-{/* change avatar */}
+{
+  /* change avatar */
+}
 export const changeAvatar = async (file, token) => {
   try {
     if (!token) throw new Error("No token provided");
@@ -107,7 +129,10 @@ export const changeAvatar = async (file, token) => {
 
     return {
       ok: false,
-      message: error.response?.data?.message || error.message || "Failed to change avatar",
+      message:
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to change avatar",
     };
   }
 };

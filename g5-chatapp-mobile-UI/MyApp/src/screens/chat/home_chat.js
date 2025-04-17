@@ -32,6 +32,12 @@ const HomeScreen = () => {
     const isMyMessage = lastMessage.sender._id === userId;
     let prefix = isMyMessage ? "Bạn: " : "";
 
+    // Check if it's a location message either by content format or isLocation flag
+    const isLocationMessage = (lastMessage.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(lastMessage.content)) || lastMessage.isLocation;
+    if (isLocationMessage) {
+      return `${prefix}Đã chia sẻ vị trí`;
+    }
+
     switch (lastMessage.type) {
       case "IMAGE":
         if (lastMessage.files && lastMessage.files.length > 1) {
@@ -57,6 +63,8 @@ const HomeScreen = () => {
         return `${prefix}Đã thả ${lastMessage.content}`;
       case "CALL":
         return `Cuộc gọi ${lastMessage.content}`;
+      case "AUDIO":
+        return `${prefix}Đã gửi tin nhắn thoại`;
       default:
         return `${prefix}${lastMessage.content}`;
     }
