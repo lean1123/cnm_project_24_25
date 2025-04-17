@@ -2156,7 +2156,7 @@ const styles = StyleSheet.create({
   },
   messageList: {
     flex: 1,
-    padding: 15,
+    padding: 4,
     backgroundColor: "#FFFFFF",
   },
   messageRow: {
@@ -2172,27 +2172,31 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   messageContainer: {
-    maxWidth: "100%",
+    maxWidth: "70%",
     marginHorizontal: 8,
+    borderRadius: 15,
   },
   messageContent: {
     padding: 10,
     borderRadius: 15,
-    width: 200,
+    maxWidth: "100%",
+    minWidth: 0,
   },
   userMessage: {
     alignSelf: "flex-end",
     backgroundColor: "#0099ff",
-    marginLeft: "auto",
+    marginLeft: 8,
   },
   friendMessage: {
     alignSelf: "flex-start",
     backgroundColor: "#e4e4e4",
-    marginRight: "auto",
+    marginRight: 8,
   },
   messageText: {
     fontSize: 15,
     lineHeight: 20,
+    flexWrap: "wrap",
+    flexShrink: 1,
   },
   userMessageText: {
     color: "white",
