@@ -63,6 +63,7 @@ export class MessageService {
           const url = await this.uploadFileService.uploadFile(
             file.originalname,
             file.buffer,
+            file.mimetype,
           );
 
           if (file.mimetype.startsWith('image/')) {
@@ -178,7 +179,7 @@ export class MessageService {
       throw new NotFoundException('Message already deleted for this user');
     }
 
-    return await this.messageModel.findByIdAndUpdate(
+    const updatedMessage = await this.messageModel.findByIdAndUpdate(
       messageId,
       {
         $set: {
@@ -190,6 +191,8 @@ export class MessageService {
       },
       { new: true },
     );
+
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
   }
 
   // xoa msg -> an tin nhan o ca 2 ben
@@ -227,7 +230,7 @@ export class MessageService {
       );
     }
 
-    return updatedMessage;
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
   }
 
   async forwardMessageToMultipleConversations(

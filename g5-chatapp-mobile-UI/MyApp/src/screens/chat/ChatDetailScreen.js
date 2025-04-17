@@ -54,6 +54,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [selectedFriends, setSelectedFriends] = useState([]);
 
   const [authenticated, setAuthenticated] = useState("");
+  const video = useRef(null);
 
   const handleReturn = () => {
     navigation.navigate("Home_Chat");
@@ -291,7 +292,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     let messageType = "TEXT";
     if (files.length > 0) {
-      messageType = "IMAGE";
+      const mimetype = files[0]?.type;
+      if (mimetype.startsWith("image/") || mimetype === "image") {
+        messageType = "IMAGE";
+      } else if (mimetype.startsWith("video/") || mimetype === "video") {
+        messageType = "VIDEO";
+      } else if (mimetype.startsWith("audio/") || mimetype === "audio") {
+        messageType = "AUDIO";
+      } else {
+        messageType = "FILE";
+      }
     }
 
     const tempId = `temp-${Date.now()}-${Math.random()
@@ -325,7 +335,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
       if (files.length > 0) {
         const preparedFiles = files.map((file) => ({
           uri: file.uri,
-          type: file.type || "image/jpeg",
+          type: file.type?.includes("/")
+            ? file.type
+            : file.name?.endsWith(".mp4")
+            ? "video/mp4"
+            : file.name?.endsWith(".mp3")
+            ? "audio/mpeg"
+            : file.name?.endsWith(".pdf")
+            ? "application/pdf"
+            : "application/octet-stream", // đảm bảo là kiểu MIME
           name: file.name || file.fileName || file.uri.split("/").pop(),
         }));
 
@@ -508,6 +526,45 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleVideoPick = async () => {
+    try {
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        alert("Permission to access media library was denied");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos, // ✅ Sửa lại chỗ này
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        const videoAsset = result.assets[0];
+        const { uri, fileName, type } = videoAsset;
+
+        const file = {
+          uri,
+          name: fileName || uri.split("/").pop() || "video.mp4",
+          type: type || "video/mp4", // ✅ MIME type phù hợp
+        };
+
+        const messageData = {
+          content: "", // hoặc chú thích nếu muốn
+          files: [file],
+        };
+
+        await sendMessage(messageData); // ✅ truyền đúng định dạng mà sendMessage yêu cầu
+      }
+    } catch (error) {
+      console.error("Error picking video:", error);
+      alert("Error picking video");
+    }
+  };
+
   const renderMessageContent = (item) => {
     if (!item || !item.sender) {
       console.log("Invalid message item:", item);
@@ -606,16 +663,23 @@ const ChatDetailScreen = ({ navigation, route }) => {
       //     </TouchableOpacity>
       //   );
       case "VIDEO":
-        console.log("VIDEO URL:", item.files[0]?.url);
-
         return (
-          <Video
-            source={{ uri: item.files[0]?.url }}
-            style={styles.videoMessage}
-            useNativeControls
-            resizeMode="CONTAIN"
-            isLooping
-          />
+          <TouchableOpacity style={styles.mediaContainer}>
+            <Video
+              ref={video}
+              source={{
+                uri: item.files[0].url,
+              }}
+              style={{
+                width: "100%",
+                height: 200,
+              }}
+              useNativeControls
+              resizeMode="cover"
+              isLooping={false}
+              shouldPlay={false}
+            />
+          </TouchableOpacity>
         );
       case "FILE":
         const file = item.files && item.files[0];
@@ -714,16 +778,78 @@ const ChatDetailScreen = ({ navigation, route }) => {
       return null;
     }
 
+    const isMyMessage = currentUser && item.sender._id === currentUser._id;
+
+    const isTemp = item._id && item._id.startsWith("temp-");
+
+    const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
+    const defaultAvatar = require("../../../assets/chat/man.png");
+
     // Ẩn tin nhắn nếu user hiện tại đã xóa
     if (item.deletedFor?.includes(authenticated)) {
       return null;
     }
 
-    const isMyMessage = currentUser && item.sender._id === currentUser._id;
-    const isTemp = item._id && item._id.startsWith("temp-");
+    if (item.isRevoked) {
+      return (
+        <View
+          style={[
+            styles.messageRow,
+            isMyMessage ? styles.userMessageRow : styles.friendMessageRow,
+          ]}
+        >
+          {!isMyMessage && (
+            <Image
+              source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+              style={styles.messageAvatar}
+            />
+          )}
 
-    const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
-    const defaultAvatar = require("../../../assets/chat/man.png");
+          <TouchableOpacity
+            style={[
+              styles.messageContainer,
+              isMyMessage ? styles.userMessage : styles.friendMessage,
+            ]}
+          >
+            <View style={styles.messageContent}>
+              <Text
+                style={[
+                  styles.messageText,
+                  isMyMessage
+                    ? styles.userMessageText
+                    : styles.friendMessageText,
+                  { fontStyle: "italic", color: "#888" }, // ví dụ: style cho tin bị thu hồi
+                ]}
+              >
+                Tin nhắn đã được xóa
+              </Text>
+
+              <View style={styles.messageFooter}>
+                <Text style={styles.messageTime}>
+                  {item.createdAt
+                    ? format(new Date(item.createdAt), "HH:mm")
+                    : ""}
+                </Text>
+                {isTemp && (
+                  <View style={styles.messageStatus}>
+                    {item.status === "sending" && (
+                      <ActivityIndicator size="small" color="#999" />
+                    )}
+                  </View>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {isMyMessage && (
+            <Image
+              source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+              style={styles.messageAvatar}
+            />
+          )}
+        </View>
+      );
+    }
 
     return (
       <View
@@ -1022,9 +1148,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.emit("revokeMessage", {
-        messageId: message._id,
-        conversationId: conversation._id,
+      socket.on("revokeMessage", (deletedMessage) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === deletedMessage._id ? deletedMessage : msg
+          )
+        );
       });
 
       setShowMessageOptions(false);
@@ -1036,19 +1165,19 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (socket) {
-      socket.on("messageRevoked", (data) => {
-        if (data.conversationId === conversation._id) {
-          setMessages((prevMessages) =>
-            prevMessages.filter((msg) => msg._id !== data.messageId)
-          );
-        }
+      socket.on("revokeMessage", (deletedMessage) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === deletedMessage._id ? deletedMessage : msg
+          )
+        );
       });
 
       return () => {
-        socket.off("messageRevoked");
+        socket.off("revokeMessage");
       };
     }
-  }, [socket, conversation]);
+  }, [socket]);
 
   const handleDeleteForMe = async (message) => {
     try {
@@ -1066,9 +1195,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.emit("revokeMessage", {
-        messageId: message._id,
-        conversationId: conversation._id,
+      socket.on("deleteMessage", (deletedMessage) => {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === deletedMessage._id ? deletedMessage : msg
+          )
+        );
       });
 
       setShowMessageOptions(false);
@@ -1313,7 +1445,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         onClose={() => setShowOptions(false)}
         onCamera={handleCamera}
         onGallery={handleGallery}
-        onLocation={handleLocation}
+        onLocation={handleVideoPick}
         onDocument={handleDocument}
       />
 
@@ -1441,12 +1573,13 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   messageContainer: {
-    maxWidth: "70%",
+    maxWidth: "100%",
     marginHorizontal: 8,
   },
   messageContent: {
     padding: 10,
     borderRadius: 15,
+    width: 200,
   },
   userMessage: {
     alignSelf: "flex-end",

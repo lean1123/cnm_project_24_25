@@ -26,7 +26,7 @@
     "expo-document-picker": "~13.0.3",
     "expo-file-system": "~18.0.10",
     "expo-image-manipulator": "^13.0.6",
-    "expo-image-picker": "~16.0.6",
+    "expo-image-picker": "^16.0.6",
     "expo-location": "^18.0.6",
     "expo-sharing": "~13.0.1",
     "expo-status-bar": "~2.0.1",
@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@babel/plugin-transform-template-literals": "^7.26.8",
     "metro-react-native-babel-preset": "^0.77.0"
   },
   "private": true

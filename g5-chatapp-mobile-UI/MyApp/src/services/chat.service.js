@@ -597,14 +597,14 @@ const chatService = {
 
       // Append each file to formData
       files.forEach((file) => {
-        formData.append("files", file);
+        formData.append("files", {
+          uri: file.uri,
+          name: file.name,
+          type: file.type,
+        });
       });
 
       formData.append("content", message.content);
-      // formData.append("type", message.type);
-      // formData.append("sender", message.sender);
-
-      console.log("Form Data: ", formData);
 
       const response = await axiosInstance.post(
         `/message/send-message/${conversationId}`,
