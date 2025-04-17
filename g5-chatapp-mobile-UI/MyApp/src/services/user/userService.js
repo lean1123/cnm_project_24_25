@@ -86,20 +86,19 @@ export const changeAvatar = async (file, token) => {
       name: file.name,
     });
 
-    // Gửi yêu cầu PUT tới backend để thay đổi avatar
+
     const response = await api.put("/users/change-avatar", formData, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data", // Đảm bảo Content-Type là multipart/form-data
+        "Content-Type": "multipart/form-data", 
       },
     });
 
-    // Trả về kết quả
     return { ok: true, data: response.data };
   } catch (error) {
     console.error("Change avatar error:", error);
 
-    // Ghi thêm chi tiết lỗi nếu có
+
     if (error.response) {
       console.error("Response error details:", error.response.data);
       console.error("Response status:", error.response.status);

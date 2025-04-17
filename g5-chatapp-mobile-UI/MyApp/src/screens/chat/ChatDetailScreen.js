@@ -1728,6 +1728,25 @@ const ChatDetailScreen = ({ navigation, route }) => {
         <TouchableOpacity onPress={handleReturn}>
           <Icon name="chevron-left" size={30} color="white" />
         </TouchableOpacity>
+        <TouchableOpacity
+        onPress={() => {
+          if (otherUser && conversation) {
+            navigation.navigate("UserInfo", {
+              conversation: {
+                _id: conversation._id,
+                name:
+                  otherUser.name ||
+                  `${otherUser.firstName} ${otherUser.lastName}`,
+                members: conversation.members || [],
+                avatar: otherUser.avatar,
+                isGroup: false,
+                isOnline: isOnline,
+                user: otherUser,
+              },
+            });
+          }
+        }}
+        >
         <Image
           source={
             otherUser?.avatar
@@ -1736,7 +1755,26 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
           style={styles.avatar}
         />
-        <View style={{ flex: 1 }}>
+        </TouchableOpacity>
+        <TouchableOpacity style={{ flex: 1 }} 
+          onPress={() => {
+            if (otherUser && conversation) {
+              navigation.navigate("UserInfo", {
+                conversation: {
+                  _id: conversation._id,
+                  name:
+                    otherUser.name ||
+                    `${otherUser.firstName} ${otherUser.lastName}`,
+                  members: conversation.members || [],
+                  avatar: otherUser.avatar,
+                  isGroup: false,
+                  isOnline: isOnline,
+                  user: otherUser,
+                },
+              });
+            }
+          }}
+        >
           <Text style={styles.friendName}>
             {otherUser
               ? otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`
@@ -1745,35 +1783,17 @@ const ChatDetailScreen = ({ navigation, route }) => {
           <Text style={styles.statusUser}>
             {isOnline ? "Online" : "Offline"}
           </Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.actionIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <AntDesign name="videocamera" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
+          <TouchableOpacity style={styles.iconButton}
+            onPress={() => {Alert.alert("Audio call")}}
+          >
             <Ionicons name="call-outline" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => {
-              if (otherUser && conversation) {
-                navigation.navigate("UserInfo", {
-                  conversation: {
-                    _id: conversation._id,
-                    name:
-                      otherUser.name ||
-                      `${otherUser.firstName} ${otherUser.lastName}`,
-                    members: conversation.members || [],
-                    avatar: otherUser.avatar,
-                    isGroup: false,
-                    isOnline: isOnline,
-                    user: otherUser,
-                  },
-                });
-              }
-            }}
+          <TouchableOpacity style={styles.iconButton}
+            onPress={() => {Alert.alert("Video call")}}
           >
-            <Feather name="more-horizontal" size={24} color="white" />
+            <AntDesign name="videocamera" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </View>
