@@ -252,7 +252,7 @@ const additionalStyles = {
     marginTop: 10,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
     color: '#333',
@@ -266,6 +266,7 @@ const additionalStyles = {
   mediaThumbnail: {
     width: '100%',
     height: '100%',
+    borderRadius: 10,
   },
   videoOverlay: {
     position: 'absolute',
@@ -303,14 +304,33 @@ const additionalStyles = {
     marginBottom: 10,
   },
   name: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
   },
   onlineStatus: {
     color: '#4CAF50',
-    marginTop: 5,
+    marginTop: 51,
     fontSize: 14,
+  },
+  header:{
+    backgroundColor: '#135CAF',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+
+  },
+  headerTitle:{
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+  },
+  backButton:{
+    color: '#fff',
+    marginRight: 16,
   },
 };
 

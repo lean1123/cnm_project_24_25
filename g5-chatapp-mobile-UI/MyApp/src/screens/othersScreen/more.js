@@ -176,6 +176,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
+    marginBottom: '15%',
   },
   section: {
     marginBottom: 24,
