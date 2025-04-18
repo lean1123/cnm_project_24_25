@@ -14,10 +14,14 @@ import { ConversationService } from './conversation.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
+import { ChatGateway } from '../message/gateway/chat.gateway';
 
 @Controller('conversation')
 export class ConvensationController {
-  constructor(private convensationService: ConversationService) {}
+  constructor(
+    private convensationService: ConversationService,
+    private readonly chatGateWay: ChatGateway,
+  ) {}
 
   @Get()
   @UseGuards(AuthGuard('jwt'))
@@ -26,13 +30,19 @@ export class ConvensationController {
   }
 
   @Post()
-  async createConvensation(@Body() convensationReq: ConvensationRequest) {
-    try {
-      return await this.convensationService.createConvensation(convensationReq);
-    } catch (error) {
-      const err = error as Error;
-      throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
-    }
+  @UseGuards(AuthGuard('jwt'))
+  async createConvensation(
+    @UserDecorator() userPayload: JwtPayload,
+    @Body() convensationReq: ConvensationRequest,
+  ) {
+    const savedConversation = await this.convensationService.createConvensation(
+      userPayload,
+      convensationReq,
+    );
+
+    this.chatGateWay.handleCreateConversationForGroup(savedConversation);
+
+    return savedConversation;
   }
 
   @Put(':id')

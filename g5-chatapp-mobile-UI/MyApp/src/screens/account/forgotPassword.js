@@ -6,6 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
 } from "react-native";
 import InputField from "../../components/InputField";
 import PasswordField from "../../components/PasswordInput";
@@ -16,6 +20,7 @@ import { forgotPassword, verifyForgotPasswordOtp } from "../../services/auth/aut
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
@@ -24,7 +29,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   const handleSendOTP = async () => {
     // Validate email and password
-    if (!email || !newPassword) {
+    if (!email || !newPassword || !confirmPassword) {
       setModalMessage("Please fill in all fields");
       setModalVisible(true);
       return;
@@ -38,6 +43,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
     if (!isValidPassword(newPassword)) {
       setModalMessage("Password must be at least 6 characters long");
+      setModalVisible(true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setModalMessage("Passwords do not match");
       setModalVisible(true);
       return;
     }
@@ -93,64 +104,87 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Forgot Password</Text>
-          <Text style={styles.headerSubTitle}>
-            {showOtpInput 
-              ? "Enter the OTP sent to your email" 
-              : "Enter your email and new password"}
-          </Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          <InputField
-            icon="email"
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!showOtpInput}
-          />
-
-          {!showOtpInput && (
-            <PasswordField
-              placeholder="New Password"
-              value={newPassword}
-              onChangeText={setNewPassword}
+      <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Image
+              source={require("../../../assets/chat/logochat.png")}
+              style={styles.logo}
+              resizeMode="contain"
             />
-          )}
-
-          {showOtpInput && (
-            <InputField
-              icon="key"
-              placeholder="Enter OTP"
-              value={otp}
-              onChangeText={setOtp}
-              keyboardType="numeric"
-              maxLength={6}
-            />
-          )}
-
-          <TouchableOpacity 
-            style={[styles.resetButton, isLoading && styles.disabledButton]} 
-            onPress={showOtpInput ? handleVerifyOtp : handleSendOTP}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? "Processing..." : (showOtpInput ? "Verify OTP" : "Send OTP")}
+            <Text style={styles.welcomeText}>Reset Password</Text>
+            <Text style={styles.subText}>
+              {showOtpInput
+                ? "Enter the OTP sent to your email"
+                : "Enter your email and new password"}
             </Text>
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>Back to Login</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View style={styles.formContainer}>
+            <InputField
+              icon="email"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!showOtpInput}
+            />
+
+            {!showOtpInput && (
+              <>
+                <PasswordField
+                  placeholder="New Password"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+                <PasswordField
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+              </>
+            )}
+
+            {showOtpInput && (
+              <InputField
+                icon="key"
+                placeholder="Enter OTP"
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="numeric"
+                maxLength={6}
+              />
+            )}
+
+            <TouchableOpacity
+              style={[styles.resetButton, isLoading && styles.disabledButton]}
+              onPress={showOtpInput ? handleVerifyOtp : handleSendOTP}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.resetButtonText}>
+                {isLoading ? "Processing..." : (showOtpInput ? "Verify OTP" : "Send OTP")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.backButtonText}>Back to Login</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <NotificationModal
         visible={isModalVisible}
@@ -164,63 +198,82 @@ const ForgotPasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: '#FFFFFF',
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: "flex-start",
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   header: {
-    backgroundColor: "#135CAF",
-    paddingVertical: 20,
-    alignItems: "center",
-    marginBottom: 30,
+    alignItems: 'center',
+    backgroundColor: '#135CAF',
+    paddingTop: Platform.OS === 'ios' ? 30 : 20,
+    paddingBottom: 40,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
-  headerTitle: {
-    fontSize: 34,
-    fontWeight: "bold",
-    color: "#FFF",
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 14,
+    tintColor: '#FFFFFF',
   },
-  headerSubTitle: {
-    marginTop: 8,
+  welcomeText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  subText: {
     fontSize: 16,
-    color: "#fff",
-    textAlign: "center",
-    paddingHorizontal: 20,
+    color: '#E8ECF4',
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
   formContainer: {
-    width: "90%",
-    alignSelf: "center",
-    alignItems: "center",
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    alignItems: 'center',
   },
   resetButton: {
-    backgroundColor: "#135CAF",
-    width: "100%",
-    paddingVertical: 15,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 20,
-    elevation: 5,
+    backgroundColor: '#135CAF',
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    width: '100%',
+    shadowColor: '#135CAF',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   disabledButton: {
-    backgroundColor: "#ccc",
+    backgroundColor: '#A0AEC0',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+  resetButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   backButton: {
-    marginTop: 20,
+    marginTop: 24,
+    padding: 8,
   },
   backButtonText: {
-    color: "#135CAF",
+    color: '#135CAF',
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: '500',
   },
 });
 

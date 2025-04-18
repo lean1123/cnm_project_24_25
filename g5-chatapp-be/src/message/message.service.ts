@@ -66,7 +66,7 @@ export class MessageService {
             file.mimetype,
           );
 
-          if (file.mimetype.startsWith('image/')) {
+          if (file.mimetype.startsWith('image/') || file.mimetype === 'image') {
             type = MessageType.IMAGE;
           }
           if (file.mimetype.startsWith('video/')) {
