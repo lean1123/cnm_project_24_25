@@ -35,6 +35,7 @@ const FriendsListScreen = ({ navigation }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [outgoingRequests, setOutgoingRequests] = useState([]);
 
   useEffect(() => {
     const initializeSocket = async () => {
@@ -43,21 +44,65 @@ const FriendsListScreen = ({ navigation }) => {
         const user = JSON.parse(userData);
         setCurrentUser(user);
         const socketInstance = getSocket();
-        setSocket(socketInstance);
+        
+        if (socketInstance) {
+          console.log('[Socket] Setting up socket event listeners for FriendsListScreen');
+          setSocket(socketInstance);
 
-        socketInstance.on('friendRequest', handleNewFriendRequest);
-        socketInstance.on('friendRequestAccepted', handleFriendRequestAccepted);
+          socketInstance.on('newRequestContact', (data) => {
+            console.log('[Socket] Received newRequestContact event:', data);
+            fetchPendingRequests();
+            Alert.alert(
+              "New Friend Request", 
+              `${data.user?.firstName} ${data.user?.lastName} sent you a friend request`
+            );
+          });
+          
+          socketInstance.on('acceptRequestContact', (data) => {
+            console.log('[Socket] Received acceptRequestContact event:', data);
+            fetchFriends();
+            fetchOutgoingRequests();
+            Alert.alert(
+              "Friend Request Accepted", 
+              `${data.name || 'Someone'} accepted your friend request`
+            );
+          });
+          
+          socketInstance.on('cancelRequestContact', (data) => {
+            console.log('[Socket] Received cancelRequestContact event:', data);
+            fetchPendingRequests();
+            Alert.alert(
+              "Friend Request Cancelled", 
+              `${data.name || 'Someone'} cancelled their friend request`
+            );
+          });
+          
+          socketInstance.on('rejectRequestContact', (data) => {
+            console.log('[Socket] Received rejectRequestContact event:', data);
+            fetchOutgoingRequests();
+            Alert.alert(
+              "Friend Request Rejected", 
+              `${data.name || 'Someone'} rejected your friend request`
+            );
+          });
+        } else {
+          console.log('[Socket] Socket instance not available');
+        }
       }
     };
 
     initializeSocket();
     fetchFriends();
     fetchPendingRequests();
+    fetchOutgoingRequests();
 
     return () => {
       if (socket) {
-        socket.off('friendRequest');
-        socket.off('friendRequestAccepted');
+        console.log('[Socket] Removing socket event listeners from FriendsListScreen');
+        socket.off('newRequestContact');
+        socket.off('acceptRequestContact');
+        socket.off('cancelRequestContact');
+        socket.off('rejectRequestContact');
       }
     };
   }, []);
@@ -92,6 +137,17 @@ const FriendsListScreen = ({ navigation }) => {
     }
   };
 
+  const fetchOutgoingRequests = async () => {
+    try {
+      const response = await contactService.getMyPendingContacts();
+      if (response.success) {
+        setOutgoingRequests(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching outgoing requests:', error);
+    }
+  };
+
   const handleNewFriendRequest = (data) => {
     console.log('New friend request received:', data);
     fetchPendingRequests();
@@ -100,6 +156,22 @@ const FriendsListScreen = ({ navigation }) => {
   const handleFriendRequestAccepted = (data) => {
     console.log('Friend request accepted:', data);
     fetchFriends();
+  };
+
+  const handleFriendRequestCancelled = (data) => {
+    console.log('[Socket] Friend request cancelled event received:', data);
+    
+    if (data && data.contactId) {
+      setPendingRequests(prev => prev.filter(req => req._id !== data.contactId));
+    }
+    
+    Alert.alert("Notification", "A friend request has been cancelled");
+    
+    fetchPendingRequests();
+  };
+
+  const handleFriendRequestRejected = (data) => {
+    console.log('[Socket] Friend request rejected:', data);
   };
 
   const filterFriends = useCallback((searchText) => {
@@ -141,15 +213,23 @@ const FriendsListScreen = ({ navigation }) => {
 
   const handleAddFriend = async (userId) => {
     try {
+      const userToAdd = searchResults.find(user => user._id === userId);
+      const userName = userToAdd ? `${userToAdd.firstName} ${userToAdd.lastName}` : '';
+      
+      console.log(`[Socket] Sending request to user: ${userId} (${userName})`);
+      
       const response = await contactService.createContact(userId);
       if (response.success) {
         Alert.alert("Success", "Friend request sent successfully");
-        if (socket) {
-          socket.emit('sendFriendRequest', { 
+        
+        if (socket && socket.connected) {
+          socket.emit('sendRequestContact', { 
             receiverId: userId,
-            senderId: currentUser._id 
+            contact: response.data
           });
         }
+        
+        fetchOutgoingRequests();
       } else {
         Alert.alert("Error", response.message || "Failed to send friend request");
       }
@@ -180,13 +260,78 @@ const FriendsListScreen = ({ navigation }) => {
 
   const handleRejectRequest = async (contactId) => {
     try {
+      const requestToReject = pendingRequests.find(req => req._id === contactId);
+      const senderId = requestToReject?.user?._id;
+      const senderName = requestToReject?.user 
+        ? `${requestToReject.user.firstName} ${requestToReject.user.lastName}` 
+        : '';
+      
+      if (!senderId) {
+        console.error('[Socket] Cannot find sender for contact ID:', contactId);
+      } else {
+        console.log(`[Socket] Sending rejectRequestContact to sender: ${senderId} (${senderName})`);
+      }
+      
+      if (socket && socket.connected && senderId) {
+        socket.emit('rejectRequestContact', {
+          receiverId: senderId,
+          contactId: contactId,
+          name: senderName
+        });
+      }
+      
+      setPendingRequests(prev => prev.filter(req => req._id !== contactId));
+      
       const response = await contactService.rejectContact(contactId);
-      if (response.success) {
+      
+      if (!response.success) {
+        Alert.alert("Error", "Failed to reject request, please try again");
         fetchPendingRequests();
       }
     } catch (error) {
       console.error('Error rejecting request:', error);
       Alert.alert("Error", "Failed to reject request");
+      fetchPendingRequests();
+    }
+  };
+
+  const handleCancelRequest = async (contactId) => {
+    try {
+      const requestToCancel = outgoingRequests.find(req => req._id === contactId);
+      const recipientId = requestToCancel?.contact?._id;
+      const recipientName = requestToCancel?.contact 
+        ? `${requestToCancel.contact.firstName} ${requestToCancel.contact.lastName}` 
+        : '';
+      
+      if (!recipientId) {
+        console.error('[Socket] Cannot find recipient for contact ID:', contactId);
+      } else {
+        console.log(`[Socket] Sending cancelRequestContact to recipient: ${recipientId} (${recipientName})`);
+      }
+      
+      if (socket && socket.connected && recipientId) {
+        socket.emit('cancelRequestContact', {
+          receiverId: recipientId,
+          contactId: contactId,
+          name: recipientName
+        });
+      }
+      
+      setOutgoingRequests(prev => prev.filter(req => req._id !== contactId));
+      
+      const response = await contactService.cancelContact(contactId);
+      
+      if (response.success) {
+        Alert.alert("Success", "Friend request cancelled");
+        fetchOutgoingRequests();
+      } else {
+        Alert.alert("Error", response.message || "Failed to cancel request");
+        fetchOutgoingRequests();
+      }
+    } catch (error) {
+      console.error('Error cancelling request:', error);
+      Alert.alert("Error", "Failed to cancel request");
+      fetchOutgoingRequests();
     }
   };
 
@@ -296,6 +441,35 @@ const FriendsListScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderOutgoingRequestItem = ({ item }) => (
+    <View style={styles.requestItem}>
+      <View style={styles.avatarContainer}>
+        <Image 
+          source={
+            item.contact?.avatar 
+              ? { uri: item.contact.avatar }
+              : require("../../../assets/chat/man.png")
+          }
+          style={styles.avatar}
+        />
+      </View>
+      <View style={styles.requestInfo}>
+        <Text style={styles.requestName}>
+          {item.contact ? `${item.contact.firstName} ${item.contact.lastName}` : 'Unknown User'}
+        </Text>
+        <Text style={styles.requestEmail}>{item.contact?.email || 'No email'}</Text>
+        <View style={styles.requestActions}>
+          <TouchableOpacity 
+            style={[styles.requestButton, styles.declineButton]}
+            onPress={() => handleCancelRequest(item._id)}
+          >
+            <Text style={[styles.buttonText, styles.declineText]}>Cancel Request</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
   const renderSearchItem = ({ item }) => {
     const existingFriend = friends.find(friend => 
       friend.user?._id === item._id || 
@@ -391,6 +565,14 @@ const FriendsListScreen = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
+            style={[styles.tab, activeTab === 'outgoing' && styles.activeTab]}
+            onPress={() => setActiveTab('outgoing')}
+          >
+            <Text style={[styles.tabText, activeTab === 'outgoing' && styles.activeTabText]}>
+              Sent {outgoingRequests.length > 0 ? `(${outgoingRequests.length})` : ''}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
             style={[styles.tab, activeTab === 'search' && styles.activeTab]}
             onPress={() => setActiveTab('search')}
           >
@@ -411,14 +593,18 @@ const FriendsListScreen = ({ navigation }) => {
                 ? filteredFriends 
                 : activeTab === 'requests'
                   ? pendingRequests
-                  : searchResults
+                  : activeTab === 'outgoing'
+                    ? outgoingRequests
+                    : searchResults
             }
             renderItem={
               activeTab === 'friends'
                 ? renderFriendItem
                 : activeTab === 'requests'
                   ? renderRequestItem
-                  : renderSearchItem
+                  : activeTab === 'outgoing'
+                    ? renderOutgoingRequestItem
+                    : renderSearchItem
             }
             keyExtractor={(item) => item._id}
             contentContainerStyle={styles.listContent}
@@ -430,7 +616,9 @@ const FriendsListScreen = ({ navigation }) => {
                       ? "account-group"
                       : activeTab === 'requests'
                         ? "account-clock"
-                        : "account-search"
+                        : activeTab === 'outgoing'
+                          ? "account-arrow-right"
+                          : "account-search"
                   }
                   size={50}
                   color="#ccc"
@@ -442,9 +630,11 @@ const FriendsListScreen = ({ navigation }) => {
                       : "No friends yet"
                     : activeTab === 'requests'
                       ? "No pending requests"
-                      : searchText 
-                        ? "No users found"
-                        : "Search for friends"}
+                      : activeTab === 'outgoing'
+                        ? "No outgoing requests"
+                        : searchText 
+                          ? "No users found"
+                          : "Search for friends"}
                 </Text>
               </View>
             )}

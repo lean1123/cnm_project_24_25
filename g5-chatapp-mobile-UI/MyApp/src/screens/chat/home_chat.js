@@ -17,7 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from "../../config/axiosInstance";
 import { formatDistanceToNow } from 'date-fns';
-import { getSocket } from "../../services/socket";
+import { getSocket, initSocket, reconnectSocket } from "../../services/socket";
 import { Ionicons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
@@ -26,6 +26,7 @@ const HomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
   const navigation = useNavigation();
 
   const renderLastMessage = (lastMessage) => {
@@ -148,6 +149,135 @@ const HomeScreen = () => {
   };
 
   useEffect(() => {
+    // Socket connection management - simplified approach
+    const setupSocket = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const user = JSON.parse(userData);
+          const currentUserId = user._id || user.id;
+          setUserId(currentUserId);
+          
+          // Simplified socket initialization
+          const socket = getSocket();
+          
+          if (socket) {
+            console.log('Socket initialized in home_chat');
+            
+            // Simple approach for tracking connection status
+            const handleConnect = () => {
+              console.log('Socket connected event received in home_chat');
+              setSocketConnected(true);
+            };
+            
+            const handleDisconnect = () => {
+              console.log('Socket disconnected event received in home_chat');
+              setSocketConnected(false);
+            };
+            
+            socket.on('connect', handleConnect);
+            socket.on('disconnect', handleDisconnect);
+            
+            // Set initial state based on current connection
+            setSocketConnected(socket.connected);
+            
+            return () => {
+              socket.off('connect', handleConnect);
+              socket.off('disconnect', handleDisconnect);
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error setting up socket in home_chat:', error);
+      }
+    };
+    
+    setupSocket();
+  }, []);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (socket && socketConnected && userId) {
+      const handleNewMessage = async (data) => {
+        console.log('[Socket] New message received:', data);
+        if (data.conversationId && data.message) {
+          updateConversationWithNewMessage(data.conversationId, data.message, data.message.sender);
+        }
+      };
+
+      const handleMessageRead = (data) => {
+        console.log('[Socket] Message read event received:', data);
+        if (data.conversationId) {
+          setConversations(prevConversations => {
+            const updatedConversations = prevConversations.map(conv =>
+              conv._id === data.conversationId
+                ? { ...conv, unreadCount: 0 }
+                : conv
+            );
+            return [...updatedConversations]; // Create new array to trigger re-render
+          });
+        }
+      };
+
+      const handleUserOnlineStatus = ({ userId: targetUserId, isOnline }) => {
+        console.log('[Socket] User online status update:', targetUserId, isOnline);
+        setConversations(prevConversations => {
+          const updatedConversations = prevConversations.map(conv => {
+            // Check if this conversation involves the user whose status changed
+            if (conv.otherUserId === targetUserId) {
+              return {
+                ...conv,
+                isOnline: isOnline
+              };
+            }
+            return conv;
+          });
+          return [...updatedConversations]; // Create new array to trigger re-render
+        });
+      };
+
+      // Remove old event listeners before adding new ones
+      socket.off('newMessage');
+      socket.off('messageReceived');
+      socket.off('receiveMessage');
+      socket.off('receiveMessageGroup');
+      socket.off('messageRead');
+      socket.off('messageSeen');
+      socket.off('userOnline');
+      socket.off('userOffline');
+      socket.off('userOnlineStatus');
+      
+      // Add event listeners for both old and new event names
+      socket.on('newMessage', handleNewMessage);
+      socket.on('messageReceived', handleNewMessage);
+      socket.on('receiveMessage', handleNewMessage);
+      socket.on('receiveMessageGroup', handleNewMessage);
+      
+      socket.on('messageRead', handleMessageRead);
+      socket.on('messageSeen', handleMessageRead);
+      
+      socket.on('userOnline', handleUserOnlineStatus);
+      socket.on('userOffline', data => handleUserOnlineStatus({ ...data, isOnline: false }));
+      socket.on('userOnlineStatus', data => handleUserOnlineStatus({ 
+        userId: data.userId, 
+        isOnline: data.status 
+      }));
+
+      return () => {
+        socket.off('newMessage');
+        socket.off('messageReceived');
+        socket.off('receiveMessage');
+        socket.off('receiveMessageGroup');
+        socket.off('messageRead');
+        socket.off('messageSeen');
+        socket.off('userOnline');
+        socket.off('userOffline');
+        socket.off('userOnlineStatus');
+      };
+    }
+  }, [userId, socketConnected]);
+
+  useEffect(() => {
     const initializeData = async () => {
       try {
         const userData = await AsyncStorage.getItem('userData');
@@ -164,68 +294,15 @@ const HomeScreen = () => {
 
     initializeData();
 
+    // Reduce polling frequency to prevent excessive API calls
     const refreshInterval = setInterval(() => {
       if (!refreshing) {
         fetchConversations();
       }
-    }, 2000);
+    }, 5000);  // Changed from 2000 to 5000ms
 
     return () => clearInterval(refreshInterval);
   }, []);
-
-  useEffect(() => {
-    const socket = getSocket();
-    if (socket) {
-      const handleNewMessage = async (data) => {
-        console.log('New message received:', data);
-        if (data.conversationId && data.message) {
-          updateConversationWithNewMessage(data.conversationId, data.message, data.message.sender);
-        }
-      };
-
-      const handleMessageRead = (data) => {
-        if (data.conversationId) {
-          setConversations(prevConversations => {
-            const updatedConversations = prevConversations.map(conv =>
-              conv._id === data.conversationId
-                ? { ...conv, unreadCount: 0 }
-                : conv
-            );
-            return [...updatedConversations]; // Create new array to trigger re-render
-          });
-        }
-      };
-
-      const handleUserOnlineStatus = ({ userId: targetUserId, isOnline }) => {
-        console.log('User online status update:', targetUserId, isOnline);
-        setConversations(prevConversations => {
-          const updatedConversations = prevConversations.map(conv => {
-            // Check if this conversation involves the user whose status changed
-            if (conv.otherUserId === targetUserId) {
-              return {
-                ...conv,
-                isOnline: isOnline
-              };
-            }
-            return conv;
-          });
-          return [...updatedConversations]; // Create new array to trigger re-render
-        });
-      };
-
-      socket.on('newMessage', handleNewMessage);
-      socket.on('messageRead', handleMessageRead);
-      socket.on('userOnline', handleUserOnlineStatus);
-      socket.on('userOffline', data => handleUserOnlineStatus({ ...data, isOnline: false }));
-
-      return () => {
-        socket.off('newMessage', handleNewMessage);
-        socket.off('messageRead', handleMessageRead);
-        socket.off('userOnline', handleUserOnlineStatus);
-        socket.off('userOffline');
-      };
-    }
-  }, [userId]); // Add userId as dependency
 
   if (loading) {
     return (
