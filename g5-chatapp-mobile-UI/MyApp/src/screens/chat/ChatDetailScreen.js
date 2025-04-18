@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  KeyboardAvoidingView,
 } from "react-native";
 import WebView from "react-native-webview";
 
@@ -36,6 +37,8 @@ import { chatService } from "../../services/chat.service";
 import useAuthStore from "../../store/useAuthStore";
 import { Video } from "expo-av";
 import { Audio } from "expo-av";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { API_URL } from "../../config/constants";
 
 const AudioMessage = ({ file, isMyMessage }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -422,6 +425,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
   console.log("ChatDetailScreen mounted with route params:", route.params);
   const { conversation } = route.params || {};
   console.log("Extracted conversation:", conversation);
+  const insets = useSafeAreaInsets();
 
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -447,6 +451,27 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const [showAudioRecording, setShowAudioRecording] = useState(false);
 
+  // hàm cuộn flatlist xuống dưới khi nhập input
+  const scrollToBottom = () => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToEnd({ animated: true });
+        }
+      }
+    );
+    return () => {
+      keyboardDidShowListener.remove();
+    }
+  }, []);
+
   const handleReturn = () => {
     navigation.navigate("Home_Chat");
   };
@@ -471,7 +496,30 @@ const ChatDetailScreen = ({ navigation, route }) => {
         const userData = await AsyncStorage.getItem("userData");
         if (userData) {
           const currentUserData = JSON.parse(userData);
-          setCurrentUser(currentUserData);
+          const response = await fetch(`${API_URL}/auth/get-my-profile`, {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${currentUserData.token}`,
+                  },
+                });
+                const result = await response.json();
+                if (result.data) {
+                  const userData = result.data;
+                  setCurrentUser({
+                    _id: userData._id || currentUserData._id,
+                    firstName: userData.firstName || "",
+                    lastName: userData.lastName || "",
+                    email: userData.email || "",
+                    gender: userData.gender || "Not set",
+                    role: Array.isArray(userData.role)
+                      ? userData.role
+                      : [userData.role].filter(Boolean),
+                    avatar: userData.avatar || null,
+                    dob: userData.dob || null,
+                  });
+                }
+          // setCurrentUser(currentUserData);
           console.log("Current user:", currentUserData);
 
           if (conversation) {
@@ -1368,7 +1416,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
     const isTemp = item._id && item._id.startsWith("temp-");
 
     const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
-    const defaultAvatar = require("../../../assets/chat/man.png");
+    const defaultAvatar = require("../../../assets/chat/avatar.png");
 
     // Ẩn tin nhắn nếu user hiện tại đã xóa
     if (item.deletedFor?.includes(authenticated)) {
@@ -1851,7 +1899,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                       source={
                         item.avatar
                           ? { uri: item.avatar }
-                          : require("../../../assets/chat/man.png")
+                          : require("../../../assets/chat/avatar.png")
                       }
                       style={styles.friendAvatar}
                     />
@@ -1915,7 +1963,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <KeyboardAvoidingView 
+       behavior={Platform.OS === "ios" ? "padding" : "height"}
+       style={{flex: 1}}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 0 : 0}
+      >
+        <View style={styles.header}>
         <TouchableOpacity onPress={handleReturn}>
           <Icon name="chevron-left" size={30} color="white" />
         </TouchableOpacity>
@@ -1923,7 +1976,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           source={
             otherUser?.avatar
               ? { uri: otherUser.avatar }
-              : require("../../../assets/chat/man.png")
+              : require("../../../assets/chat/avatar.png")
           }
           style={styles.avatar}
         />
@@ -1967,7 +2020,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
             <Feather name="more-horizontal" size={24} color="white" />
           </TouchableOpacity>
         </View>
-      </View>
+        </View>
+        
 
       <PinnedMessageBar />
 
@@ -2012,6 +2066,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           value={newMessage}
           onChangeText={(text) => setNewMessage(text)}
           onSubmitEditing={handleSubmitEditing}
+          onFocus={scrollToBottom}
         />
 
         {newMessage.trim().length > 0 ? (
@@ -2024,6 +2079,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         )}
       </View>
+      </KeyboardAvoidingView>
 
       <ChatOptions
         visible={showOptions}
@@ -2156,7 +2212,7 @@ const styles = StyleSheet.create({
   },
   messageList: {
     flex: 1,
-    padding: 4,
+    // padding: 4,
     backgroundColor: "#FFFFFF",
   },
   messageRow: {

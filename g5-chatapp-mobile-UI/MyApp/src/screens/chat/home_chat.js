@@ -245,7 +245,7 @@ const HomeScreen = () => {
     >
       <View style={styles.avatarContainer}>
         <Image 
-          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/man.png")}
+          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/avatar.png")}
           style={styles.avatar} 
         />
         {item.isOnline && <View style={styles.onlineIndicator} />}

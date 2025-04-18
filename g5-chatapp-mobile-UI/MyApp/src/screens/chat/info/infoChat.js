@@ -78,7 +78,7 @@ const UserInfoScreen = ({ navigation, route }) => {
     if (!conversation) return;
     
     let userData = {
-      avatar: require("../../../../assets/chat/man.png"),
+      avatar: require("../../../../assets/chat/avatar.png"),
       name: "Unknown",
       phone: "N/A",
       commonGroups: [],
@@ -92,7 +92,7 @@ const UserInfoScreen = ({ navigation, route }) => {
       userData.name = conversation.name || "Unknown Group";
       userData.avatar = conversation.avatar 
         ? { uri: conversation.avatar } 
-        : require("../../../../assets/chat/man.png");
+        : require("../../../../assets/chat/avatar.png");
     } 
     // Nếu là cuộc trò chuyện 1-1
     else if (conversation.members) {
@@ -106,7 +106,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           phone: otherUser.phone || "N/A",
           avatar: otherUser.avatar 
             ? { uri: otherUser.avatar } 
-            : require("../../../../assets/chat/man.png"),
+            : require("../../../../assets/chat/avatar.png"),
           isOnline: otherUser.isOnline || false,
           email: otherUser.email,
         };

@@ -250,7 +250,7 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <Image
-              source={{ uri: user.avatar || "https://i.pravatar.cc/150?img=5" }}
+              source={{ uri: user.avatar || require("../../../assets/chat/avatar.png") }}
               style={styles.avatar}
             />
             <TouchableOpacity
