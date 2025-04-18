@@ -30,7 +30,10 @@ export class ConversationService {
     }
 
     let memberIds = conversation.members;
-    const isExistedAdmin = memberIds.includes(adminUser._id as string);
+
+    const isExistedAdmin = memberIds.some((id) =>
+      new Types.ObjectId(id).equals(adminUser._id as Types.ObjectId),
+    );
 
     if (!isExistedAdmin) {
       memberIds = [...memberIds, adminUser._id as string];
@@ -88,7 +91,6 @@ export class ConversationService {
       name: conversation.name ?? null,
       isGroup,
       profilePicture: null,
-      admin: adminUser._id,
       lastMessage: null,
       members: membersWithRole,
     });
@@ -100,7 +102,6 @@ export class ConversationService {
     return await this.convenstationModel
       .findById(id)
       .populate('members.user', 'firstName lastName email avatar')
-      .populate('admin', 'firstName lastName email avatar')
       .populate({
         path: 'lastMessage',
         select: 'sender content type files',
@@ -116,8 +117,9 @@ export class ConversationService {
     members: Types.ObjectId[],
   ): Promise<Convensation> {
     return await this.convenstationModel.findOne({
-      members: { $all: members },
-      is_group: false,
+      isGroup: false,
+      'members.user': { $all: members },
+      $expr: { $eq: [{ $size: '$members' }, 2] },
     });
   }
 
@@ -125,8 +127,9 @@ export class ConversationService {
     members: Types.ObjectId[],
   ): Promise<Convensation> {
     return await this.convenstationModel.findOne({
-      members: { $all: members },
-      is_group: true,
+      isGroup: true,
+      'members.user': { $all: members },
+      $expr: { $eq: [{ $size: '$members' }, members.length] },
     });
   }
 
@@ -141,11 +144,10 @@ export class ConversationService {
     }
     const conversations = await this.convenstationModel
       .find({
-        members: userPayload._id,
+        'members.user': userPayload._id,
       })
       .sort({ updatedAt: -1 })
-      .populate('members', 'firstName lastName email avatar')
-      .populate('admin', 'firstName lastName email avatar')
+      .populate('members.user', 'firstName lastName email avatar')
       .populate({
         path: 'lastMessage',
         select: 'sender content type files',
