@@ -250,36 +250,43 @@ const ProfileScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollView}>
-        <View style={styles.coverPhoto}>
-          <View style={styles.profileHeader}>
-            <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: user.avatar || "https://i.pravatar.cc/150?img=5" }}
-                style={styles.avatar}
-              />
-              <TouchableOpacity
-                style={styles.editAvatar}
-                onPress={() => handleChangeAvatar()}
-              >
-                <Icon name="camera" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
 
-        <View style={styles.contentContainer}>
-          <View style={styles.section}>
-            <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
-            <View style={styles.infoContainer}>
-              <InfoRow label="Email" value={user.email} icon="email" />
-              <InfoRow label="Gender" value={user.gender} icon="gender-male-female" />
-              <InfoRow
-                label="Birthday"
-                value={user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"}
-                icon="cake-variant"
-              />
-            </View>
+        <View style={styles.profileSection}>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={{ uri: user.avatar || require("../../../assets/chat/avatar.png") }}
+              style={styles.avatar}
+            />
+//         <View style={styles.coverPhoto}>
+//           <View style={styles.profileHeader}>
+//             <View style={styles.avatarContainer}>
+//               <Image
+//                 source={{ uri: user.avatar || "https://i.pravatar.cc/150?img=5" }}
+//                 style={styles.avatar}
+//               />
+//               <TouchableOpacity
+//                 style={styles.editAvatar}
+//                 onPress={() => handleChangeAvatar()}
+//               >
+//                 <Icon name="camera" size={20} color="#fff" />
+//               </TouchableOpacity>
+//             </View>
+//           </View>
+//         </View>
+
+//         <View style={styles.contentContainer}>
+//           <View style={styles.section}>
+//             <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
+//             <Text style={styles.sectionTitle}>Personal Information</Text>
+//             <View style={styles.infoContainer}>
+//               <InfoRow label="Email" value={user.email} icon="email" />
+//               <InfoRow label="Gender" value={user.gender} icon="gender-male-female" />
+//               <InfoRow
+//                 label="Birthday"
+//                 value={user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"}
+//                 icon="cake-variant"
+//               />
+//             </View>
 
             <TouchableOpacity
               style={styles.editButton}

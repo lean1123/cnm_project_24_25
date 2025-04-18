@@ -232,6 +232,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       });
     });
   },
+  
 
   unsubscribeFromNewMessages: () => {
     const socket = getSocket(); // Ensure socket is initialized
@@ -308,8 +309,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   subscribeToDeleteMessage: () => {
     const socket = getSocket(); // Ensure socket is initialized
     if (socket) {
-      socket.on("deleteMessage", (message: Message) => {
-      });
+      socket.on("deleteMessage", (message: Message) => {});
     }
   },
   unsubscribeFromDeleteMessage: () => {
@@ -366,7 +366,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       socket.on("reactToMessage", (message: Message) => {
         set((state) => ({
           messages: state.messages.map((m) =>
-            m._id === message._id ?  message : m
+            m._id === message._id ? message : m
           ),
         }));
       });
@@ -384,7 +384,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       socket.on("unReactToMessage", (message: Message) => {
         set((state) => ({
           messages: state.messages.map((m) =>
-            m._id === message._id ?  message : m
+            m._id === message._id ? message : m
           ),
         }));
       });
@@ -395,5 +395,5 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     if (socket) {
       socket.off("unReactToMessage");
     }
-  }
+  },
 }));

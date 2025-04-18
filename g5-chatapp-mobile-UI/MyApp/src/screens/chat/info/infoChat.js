@@ -69,6 +69,49 @@ const UserInfoScreen = ({ navigation, route }) => {
       }
     };
 
+  const processUserInfo = (conversation) => {
+    if (!conversation) return;
+    
+    let userData = {
+      avatar: require("../../../../assets/chat/avatar.png"),
+      name: "Unknown",
+      phone: "N/A",
+      commonGroups: [],
+      sharedMedia: [],
+      sharedFiles: [],
+      sharedLinks: [],
+    };
+    
+    // Nếu là cuộc trò chuyện nhóm
+    if (conversation.isGroup) {
+      userData.name = conversation.name || "Unknown Group";
+      userData.avatar = conversation.avatar 
+        ? { uri: conversation.avatar } 
+        : require("../../../../assets/chat/avatar.png");
+    } 
+    // Nếu là cuộc trò chuyện 1-1
+    else if (conversation.members) {
+      // Tìm thông tin người dùng khác
+      const otherUser = conversation.members.find(member => member._id !== userId);
+      
+      if (otherUser) {
+        userData = {
+          ...userData,
+          name: `${otherUser.firstName} ${otherUser.lastName}`,
+          phone: otherUser.phone || "N/A",
+          avatar: otherUser.avatar 
+            ? { uri: otherUser.avatar } 
+            : require("../../../../assets/chat/avatar.png"),
+          isOnline: otherUser.isOnline || false,
+          email: otherUser.email,
+        };
+      }
+    }
+    
+    setUserInfo(userData);
+    setLoading(false);
+  };
+
     initialize();
   }, [conversation]);
 
