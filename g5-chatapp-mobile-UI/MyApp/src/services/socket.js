@@ -1,205 +1,162 @@
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../config/constants';
+import { SOCKET_URL, API_URL } from '../config/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
+import { Platform } from 'react-native';
 
 let socket = null;
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_INTERVAL = 3000;
 
-const checkInternetConnection = async () => {
-  try {
-    const netInfo = await NetInfo.fetch();
-    console.log('Network state:', {
-      isConnected: netInfo.isConnected,
-      isInternetReachable: netInfo.isInternetReachable,
-      type: netInfo.type,
-      details: netInfo.details
-    });
-    
-    // Consider connection valid if either isConnected is true or we're on wifi/cellular
-    return netInfo.isConnected || ['wifi', 'cellular'].includes(netInfo.type);
-  } catch (error) {
-    console.error('Error checking internet connection:', error);
-    // If we can't check connection, assume it's available
-    return true;
+export const getSocket = () => {
+  if (!socket) {
+    initSocket();
   }
+  return socket;
 };
 
-export const initSocket = async (userId) => {
+export const initSocket = async () => {
   try {
-    console.log('Initializing socket for user:', userId);
-    console.log('Socket URL:', SOCKET_URL);
-
-    // Check internet connection first
-    const isConnected = await checkInternetConnection();
-    if (!isConnected) {
-      console.log('Network check failed - attempting connection anyway');
+    console.log(`[Socket] Initializing socket at: ${SOCKET_URL} (${Platform.OS})`);
+    
+    // Get user token
+    const userData = await AsyncStorage.getItem('userData');
+    const user = userData ? JSON.parse(userData) : null;
+    
+    if (!user) {
+      console.log('[Socket] No user found, socket initialization postponed');
+      return null;
     }
-
-    const token = await AsyncStorage.getItem('userToken');
-    if (!token) {
-      throw new Error('No token found');
-    }
-    console.log('Token available for socket connection');
-
-    // Close existing socket if any
+    
+    console.log(`[Socket] Found user: ${user._id}`);
+    
+    // Disconnect existing socket if any
     if (socket) {
-      console.log('Closing existing socket connection');
-      socket.close();
+      console.log('[Socket] Disconnecting existing socket');
+      socket.disconnect();
       socket = null;
     }
-
-    // Configure socket for ngrok
-    socket = io(SOCKET_URL, {
-      auth: {
-        token: token
-      },
-      query: {
-        userId: userId
-      },
-      transports: ['websocket', 'polling'],
+    
+    // Simple socket configuration similar to web version but optimized for iOS
+    const config = {
+      autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: RECONNECT_INTERVAL,
-      timeout: 20000,
-      forceNew: true,
-      path: '/socket.io',
-      withCredentials: true,
-      extraHeaders: {
-        'Authorization': `Bearer ${token}`,
-        'ngrok-skip-browser-warning': 'true'
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 15000,
+      transports: ['websocket', 'polling'], // iOS prefers websocket, but allow fallback
+      forceNew: true
+    };
+    
+    console.log('[Socket] Creating socket with config:', JSON.stringify(config));
+    socket = io(SOCKET_URL, config);
+    
+    // Setup basic events
+    socket.on("connect", () => {
+      console.log(`[Socket] Connected with ID: ${socket.id}`);
+      console.log(`[Socket] Using transport: ${socket.io?.engine?.transport?.name || 'unknown'}`);
+      
+      // Login upon successful connection
+      if (user._id) {
+        console.log(`[Socket] Emitting login event for user ${user._id}`);
+        socket.emit("login", { userId: user._id });
       }
     });
-
-    console.log('Socket instance created with config:', {
-      url: SOCKET_URL,
-      transports: socket.io.opts.transports,
-      path: socket.io.opts.path
-    });
-
-    socket.on('connect', () => {
-      console.log('Socket connected successfully');
-      console.log('Transport used:', socket.io.engine.transport.name);
-      console.log('Socket ID:', socket.id);
-      reconnectAttempts = 0;
+    
+    socket.on("connect_error", (error) => {
+      console.log(`[Socket] Connection error: ${error.message}`);
       
-      // Emit setup event after successful connection
-      socket.emit('setup', userId);
-    });
-
-    socket.on('connect_error', async (error) => {
-      console.error('Socket connection error:', error.message);
-      console.error('Error details:', error);
-      
-      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts++;
-        console.log(`Attempting reconnection ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
-        
-        // Try switching transport method
-        if (socket.io.engine.transport.name === 'websocket') {
-          console.log('Switching to polling transport');
-          socket.io.opts.transports = ['polling'];
-        }
-        
-        // Check token validity
-        const newToken = await AsyncStorage.getItem('userToken');
-        if (newToken && newToken !== token) {
-          console.log('Token updated, using new token for reconnection');
-          socket.auth.token = newToken;
-          socket.io.opts.extraHeaders['Authorization'] = `Bearer ${newToken}`;
-        }
-        
-        setTimeout(async () => {
-          try {
-            console.log('Attempting to reconnect...');
-            socket.connect();
-          } catch (err) {
-            console.error('Reconnection attempt failed:', err);
-          }
-        }, RECONNECT_INTERVAL);
-      } else {
-        console.error('Max reconnection attempts reached');
-        disconnectSocket();
+      // iOS specific recommendation
+      if (Platform.OS === 'ios') {
+        console.log('[Socket] On iOS, check that:');
+        console.log('1. Your backend allows connections from all origins (CORS)');
+        console.log('2. Your backend IP is correctly set and accessible from your iOS device');
+        console.log('3. Your backend and iOS device are on the same network');
       }
     });
-
-    socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
+    
+    socket.on("disconnect", (reason) => {
+      console.log(`[Socket] Disconnected: ${reason}`);
     });
-
-    socket.on('error', (error) => {
-      console.error('Socket error:', error);
+    
+    socket.on("error", (error) => {
+      console.log(`[Socket] Error: ${error}`);
     });
-
-    // Attempt initial connection
-    console.log('Attempting initial socket connection...');
-    socket.connect();
-
+    
+    console.log('[Socket] Initialization completed');
     return socket;
   } catch (error) {
-    console.error('Error initializing socket:', error);
-    // Try to connect anyway if it's just the internet check that failed
-    if (error.message === 'No internet connection') {
-      console.log('Attempting socket connection despite internet check failure');
-      return initSocket(userId);
-    }
+    console.error('[Socket] Error initializing socket:', error);
     return null;
   }
 };
 
-export const getSocket = () => socket;
-
 export const disconnectSocket = () => {
   if (socket) {
+    console.log('[Socket] Disconnecting socket');
     socket.disconnect();
     socket = null;
   }
 };
 
 export const reconnectSocket = async () => {
-  if (socket) {
-    socket.connect();
-  } else {
-    const userId = await AsyncStorage.getItem('userId');
-    if (userId) {
-      await initSocket(userId);
-    }
-  }
+  console.log('[Socket] Reconnecting socket');
+  disconnectSocket();
+  return initSocket();
 };
 
+// Simple socket events functions
 export const subscribeToMessages = (callback) => {
   const socket = getSocket();
-  socket.on('newMessage', callback);
+  if (socket) {
+    console.log('[Socket] Subscribing to newMessage events');
+    socket.on('newMessage', callback);
+  }
 };
 
 export const unsubscribeFromMessages = () => {
   const socket = getSocket();
-  socket.off('newMessage');
+  if (socket) {
+    console.log('[Socket] Unsubscribing from newMessage events');
+    socket.off('newMessage');
+  }
 };
 
 export const subscribeToActiveUsers = (callback) => {
   const socket = getSocket();
-  socket.on('activeUsers', callback);
+  if (socket) {
+    console.log('[Socket] Subscribing to activeUsers events');
+    socket.on('activeUsers', callback);
+  }
 };
 
 export const unsubscribeFromActiveUsers = () => {
   const socket = getSocket();
-  socket.off('activeUsers');
+  if (socket) {
+    console.log('[Socket] Unsubscribing from activeUsers events');
+    socket.off('activeUsers');
+  }
 };
 
 export const emitLogin = (userId) => {
   const socket = getSocket();
-  socket.emit('login', { userId });
+  if (socket && socket.connected) {
+    console.log(`[Socket] Emitting login event for user ${userId}`);
+    socket.emit('login', { userId });
+  } else {
+    console.log(`[Socket] Cannot emit login: socket ${socket ? 'not connected' : 'is null'}`);
+  }
 };
 
 export const emitJoinConversation = (conversationId) => {
   const socket = getSocket();
-  socket.emit('join', { conversationId });
+  if (socket && socket.connected) {
+    console.log(`[Socket] Joining conversation: ${conversationId}`);
+    socket.emit('join', { conversationId });
+  }
 };
 
 export const emitLeaveConversation = (conversationId) => {
   const socket = getSocket();
-  socket.emit('leave', { conversationId });
+  if (socket && socket.connected) {
+    console.log(`[Socket] Leaving conversation: ${conversationId}`);
+    socket.emit('leave', { conversationId });
+  }
 };

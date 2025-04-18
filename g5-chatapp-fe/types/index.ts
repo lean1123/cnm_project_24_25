@@ -36,12 +36,12 @@ export type Conversation = {
     name?: string;
     profilePicture?: string | null;
     isGroup: boolean;
-    admin?: string;
-    members: User [];
+    members: Member [];
     lastMessage: LastMessage | null;
     createdAt: string;
     updatedAt: string;
 }
+
 
 export type LastMessage = {
     _id: string;
@@ -52,8 +52,8 @@ export type LastMessage = {
 }
 
 export type Member = {
-    userId: string;
-    fullName: string;
+    user: User;
+    role: string;
 }
 
 export type Message = {

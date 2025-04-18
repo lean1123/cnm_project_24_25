@@ -36,7 +36,7 @@ function ConversationPage({ params }: Props) {
   }, [conversationId]);
 
   const userSelected = selectedConversation?.members.find(
-    (member) => member._id !== user?.id
+    (member) => member.user._id !== user?.id
   );
 
 
@@ -68,10 +68,10 @@ function ConversationPage({ params }: Props) {
         }`}
       >
         <Header
-          userId={userSelected?._id || ""}
-          firstName={userSelected?.firstName || ""}
-          lastName={userSelected?.lastName || ""}
-          imageUrl={userSelected?.avatar || ""}
+          userId={userSelected?.user._id || ""}
+          firstName={userSelected?.user.firstName || ""}
+          lastName={userSelected?.user.lastName || ""}
+          imageUrl={userSelected?.user.avatar || ""}
           options={[
             {
               label: "Voice call",
@@ -93,7 +93,7 @@ function ConversationPage({ params }: Props) {
         <Body />
         <ChatInput />
       </div>
-      <ConversationInfo isOpen={isOpenRightBar} setOpen={setIsOpenRightBar} userSelected={userSelected || null}/>
+      <ConversationInfo isOpen={isOpenRightBar} setOpen={setIsOpenRightBar} userSelected={userSelected?.user || null}/>
     </ConversationContainer>
   );
 }

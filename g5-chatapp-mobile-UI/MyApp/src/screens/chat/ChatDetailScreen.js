@@ -547,21 +547,25 @@ const ChatDetailScreen = ({ navigation, route }) => {
             setSocket(socketInstance);
             setIsOnline(socketInstance.connected);
 
-            console.log("Joining conversation room:", conversation._id);
+            console.log("[Socket] Joining conversation room:", conversation._id);
             socketInstance.emit("join", {
+              conversationId: conversation._id,
+              userId: currentUserData._id,
+            });
+            socketInstance.emit("joinConversation", {
               conversationId: conversation._id,
               userId: currentUserData._id,
             });
 
             const handleNewMessage = (data) => {
-              console.log("New message received:", data);
+              console.log("[Socket] New message received:", data);
 
               const messageData = data.message || data;
               const messageConvId =
                 messageData.conversation?._id || messageData.conversation;
 
-              console.log("Message conversation:", messageConvId);
-              console.log("Current conversation:", conversation._id);
+              console.log("[Socket] Message conversation:", messageConvId);
+              console.log("[Socket] Current conversation:", conversation._id);
 
               if (messageConvId === conversation._id) {
                 setMessages((prevMessages) => {
@@ -569,7 +573,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     (msg) => msg._id === messageData._id
                   );
                   if (!messageExists) {
-                    console.log("Adding new message to state");
+                    console.log("[Socket] Adding new message to state");
                     const updatedMessages = [...prevMessages, messageData].sort(
                       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
                     );
@@ -587,27 +591,38 @@ const ChatDetailScreen = ({ navigation, route }) => {
               }
             };
 
+            // Remove old event listeners
             socketInstance.off("messageReceived");
             socketInstance.off("newMessage");
+            socketInstance.off("receiveMessage");
+            socketInstance.off("receiveMessageGroup");
 
-            socketInstance.on("messageReceived", handleNewMessage);
+            // Use all possible event names for receiving messages to ensure compatibility
             socketInstance.on("newMessage", handleNewMessage);
+            socketInstance.on("messageReceived", handleNewMessage);
+            socketInstance.on("receiveMessage", handleNewMessage);
+            socketInstance.on("receiveMessageGroup", handleNewMessage);
 
             socketInstance.on("connect", () => {
-              console.log("Socket reconnected in chat detail");
+              console.log("[Socket] Socket reconnected in chat detail");
               setIsOnline(true);
+              // Support both old and new format for joining a conversation room
               socketInstance.emit("join", {
+                conversationId: conversation._id,
+                userId: currentUserData._id,
+              });
+              socketInstance.emit("joinConversation", {
                 conversationId: conversation._id,
                 userId: currentUserData._id,
               });
             });
 
             socketInstance.on("disconnect", () => {
-              console.log("Socket disconnected in chat detail");
+              console.log("[Socket] Socket disconnected in chat detail");
               setIsOnline(false);
             });
           } else {
-            console.error("No socket connection available");
+            console.error("[Socket] No socket connection available");
           }
 
           await fetchMessages();
@@ -627,14 +642,21 @@ const ChatDetailScreen = ({ navigation, route }) => {
     return () => {
       const socketInstance = getSocket();
       if (socketInstance && conversation?._id && currentUser?._id) {
-        console.log("Leaving conversation room:", conversation._id);
+        console.log("[Socket] Leaving conversation room:", conversation._id);
+        // Support both old and new format for leaving a conversation room
         socketInstance.emit("leave", {
+          conversationId: conversation._id,
+          userId: currentUser._id,
+        });
+        socketInstance.emit("leaveConversation", {
           conversationId: conversation._id,
           userId: currentUser._id,
         });
 
         socketInstance.off("messageReceived");
         socketInstance.off("newMessage");
+        socketInstance.off("receiveMessage");
+        socketInstance.off("receiveMessageGroup");
         socketInstance.off("connect");
         socketInstance.off("disconnect");
       }
@@ -872,6 +894,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
           },
         };
 
+        socket.emit("sendMessageToServer", {
+          message: newMessage,
+          conversationId: conversation._id,
+          senderId: currentUser._id,
+        });
+
+        // Also emit with original event name to ensure compatibility
         socket.emit("sendMessage", {
           message: newMessage,
           conversationId: conversation._id,
@@ -915,8 +944,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.5,
+        quality: 1,
         allowsEditing: true,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -952,9 +982,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.5,
+        quality: 1,
         allowsMultipleSelection: true,
         selectionLimit: 10,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
