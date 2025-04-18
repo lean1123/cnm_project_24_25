@@ -23,6 +23,7 @@ import UserInfoScreen from "../screens/chat/info/infoChat";
 import ContactRequestsScreen from "../screens/chat/ContactRequests";
 import ImageViewerScreen from "../components/ImageViewerScreen";
 import VideoPlayer from "../screens/chat/components/VideoPlayer";
+import FileViewer from "../screens/chat/components/FileViewer";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
@@ -152,6 +153,10 @@ const MainNavigator = () => {
           <Stack.Screen
             name="VideoPlayer"
             component={VideoPlayer}
+          />
+          <Stack.Screen
+            name="FileViewer"
+            component={FileViewer}
           />
         </>
       )}

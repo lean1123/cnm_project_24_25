@@ -268,12 +268,17 @@ const ProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.contentContainer}>
+          <View style={styles.sectionFullName}>
+            <Text style={styles.sectionTitleFullName}>
+              <Text style={styles.name}>
+                {user.firstName} {user.lastName}
+              </Text>
+            </Text>
+          </View>
           <View style={styles.section}>
-            <Text
-              style={styles.name}
-            >{`${user.firstName} ${user.lastName}`}</Text>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
             <View style={styles.infoContainer}>
+            <Text style={styles.sectionTitle}>Perersonal Information</Text>
+
               <InfoRow label="Email" value={user.email} icon="email" />
               <InfoRow
                 label="Gender"
@@ -466,6 +471,18 @@ const styles = StyleSheet.create({
   scrollView: {
     flexGrow: 1,
   },
+  fullNameContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+    position: "absolute",
+    top: 120,
+    left: 120,
+    zIndex: 100,
+    color: "#000",
+    fontSize: 24,
+  },
   coverPhoto: {
     height: 130,
     backgroundColor: "#135CAF",
@@ -478,6 +495,7 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     zIndex: 1,
+    marginBottom: 26,
   },
   avatar: {
     width: 140,
@@ -503,9 +521,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#000",
     marginTop: 8,
     marginBottom: 16,
+    alignSelf: "center",
   },
   contentContainer: {
     flex: 1,
@@ -513,8 +532,22 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -30,
-    paddingTop: 60,
+    paddingTop: 10,
     paddingHorizontal: 16,
+    paddingBottom: 16,
+    marginBottom: "15%",
+  },
+  sectionFullName: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 8,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginTop: '20%',
   },
   section: {
     backgroundColor: "#fff",
@@ -532,6 +565,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1a1a1a",
     marginBottom: 16,
+    alignSelf: "flex-start",
+  },
+  sectionTitleFullName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    alignSelf: "center",
   },
   infoContainer: {
     marginBottom: 16,
