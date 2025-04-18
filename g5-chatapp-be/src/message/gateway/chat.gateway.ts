@@ -19,6 +19,7 @@ import { TypinationRequest } from '../dtos/requests/typination.request';
 import { UserService } from 'src/user/user.service';
 import { ContactService } from '../../contact/contact.service';
 import { User } from 'src/user/schema/user.schema';
+import { Convensation } from 'src/conversation/schema/convensation.schema';
 
 @WebSocketGateway({
   cors: {
@@ -135,7 +136,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       files,
     );
 
-    console.log('Message return: ', message);
+    // console.log('Message return: ', message);
 
     this.server.to(conversationId).emit('newMessage', message);
   }
@@ -391,5 +392,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server
       .to(message.conversation.toString())
       .emit('unReactToMessage', message);
+  }
+
+  handleCreateConversationForGroup(@MessageBody() conversation: Convensation) {
+    const conversationId = conversation._id as string;
+    if (conversationId) {
+      this.server.to(conversationId).emit('createConversationForGroup', {
+        conversation: conversation,
+      });
+    }
   }
 }

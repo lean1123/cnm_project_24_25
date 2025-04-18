@@ -19,11 +19,19 @@ export class ConversationService {
   ) {}
 
   async createConvensation(
+    userPayload: JwtPayload,
     conversation: ConvensationRequest,
   ): Promise<Convensation> {
-    const members = conversation.members;
+    let members = conversation.members;
+    const admin = await this.userService.findById(userPayload._id);
+    const isExistedAdmin = members.includes(admin._id as string);
+
+    if (!isExistedAdmin) {
+      members = [...members, admin._id as string];
+    }
+
     let isGroup: boolean;
-    let groupName;
+    let groupName: string | undefined = conversation.name;
 
     if (members.length <= 2 && members.length > 0) {
       isGroup = false;
@@ -43,18 +51,34 @@ export class ConversationService {
     }
 
     if (isGroup === true) {
+      const admin = await this.userService.findById(userPayload._id);
+
       groupName = conversation.name;
-      if (groupName === null || groupName === '') {
-        throw new Error('Group name is required');
+      if (!groupName) {
+        const users = await Promise.all(
+          members.map((member) => this.userService.findById(member)),
+        );
+
+        if (users.some((user) => !user)) {
+          throw new Error('User not found in group conversation');
+        }
+
+        groupName = users.map((user) => user.lastName).join(', ');
       }
+
       const existedGroup = await this.convenstationModel.findOne({
         name: groupName,
         isGroup: true,
+        members: { $all: members.map((m) => m) },
       });
 
       if (existedGroup) {
         throw new Error('Group name is already existed');
       }
+
+      conversation.admin = admin._id as string;
+      conversation.name = groupName;
+      conversation.members = members;
     }
     conversation.isGroup = isGroup;
     conversation.lastMessage = null;
@@ -62,7 +86,7 @@ export class ConversationService {
 
     const res = await this.convenstationModel.create(conversation);
 
-    return res;
+    return this.getConvensationById(res._id as string);
   }
 
   async getConvensationById(id: string): Promise<Convensation> {

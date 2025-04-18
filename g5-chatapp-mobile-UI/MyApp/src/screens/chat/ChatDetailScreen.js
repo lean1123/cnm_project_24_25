@@ -419,9 +419,9 @@ const AudioRecordingModal = ({ visible, onClose, onSend }) => {
 };
 
 const ChatDetailScreen = ({ navigation, route }) => {
-  console.log("ChatDetailScreen mounted with route params:", route.params);
+  // console.log("ChatDetailScreen mounted with route params:", route.params);
   const { conversation } = route.params || {};
-  console.log("Extracted conversation:", conversation);
+  // console.log("Extracted conversation:", conversation);
 
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -729,6 +729,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
     let messageType = "TEXT";
     if (files.length > 0) {
       const mimetype = files[0]?.type;
+
+      console.log("File type:", mimetype);
+
       if (mimetype.startsWith("image/") || mimetype === "image") {
         messageType = "IMAGE";
       } else if (mimetype.startsWith("video/") || mimetype === "video") {
@@ -765,7 +768,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
       })),
     };
 
-    console.log("Creating temp message:", tempMessage);
+    // console.log("Creating temp message:", tempMessage);
     setTempMessages((prev) => [...prev, tempMessage]);
     setNewMessage("");
 
@@ -806,7 +809,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         );
       }
 
-      console.log("Send message response:", response);
+      // console.log("Send message response:", response);
 
       if (response.success) {
         setTempMessages((prev) => prev.filter((msg) => msg._id !== tempId));
@@ -878,7 +881,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           size: asset.fileSize || asset.size || 0,
         };
 
-        console.log("Captured image for sending:", preparedFile);
+        // console.log("Captured image for sending:", preparedFile);
 
         await sendMessage({ files: [preparedFile] });
       }
@@ -914,7 +917,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           size: asset.fileSize || asset.size || 0,
         }));
 
-        console.log("Prepared files for sending:", preparedFiles);
+        // console.log("Prepared files for sending:", preparedFiles);
         await sendMessage({ files: preparedFiles });
       }
     } catch (error) {
@@ -961,7 +964,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const videoAsset = result.assets[0];
-        console.log("Selected video:", videoAsset);
+        // console.log("Selected video:", videoAsset);
 
         // Create a video message
         const videoMessage = {
