@@ -402,4 +402,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
     }
   }
+
+  handleUpdateConversation(@MessageBody() conversation: Convensation) {
+    const conversationId = conversation._id as string;
+    if (conversationId) {
+      this.server.to(conversationId).emit('updateConversation', {
+        conversation: conversation,
+      });
+    }
+  }
 }
