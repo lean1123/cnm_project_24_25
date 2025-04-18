@@ -8,7 +8,8 @@ import {
   StatusBar,
   Platform,
   Image,
-  Dimensions
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
 import { Button } from "react-native-paper";
 import OTPInputView from "@twotalltotems/react-native-otp-input";
@@ -17,8 +18,6 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import NotificationModal from "../../components/CustomModal";
 import { verifyOTP, provideOtp } from "../../services/auth/authService";
-
-const { width } = Dimensions.get('window');
 
 const VerifyOTPScreen = ({ route, navigation }) => {
   const [userId, setUserId] = useState(route.params?.userId);
@@ -108,164 +107,163 @@ const VerifyOTPScreen = ({ route, navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#135CAF" />
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-left" size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Verify OTP</Text>
-          <TouchableOpacity
-            style={styles.resendButton}
-            onPress={handleResendOTP}
-            disabled={isResending}
-          >
-            <Text style={styles.resendText}>
-              {isResending ? "Resending..." : "Resend"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.illustrationContainer}>
-            <Image
-              source={require('../../../assets/images/otp-verification.png')}
-              style={styles.illustration}
-              resizeMode="contain"
-            />
+    <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Icon name="arrow-left" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Verify OTP</Text>
+            <TouchableOpacity
+              style={styles.resendButton}
+              onPress={handleResendOTP}
+              disabled={isResending}
+            >
+              <Text style={styles.resendText}>
+                {isResending ? "Resending..." : "Resend"}
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.textContainer}>
-            <Text style={styles.subtitle}>
-              Please enter the OTP sent to your email
-            </Text>
-          </View>
+          <View style={styles.content}>
+            <View style={styles.illustrationContainer}>
+              <Image
+                source={require('../../../assets/chat/logochat.png')}
+                style={styles.illustration}
+                resizeMode="contain"
+              />
+            </View>
 
-          <View style={styles.formContainer}>
-            <OTPInputView
-              style={styles.otpInput}
-              pinCount={6}
-              autoFocusOnLoad
-              codeInputFieldStyle={styles.underlineStyleBase}
-              codeInputHighlightStyle={styles.underlineStyleHighLighted}
-              onCodeFilled={(code) => handleVerifyOTP(code)}
-            />
-          </View>
-        </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.title}>OTP Verification</Text>
+              <Text style={styles.subtitle}>
+                Please enter the verification code sent to your email
+              </Text>
+            </View>
 
-        <NotificationModal
-          visible={isModalVisible}
-          message={modalMessage}
-          onDismiss={() => setModalVisible(false)}
-        />
-      </View>
+            <View style={styles.otpContainer}>
+              <OTPInputView
+                style={styles.otpInput}
+                pinCount={6}
+                autoFocusOnLoad
+                codeInputFieldStyle={styles.underlineStyleBase}
+                codeInputHighlightStyle={styles.underlineStyleHighLighted}
+                onCodeFilled={(code) => handleVerifyOTP(code)}
+              />
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <NotificationModal
+        visible={isModalVisible}
+        message={modalMessage}
+        onDismiss={() => setModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FFFFFF',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
   },
   header: {
-    marginTop: Platform.OS === 'android' ? 0 : 0,
     backgroundColor: '#135CAF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingTop: Platform.OS === 'android' ? 12 : 28,
-    paddingBottom: 16,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   resendButton: {
     padding: 8,
   },
   resendText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
   },
   content: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 32,
   },
   illustrationContainer: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginBottom: 32,
   },
   illustration: {
-    marginTop: '-40%',
-    width: width * 0.4,
-    height: width * 0.35,
+    width: 120,
+    height: 120,
+    tintColor: '#135CAF',
   },
   textContainer: {
     alignItems: 'center',
-    marginVertical: 16,
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#2C3A4B',
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 17,
-    color: '#4B5563',
+    fontSize: 16,
+    color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 6,
     lineHeight: 24,
   },
-  formContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: 20,
+  otpContainer: {
+    paddingHorizontal: 16,
   },
   otpInput: {
     width: '100%',
-    height: 100,
+    height: 80,
   },
   underlineStyleBase: {
-    width: 50,
-    height: 60,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    color: '#111827',
-    fontSize: 22,
+    width: 45,
+    height: 55,
+    borderWidth: 1,
+    borderColor: '#E8ECF4',
+    backgroundColor: '#F7F8F9',
+    borderRadius: 12,
+    color: '#2C3A4B',
+    fontSize: 24,
     fontWeight: '600',
-    backgroundColor: '#ffffff',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   underlineStyleHighLighted: {
-    borderColor: '#2563EB',
-    backgroundColor: '#ffffff',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    borderColor: '#135CAF',
+    backgroundColor: '#F1F5FF',
   },
 });
 

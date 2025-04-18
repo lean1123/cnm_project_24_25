@@ -41,6 +41,7 @@
     "react-native-dropdown-picker": "^5.4.6",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-image-picker": "^8.0.0",
+    "react-native-linear-gradient": "^2.8.3",
     "react-native-maps": "1.18.0",
     "react-native-modal": "^13.0.1",
     "react-native-paper": "^5.13.1",

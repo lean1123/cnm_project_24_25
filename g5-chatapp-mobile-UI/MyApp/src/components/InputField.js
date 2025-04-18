@@ -35,6 +35,9 @@ const styles = StyleSheet.create({
     paddingLeft: 45,
     borderRadius: 10,
     backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: '#E8ECF4',
+    boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
   },
 });
 

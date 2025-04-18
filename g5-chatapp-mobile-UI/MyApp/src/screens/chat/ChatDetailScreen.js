@@ -974,26 +974,49 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        multiple: true,
-        copyToCacheDirectory: true,
-      });
+ const handleDocument = async () => {
+  try {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "*/*",
+      copyToCacheDirectory: true,
+      multiple: false
+    });
 
-      if (
-        result.type === "success" ||
-        (Array.isArray(result.assets) && result.assets.length > 0)
-      ) {
-        const files = Array.isArray(result.assets) ? result.assets : [result];
-        await sendMessage({ files });
+    console.log("Document picker result:", result);
+
+    if (result.assets && Array.isArray(result.assets) && result.assets.length > 0) {
+      const file = result.assets[0];
+      
+      // Validate file
+      if (!file.uri || !file.mimeType) {
+        throw new Error("Invalid file selected");
       }
-    } catch (error) {
-      console.error("Error picking documents:", error);
-      alert("Error selecting documents");
+
+      // Check file size (limit to 10MB)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+      if (file.size > MAX_FILE_SIZE) {
+        alert("File size must be less than 10MB");
+        return;
+      }
+
+      // Create a valid file object
+      const validFile = {
+        uri: file.uri,
+        type: file.mimeType,
+        name: file.name,
+        size: file.size
+      };
+
+      await sendMessage({ files: [validFile] });
+    } else {
+      console.warn("No documents selected or invalid document format");
     }
-  };
+  } catch (error) {
+    console.error("Error picking documents:", error);
+    alert(error.message || "Error selecting documents");
+  }
+};
+
 
   const handleVideo = async () => {
     try {
@@ -2116,7 +2139,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         onClose={() => setShowOptions(false)}
         onCamera={handleCamera}
         onGallery={handleGallery}
-        onLocation={handleVideoPick}
+        onLocation={handleLocation}
         onDocument={handleDocument}
         onVideo={handleVideo}
         onAudio={() => {
