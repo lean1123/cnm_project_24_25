@@ -189,7 +189,7 @@ const Message = ({
           )}
 
           <div
-            className={cn("relative px-4 py-2 rounded-lg", {
+            className={cn("relative px-4 py-2 rounded-lg ", {
               "bg-secondary text-secondary-foreground": fromCurrentUser,
               "bg-muted text-mute-foreground": !fromCurrentUser,
               "rounded-br-none": !lastByUser && fromCurrentUser,
@@ -197,7 +197,7 @@ const Message = ({
             })}
           >
             {!message?.isRevoked && type === "TEXT" ? (
-              <p className="text-wrap break-words whitespace-pre-wrap">
+              <p className="text-wrap break-words whitespace-pre-wrap sm:max-w-[2200px] md:max-w-[550px] lg:max-w-[400px] xl:max-w-[600px]">
                 {content}
               </p>
             ) : null}

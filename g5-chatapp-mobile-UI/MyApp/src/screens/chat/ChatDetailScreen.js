@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  KeyboardAvoidingView,
 } from "react-native";
 import WebView from "react-native-webview";
 
@@ -36,6 +37,8 @@ import { chatService } from "../../services/chat.service";
 import useAuthStore from "../../store/useAuthStore";
 import { Video } from "expo-av";
 import { Audio } from "expo-av";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { API_URL } from "../../config/constants";
 
 const AudioMessage = ({ file, isMyMessage }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -421,7 +424,8 @@ const AudioRecordingModal = ({ visible, onClose, onSend }) => {
 const ChatDetailScreen = ({ navigation, route }) => {
   // console.log("ChatDetailScreen mounted with route params:", route.params);
   const { conversation } = route.params || {};
-  // console.log("Extracted conversation:", conversation);
+  console.log("Extracted conversation:", conversation);
+  const insets = useSafeAreaInsets();
 
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -447,6 +451,27 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const [showAudioRecording, setShowAudioRecording] = useState(false);
 
+  // hàm cuộn flatlist xuống dưới khi nhập input
+  const scrollToBottom = () => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToEnd({ animated: true });
+        }
+      }
+    );
+    return () => {
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
   const handleReturn = () => {
     navigation.navigate("Home_Chat");
   };
@@ -471,7 +496,30 @@ const ChatDetailScreen = ({ navigation, route }) => {
         const userData = await AsyncStorage.getItem("userData");
         if (userData) {
           const currentUserData = JSON.parse(userData);
-          setCurrentUser(currentUserData);
+          const response = await fetch(`${API_URL}/auth/get-my-profile`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${currentUserData.token}`,
+            },
+          });
+          const result = await response.json();
+          if (result.data) {
+            const userData = result.data;
+            setCurrentUser({
+              _id: userData._id || currentUserData._id,
+              firstName: userData.firstName || "",
+              lastName: userData.lastName || "",
+              email: userData.email || "",
+              gender: userData.gender || "Not set",
+              role: Array.isArray(userData.role)
+                ? userData.role
+                : [userData.role].filter(Boolean),
+              avatar: userData.avatar || null,
+              dob: userData.dob || null,
+            });
+          }
+          // setCurrentUser(currentUserData);
           console.log("Current user:", currentUserData);
 
           if (conversation) {
@@ -1371,7 +1419,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
     const isTemp = item._id && item._id.startsWith("temp-");
 
     const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
-    const defaultAvatar = require("../../../assets/chat/man.png");
+    const defaultAvatar = require("../../../assets/chat/avatar.png");
 
     // Ẩn tin nhắn nếu user hiện tại đã xóa
     if (item.deletedFor?.includes(authenticated)) {
@@ -1854,7 +1902,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                       source={
                         item.avatar
                           ? { uri: item.avatar }
-                          : require("../../../assets/chat/man.png")
+                          : require("../../../assets/chat/avatar.png")
                       }
                       style={styles.friendAvatar}
                     />
@@ -1918,37 +1966,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleReturn}>
-          <Icon name="chevron-left" size={30} color="white" />
-        </TouchableOpacity>
-        <Image
-          source={
-            otherUser?.avatar
-              ? { uri: otherUser.avatar }
-              : require("../../../assets/chat/man.png")
-          }
-          style={styles.avatar}
-        />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.friendName}>
-            {otherUser
-              ? otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`
-              : "Chat"}
-          </Text>
-          <Text style={styles.statusUser}>
-            {isOnline ? "Online" : "Offline"}
-          </Text>
-        </View>
-        <View style={styles.actionIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <AntDesign name="videocamera" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="call-outline" size={24} color="white" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 0 : 0}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleReturn}>
+            <Icon name="chevron-left" size={30} color="white" />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.iconButton}
             onPress={() => {
               if (otherUser && conversation) {
                 navigation.navigate("UserInfo", {
@@ -1967,66 +1994,122 @@ const ChatDetailScreen = ({ navigation, route }) => {
               }
             }}
           >
-            <Feather name="more-horizontal" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <PinnedMessageBar />
-
-      <FlatList
-        data={combinedMessages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item._id}
-        style={[styles.messageList, pinnedMessage && { marginTop: 50 }]}
-        contentContainerStyle={pinnedMessage ? { paddingTop: 50 } : null}
-        inverted={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        onContentSizeChange={() => {
-          if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
-          }
-        }}
-        onLayout={() => {
-          if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
-          }
-        }}
-        ref={flatListRef}
-      />
-
-      <View style={styles.inputContainer}>
-        <TouchableOpacity onPress={() => setShowOptions(true)}>
-          <View style={styles.addButton}>
-            <Ionicons name="add-circle" size={32} color="#0099ff" />
-            <Ionicons
-              name="add"
-              size={20}
-              color="white"
-              style={{ position: "absolute" }}
+            <Image
+              source={
+                otherUser?.avatar
+                  ? { uri: otherUser.avatar }
+                  : require("../../../assets/chat/avatar.png")
+              }
+              style={styles.avatar}
             />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => {
+              if (otherUser && conversation) {
+                navigation.navigate("UserInfo", {
+                  conversation: {
+                    _id: conversation._id,
+                    name:
+                      otherUser.name ||
+                      `${otherUser.firstName} ${otherUser.lastName}`,
+                    members: conversation.members || [],
+                    avatar: otherUser.avatar,
+                    isGroup: false,
+                    isOnline: isOnline,
+                    user: otherUser,
+                  },
+                });
+              }
+            }}
+          >
+            <Text style={styles.friendName}>
+              {otherUser
+                ? otherUser.name ||
+                  `${otherUser.firstName} ${otherUser.lastName}`
+                : "Chat"}
+            </Text>
+            <Text style={styles.statusUser}>
+              {isOnline ? "Online" : "Offline"}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.actionIcons}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => {
+                Alert.alert("Audio call");
+              }}
+            >
+              <Ionicons name="call-outline" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => {
+                Alert.alert("Video call");
+              }}
+            >
+              <AntDesign name="videocamera" size={24} color="white" />
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Type a message..."
-          value={newMessage}
-          onChangeText={(text) => setNewMessage(text)}
-          onSubmitEditing={handleSubmitEditing}
+        <PinnedMessageBar />
+
+        <FlatList
+          data={combinedMessages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item._id}
+          style={[styles.messageList, pinnedMessage && { marginTop: 50 }]}
+          contentContainerStyle={pinnedMessage ? { paddingTop: 50 } : null}
+          inverted={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onContentSizeChange={() => {
+            if (flatListRef.current) {
+              flatListRef.current.scrollToEnd({ animated: true });
+            }
+          }}
+          onLayout={() => {
+            if (flatListRef.current) {
+              flatListRef.current.scrollToEnd({ animated: true });
+            }
+          }}
+          ref={flatListRef}
         />
 
-        {newMessage.trim().length > 0 ? (
-          <TouchableOpacity onPress={handlePressSend}>
-            <Ionicons name="send" size={28} color="#0099ff" />
+        <View style={styles.inputContainer}>
+          <TouchableOpacity onPress={() => setShowOptions(true)}>
+            <View style={styles.addButton}>
+              <Ionicons name="add-circle" size={32} color="#0099ff" />
+              <Ionicons
+                name="add"
+                size={20}
+                color="white"
+                style={{ position: "absolute" }}
+              />
+            </View>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={handlePressLike}>
-            <Ionicons name="thumbs-up" size={28} color="#0099ff" />
-          </TouchableOpacity>
-        )}
-      </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Type a message..."
+            value={newMessage}
+            onChangeText={(text) => setNewMessage(text)}
+            onSubmitEditing={handleSubmitEditing}
+            onFocus={scrollToBottom}
+          />
+
+          {newMessage.trim().length > 0 ? (
+            <TouchableOpacity onPress={handlePressSend}>
+              <Ionicons name="send" size={28} color="#0099ff" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={handlePressLike}>
+              <Ionicons name="thumbs-up" size={28} color="#0099ff" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </KeyboardAvoidingView>
 
       <ChatOptions
         visible={showOptions}
@@ -2159,7 +2242,7 @@ const styles = StyleSheet.create({
   },
   messageList: {
     flex: 1,
-    padding: 15,
+    // padding: 4,
     backgroundColor: "#FFFFFF",
   },
   messageRow: {
@@ -2175,27 +2258,31 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   messageContainer: {
-    maxWidth: "100%",
+    maxWidth: "70%",
     marginHorizontal: 8,
+    borderRadius: 15,
   },
   messageContent: {
-    padding: 10,
+    padding: 8,
     borderRadius: 15,
-    width: 200,
+    maxWidth: "100%",
+    minWidth: 0,
   },
   userMessage: {
     alignSelf: "flex-end",
     backgroundColor: "#0099ff",
-    marginLeft: "auto",
+    marginLeft: 8,
   },
   friendMessage: {
     alignSelf: "flex-start",
     backgroundColor: "#e4e4e4",
-    marginRight: "auto",
+    marginRight: 8,
   },
   messageText: {
     fontSize: 15,
     lineHeight: 20,
+    flexWrap: "wrap",
+    flexShrink: 1,
   },
   userMessageText: {
     color: "white",

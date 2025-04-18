@@ -85,10 +85,10 @@ const AddFriendScreen = ({ navigation }) => {
                     source={
                         item.avatar 
                             ? { uri: `${API_URL}/uploads/${item.avatar}` }
-                            : require("../../../assets/chat/man.png")
+                            : require("../../../assets/chat/avatar.png")
                     }
                     style={styles.avatar}
-                    defaultSource={require("../../../assets/chat/man.png")}
+                    defaultSource={require("../../../assets/chat/avatar.png")}
                 />
                 <View style={styles.userDetails}>
                     <Text style={styles.userName}>{item.firstName} {item.lastName}</Text>

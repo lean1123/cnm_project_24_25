@@ -22,9 +22,9 @@ const ChatHeader = ({
 
       {/* Avatar */}
       <Image 
-        source={avatarUrl ? { uri: avatarUrl } : require('../../../../assets/chat/man.png')}
+        source={avatarUrl ? { uri: avatarUrl } : require('../../../../assets/chat/avatar.png')}
         style={styles.avatar}
-        defaultSource={require('../../../../assets/chat/man.png')}
+        defaultSource={require('../../../../assets/chat/avatar.png')}
       />
 
       {/* Name + Online status */}

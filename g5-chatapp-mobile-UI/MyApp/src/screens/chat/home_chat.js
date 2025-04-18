@@ -9,15 +9,17 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from "react-native";
-import Header from "../../components/Header";
 import Footer from "../../components/Footer";
+import Header from "../../components/Header";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from "../../config/axiosInstance";
 import { formatDistanceToNow } from 'date-fns';
 import { getSocket } from "../../services/socket";
 import { Ionicons } from "@expo/vector-icons";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 const HomeScreen = () => {
   const [conversations, setConversations] = useState([]);
@@ -225,14 +227,26 @@ const HomeScreen = () => {
     }
   }, [userId]); // Add userId as dependency
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
+        <Header />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#135CAF" />
+        </View>
+        <Footer />
+      </SafeAreaView>
+    );
+  }
+
   const renderConversation = ({ item }) => (
     <TouchableOpacity
       style={[
-        styles.friendItem,
+        styles.conversationItem,
         item.unreadCount > 0 && styles.unreadConversation
       ]}
       onPress={() => {
-        // Reset unread count when entering the conversation
         setConversations(prevConversations =>
           prevConversations.map(conv =>
             conv._id === item._id
@@ -245,7 +259,7 @@ const HomeScreen = () => {
     >
       <View style={styles.avatarContainer}>
         <Image 
-          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/man.png")}
+          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/avatar.png")}
           style={styles.avatar} 
         />
         {item.isOnline && <View style={styles.onlineIndicator} />}
@@ -254,7 +268,7 @@ const HomeScreen = () => {
       <View style={styles.conversationInfo}>
         <View style={styles.conversationHeader}>
           <Text style={[
-            styles.friendName,
+            styles.conversationName,
             item.unreadCount > 0 && styles.unreadName
           ]}>
             {item.name}
@@ -293,41 +307,39 @@ const HomeScreen = () => {
     </TouchableOpacity>
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Header />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#135CAF" />
-        </View>
-        <Footer />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
       <Header />
-      <FlatList
-        data={conversations}
-        renderItem={renderConversation}
-        keyExtractor={(item) => item._id}
-        style={styles.friendList}
-        refreshing={refreshing}
-        onRefresh={() => {
-          setRefreshing(true);
-          fetchConversations();
-        }}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubble-ellipses-outline" size={64} color="#666" />
-            <Text style={styles.emptyText}>Chưa có cuộc trò chuyện nào</Text>
-            <Text style={styles.emptySubText}>
-              Hãy bắt đầu trò chuyện với bạn bè của bạn
-            </Text>
-          </View>
-        )}
-      />
+      <View style={styles.content}>
+        <FlatList
+          data={conversations}
+          renderItem={renderConversation}
+          keyExtractor={(item) => item._id}
+          style={styles.conversationList}
+          contentContainerStyle={styles.listContent}
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            fetchConversations();
+          }}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Icon name="message-text-outline" size={64} color="#666" />
+              <Text style={styles.emptyText}>Chưa có cuộc trò chuyện nào</Text>
+              <Text style={styles.emptySubText}>
+                Hãy bắt đầu trò chuyện với bạn bè của bạn
+              </Text>
+              <TouchableOpacity 
+                style={styles.startChatButton}
+                onPress={() => navigation.navigate("FriendsList")}
+              >
+                <Text style={styles.startChatButtonText}>Bắt đầu chat</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      </View>
       <Footer />
     </SafeAreaView>
   );
@@ -336,41 +348,53 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    width: "100%",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f0f2f5",
   },
-  loadingContainer: {
+  content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f0f2f5",
   },
-  friendList: {
+  conversationList: {
     flex: 1,
   },
-  friendItem: {
+  listContent: {
+    paddingTop: 8,
+  },
+  conversationItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    backgroundColor: "white",
+    padding: 16,
+    backgroundColor: "#fff",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  unreadConversation: {
+    backgroundColor: "#fff",
+    borderLeftWidth: 4,
+    borderLeftColor: "#135CAF",
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 15,
+    marginRight: 16,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#4CAF50',
     borderWidth: 2,
     borderColor: 'white',
@@ -382,14 +406,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  friendName: {
+  conversationName: {
     fontSize: 16,
-    color: "#000",
+    color: "#1a1a1a",
+    fontWeight: "500",
   },
   unreadName: {
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#135CAF",
   },
   timeText: {
@@ -398,7 +423,7 @@ const styles = StyleSheet.create({
   },
   unreadTime: {
     color: "#135CAF",
-    fontWeight: "500",
+    fontWeight: "600",
   },
   messageRow: {
     flexDirection: 'row',
@@ -406,22 +431,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   lastMessage: {
+    fontSize: 14,
     color: "#666",
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
   unreadMessage: {
-    color: "#000",
+    color: "#1a1a1a",
     fontWeight: "500",
   },
   unreadBadge: {
     backgroundColor: "#135CAF",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
   },
   unreadBadgePlus: {
     backgroundColor: "#E53935",
@@ -431,25 +457,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 100,
+    paddingHorizontal: 32,
   },
   emptyText: {
     fontSize: 18,
-    color: '#666',
+    color: '#1a1a1a',
     marginTop: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   emptySubText: {
     fontSize: 14,
-    color: '#999',
+    color: '#666',
     marginTop: 8,
+    textAlign: 'center',
+    marginBottom: 24,
   },
-  unreadConversation: {
-    backgroundColor: "rgba(19, 92, 175, 0.05)",
+  startChatButton: {
+    backgroundColor: "#135CAF",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+  },
+  startChatButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

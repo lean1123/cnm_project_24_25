@@ -93,7 +93,7 @@ const ContactRequestsScreen = ({ navigation }) => {
                         <Image 
                             source={{ uri: item.user.avatar }}
                             style={styles.avatar}
-                            defaultSource={require("../../../assets/chat/man.png")}
+                            defaultSource={require("../../../assets/chat/avatar.png")}
                         />
                     ) : (
                         <Icon name="account-circle" size={40} color="#135CAF" />
