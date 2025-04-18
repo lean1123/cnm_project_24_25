@@ -6,6 +6,7 @@ import { UserService } from 'src/user/user.service';
 import { ConvensationRequest } from './dto/requests/convensation.request';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
 import { Convensation } from './schema/convensation.schema';
+import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
 
 @Injectable()
 export class ConversationService {
@@ -73,7 +74,7 @@ export class ConversationService {
       });
 
       if (existedGroup) {
-        throw new Error('Group name is already existed');
+        throw new Error('Group is already existed');
       }
 
       conversation.admin = admin._id as string;
@@ -198,5 +199,49 @@ export class ConversationService {
     await this.convenstationModel.findByIdAndUpdate(conversationId, {
       lastMessage: message._id,
     });
+  }
+
+  async addMemberToGroupConversation(
+    userPayload: JwtPayload,
+    conversationId: string,
+    newMemberIds: MemberAdditionRequest,
+  ) {
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation || conversation.isGroup === false) {
+      throw new Error('Conversation not found or is not a group conversation');
+    }
+
+    const isMember = conversation.members.includes(
+      new Types.ObjectId(userPayload._id),
+    );
+    if (!isMember) {
+      throw new Error('You are not a member of this conversation');
+    }
+
+    const members = conversation.members;
+    const validUserChecks = await Promise.all(
+      newMemberIds.newMemberIds.map(async (id) => {
+        const exists = await this.userService.findById(id);
+        return exists ? new Types.ObjectId(id) : null;
+      }),
+    );
+
+    const existedMembers = validUserChecks.filter((member) =>
+      members.includes(member),
+    );
+
+    if (existedMembers.length > 0) {
+      throw new Error(
+        ` ${existedMembers.join(', ')} are already in the group conversation`,
+      );
+    }
+
+    const updatedConversation = await this.convenstationModel.findByIdAndUpdate(
+      conversationId,
+      { members: [...members, ...validUserChecks] },
+      { new: true },
+    );
+
+    return this.getConvensationById(updatedConversation._id as string);
   }
 }

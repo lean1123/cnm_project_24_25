@@ -15,6 +15,7 @@ import { ConvensationRequest } from './dto/requests/convensation.request';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
 import { ChatGateway } from '../message/gateway/chat.gateway';
+import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
 
 @Controller('conversation')
 export class ConvensationController {
@@ -43,6 +44,20 @@ export class ConvensationController {
     this.chatGateWay.handleCreateConversationForGroup(savedConversation);
 
     return savedConversation;
+  }
+
+  @Post('add-member/:conversationId')
+  @UseGuards(AuthGuard('jwt'))
+  addMemberToGroupConversation(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('conversationId') conversationId: string,
+    @Body() memberAddition: MemberAdditionRequest,
+  ) {
+    return this.convensationService.addMemberToGroupConversation(
+      userPayload,
+      conversationId,
+      memberAddition,
+    );
   }
 
   @Put(':id')
