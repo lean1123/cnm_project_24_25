@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
@@ -16,6 +17,7 @@ import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
 import { ChatGateway } from '../message/gateway/chat.gateway';
 import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
+import { MemberRemovationRequest } from './dto/requests/memberRemovation.request';
 
 @Controller('conversation')
 export class ConvensationController {
@@ -48,15 +50,34 @@ export class ConvensationController {
 
   @Post('add-member/:conversationId')
   @UseGuards(AuthGuard('jwt'))
-  addMemberToGroupConversation(
+  async addMemberToGroupConversation(
     @UserDecorator() userPayload: JwtPayload,
     @Param('conversationId') conversationId: string,
     @Body() memberAddition: MemberAdditionRequest,
   ) {
-    return this.convensationService.addMemberToGroupConversation(
+    const updatedConversation =
+      await this.convensationService.addMemberToGroupConversation(
+        userPayload,
+        conversationId,
+        memberAddition,
+      );
+
+    this.chatGateWay.handleUpdateConversation(updatedConversation);
+
+    return updatedConversation;
+  }
+
+  @Delete('remove-member/:conversationId')
+  @UseGuards(AuthGuard('jwt'))
+  removeMemberFromGroupConversation(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('conversationId') conversationId: string,
+    @Body() memberRemove: MemberRemovationRequest,
+  ) {
+    return this.convensationService.removeMemberFromGroupConversation(
       userPayload,
       conversationId,
-      memberAddition,
+      memberRemove.memberId,
     );
   }
 

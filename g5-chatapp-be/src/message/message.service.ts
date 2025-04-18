@@ -47,7 +47,7 @@ export class MessageService {
 
     // Kiểm tra người gửi có tồn tại trong participant không
     const isParticipant = conversation.members.some((member) =>
-      member._id.equals(sender._id as Types.ObjectId),
+      member.user.equals(sender._id as Types.ObjectId),
     );
 
     if (!isParticipant) {
