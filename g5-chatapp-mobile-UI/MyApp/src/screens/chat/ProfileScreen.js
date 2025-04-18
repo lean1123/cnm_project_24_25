@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  StatusBar,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -242,140 +243,165 @@ const ProfileScreen = ({ navigation }) => {
       </SafeAreaView>
     );
   }
+  //  log first name and last name
+  console.log("user:", user);
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header />
+      <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollView}>
+
         <View style={styles.profileSection}>
           <View style={styles.avatarContainer}>
             <Image
               source={{ uri: user.avatar || require("../../../assets/chat/avatar.png") }}
               style={styles.avatar}
             />
+//         <View style={styles.coverPhoto}>
+//           <View style={styles.profileHeader}>
+//             <View style={styles.avatarContainer}>
+//               <Image
+//                 source={{ uri: user.avatar || "https://i.pravatar.cc/150?img=5" }}
+//                 style={styles.avatar}
+//               />
+//               <TouchableOpacity
+//                 style={styles.editAvatar}
+//                 onPress={() => handleChangeAvatar()}
+//               >
+//                 <Icon name="camera" size={20} color="#fff" />
+//               </TouchableOpacity>
+//             </View>
+//           </View>
+//         </View>
+
+//         <View style={styles.contentContainer}>
+//           <View style={styles.section}>
+//             <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
+//             <Text style={styles.sectionTitle}>Personal Information</Text>
+//             <View style={styles.infoContainer}>
+//               <InfoRow label="Email" value={user.email} icon="email" />
+//               <InfoRow label="Gender" value={user.gender} icon="gender-male-female" />
+//               <InfoRow
+//                 label="Birthday"
+//                 value={user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"}
+//                 icon="cake-variant"
+//               />
+//             </View>
+
             <TouchableOpacity
-              style={styles.editAvatar}
-              onPress={() => handleChangeAvatar()}
+              style={styles.editButton}
+              onPress={() => setEditModalVisible(true)}
             >
-              <Icon name="pencil" size={18} color="#fff" />
+              <Icon name="account-edit" size={20} color="#fff" />
+              <Text style={styles.buttonText}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
-          <Text
-            style={styles.name}
-          >{`${user.firstName} ${user.lastName}`}</Text>
 
-          <View style={styles.infoContainer}>
-            <InfoRow label="Email" value={user.email} />
-            <InfoRow label="Gender" value={user.gender} />
-            <InfoRow
-              label="Date of Birth"
-              value={
-                user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"
-              }
-            />
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Security</Text>
+            <TouchableOpacity
+              style={[styles.menuItem, showChangePassword && styles.menuItemActive]}
+              onPress={() => setShowChangePassword(!showChangePassword)}
+            >
+              <View style={styles.menuItemLeft}>
+                <Icon name="lock" size={24} color="#135CAF" />
+                <Text style={styles.menuItemText}>Change Password</Text>
+              </View>
+              <Icon 
+                name={showChangePassword ? "chevron-up" : "chevron-right"} 
+                size={24} 
+                color="#666" 
+              />
+            </TouchableOpacity>
+
+            {showChangePassword && (
+              <View style={styles.passwordForm}>
+                <View style={styles.inputContainer}>
+                  <Icon name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Current Password"
+                    value={oldPassword}
+                    onChangeText={setOldPassword}
+                    secureTextEntry={!showOldPassword}
+                    placeholderTextColor="#999"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowOldPassword(!showOldPassword)}
+                  >
+                    <Icon
+                      name={showOldPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color="#666"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Icon name="lock-plus-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="New Password"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showNewPassword}
+                    placeholderTextColor="#999"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    <Icon
+                      name={showNewPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color="#666"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Icon name="lock-check-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm New Password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    placeholderTextColor="#999"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <Icon
+                      name={showConfirmPassword ? "eye-off" : "eye"}
+                      size={20}
+                      color="#666"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.passwordRequirements}>
+                  Password must be at least 6 characters long
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleChangePassword}
+                >
+                  <Text style={styles.submitButtonText}>Update Password</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Icon name="logout" size={24} color="#E74C3C" />
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => setEditModalVisible(true)}
-          >
-            <Icon name="pencil" size={18} color="#fff" />
-            <Text style={styles.editText}>Edit Profile</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.changePasswordButton}
-            onPress={() => setShowChangePassword(!showChangePassword)}
-          >
-            <Icon name="lock" size={18} color="#fff" />
-            <Text style={styles.changePasswordText}>
-              {showChangePassword ? "Hide Change Password" : "Change Password"}
-            </Text>
-          </TouchableOpacity>
-
-          {showChangePassword && (
-            <View style={styles.passwordForm}>
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Current Password"
-                  value={oldPassword}
-                  onChangeText={setOldPassword}
-                  secureTextEntry={!showOldPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowOldPassword(!showOldPassword)}
-                >
-                  <Icon
-                    name={showOldPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="New Password"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showNewPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowNewPassword(!showNewPassword)}
-                >
-                  <Icon
-                    name={showNewPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Confirm New Password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <Icon
-                    name={showConfirmPassword ? "eye-off" : "eye"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.passwordRequirements}>
-                Password must be at least 6 characters long
-              </Text>
-
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleChangePassword}
-              >
-                <Text style={styles.submitButtonText}>Update Password</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Icon name="logout" size={18} color="#E74C3C" />
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <Footer />
 
       <EditProfileModal
         visible={editModalVisible}
@@ -389,15 +415,20 @@ const ProfileScreen = ({ navigation }) => {
         message={notificationMessage}
         onDismiss={() => setNotificationModalVisible(false)}
       />
+      
+      <Footer />
     </SafeAreaView>
   );
 };
 
-const InfoRow = ({ label, value }) => {
+const InfoRow = ({ label, value, icon }) => {
   const displayValue = Array.isArray(value) ? value.join(", ") : value;
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}:</Text>
+      <View style={styles.infoLabelContainer}>
+        <Icon name={icon} size={20} color="#666" style={styles.infoIcon} />
+        <Text style={styles.infoLabel}>{label}</Text>
+      </View>
       <Text style={styles.infoValue}>{displayValue || "Not set"}</Text>
     </View>
   );
@@ -411,83 +442,101 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f2f5",
   },
   scrollView: {
-    alignItems: "center",
-    paddingVertical: 20,
+    flexGrow: 1,
   },
-  profileSection: {
+  coverPhoto: {
+    height: 130,
+    backgroundColor: "#135CAF",
+    justifyContent: "flex-end",
+  },
+  profileHeader: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    width: "90%",
-    borderRadius: 15,
-    padding: 20,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: -70,
   },
   avatarContainer: {
     position: "relative",
-    marginBottom: 15,
+    zIndex: 1,
   },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "#135CAF",
+    width: 140,
+    height: 140,
+    borderRadius: 100,
+    borderWidth: 4,
+    borderColor: "#fff",
+    resizeMode: "stretch",
   },
   editAvatar: {
     position: "absolute",
     bottom: 0,
     right: 0,
     backgroundColor: "#135CAF",
-    borderRadius: 20,
-    padding: 8,
-    elevation: 3,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   name: {
     fontSize: 24,
     fontWeight: "bold",
+    color: "#fff",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  contentContainer: {
+    flex: 1,
+    backgroundColor: "#f0f2f5",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -30,
+    paddingTop: 60,
+    paddingHorizontal: 16,
+  },
+  section: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
     color: "#1a1a1a",
-    marginTop: 10,
-    marginBottom: 5,
+    marginBottom: 16,
   },
   infoContainer: {
-    marginTop: 20,
-    width: "100%",
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 15,
+    marginBottom: 16,
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 12,
-    paddingHorizontal: 15,
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  infoLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  infoIcon: {
+    marginRight: 12,
   },
   infoLabel: {
-    fontWeight: "600",
-    color: "#666666",
     fontSize: 16,
+    color: "#666",
   },
   infoValue: {
-    color: "#135CAF",
     fontSize: 16,
+    color: "#1a1a1a",
     fontWeight: "500",
-    backgroundColor: "#f8f9fa",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
   },
   editButton: {
     flexDirection: "row",
@@ -495,95 +544,98 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#135CAF",
     paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    marginTop: 20,
-    width: "100%",
-    elevation: 3,
+    borderRadius: 25,
+    marginTop: 8,
   },
-  editText: {
-    color: "#ffffff",
-    marginLeft: 10,
-    fontWeight: "bold",
+  buttonText: {
+    color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
-  changePasswordButton: {
+  menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    marginTop: 15,
-    width: "100%",
-    elevation: 3,
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  changePasswordText: {
-    color: "#ffffff",
-    marginLeft: 10,
-    fontWeight: "bold",
-    fontSize: 16,
+  menuItemActive: {
+    backgroundColor: "#f8f9fa",
+    marginHorizontal: -16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0,
   },
-  logoutButton: {
+  menuItemLeft: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ffffff",
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    marginTop: 15,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#E74C3C",
-    elevation: 2,
   },
-  logoutText: {
-    color: "#E74C3C",
-    marginLeft: 10,
-    fontWeight: "bold",
+  menuItemText: {
     fontSize: 16,
+    marginLeft: 12,
+    color: "#1a1a1a",
   },
   passwordForm: {
-    width: "100%",
-    marginTop: 15,
-    padding: 15,
+    marginTop: 16,
+    padding: 16,
     backgroundColor: "#f8f9fa",
-    borderRadius: 8,
+    borderRadius: 12,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    marginBottom: 10,
     backgroundColor: "#fff",
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  inputIcon: {
+    paddingLeft: 12,
   },
   input: {
     flex: 1,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     fontSize: 16,
+    color: "#1a1a1a",
   },
   eyeIcon: {
     padding: 12,
   },
   passwordRequirements: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#666",
-    marginBottom: 15,
-    lineHeight: 18,
+    marginBottom: 16,
+    marginTop: 4,
   },
   submitButton: {
     backgroundColor: "#135CAF",
-    padding: 12,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 25,
     alignItems: "center",
   },
   submitButtonText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    marginTop: 8,
+    borderRadius: 25,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E74C3C",
+  },
+  logoutText: {
+    color: "#E74C3C",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
 });

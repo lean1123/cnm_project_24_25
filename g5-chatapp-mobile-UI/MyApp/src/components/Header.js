@@ -7,6 +7,7 @@ import {
   TextInput,
   Modal,
   Image,
+  Animated,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
@@ -16,23 +17,47 @@ const Header = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
+  const modalOptions = [
+    {
+      icon: "account-plus-outline",
+      text: "Add Friend",
+      onPress: () => navigation.navigate("AddFriend"),
+    },
+    {
+      icon: "account-clock-outline",
+      text: "Contact Requests",
+      onPress: () => navigation.navigate("ContactRequests"),
+    },
+    {
+      icon: "account-group-outline",
+      text: "Add Group",
+      onPress: () => navigation.navigate("AddGroupScreen"),
+    },
+    {
+      icon: "phone-outline",
+      text: "Call Group",
+      onPress: () => navigation.navigate("GroupCallScreen"),
+    },
+  ];
+
   return (
     <View style={styles.header}>
       {isSearching ? (
-        <View style={styles.headerContent}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search..."
-            placeholderTextColor="#888"
-            autoFocus
-          />
-          <TouchableOpacity onPress={() => setIsSearching(false)}>
-            <Icon
-              name="close-circle"
-              size={30}
-              color="#fff"
-              style={styles.iconBack}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <Icon name="magnify" size={20} color="#666" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Tìm kiếm..."
+              placeholderTextColor="#666"
+              autoFocus
             />
+          </View>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={() => setIsSearching(false)}
+          >
+            <Text style={styles.cancelText}>Hủy</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -42,24 +67,20 @@ const Header = () => {
               source={require("../../assets/chat/logochat.png")}
               style={styles.logo}
             />
-            <Text style={styles.text_header}>E-Chat</Text>
+            <Text style={styles.headerTitle}>E-Chat</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => setIsSearching(true)}>
-              <Icon
-                name="magnify"
-                size={30}
-                color="#fff"
-                style={styles.searchIcon}
-              />
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => setIsSearching(true)}
+            >
+              <Icon name="magnify" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsModalVisible(true)}>
-              <Icon
-                name="plus"
-                size={34}
-                color="#fff"
-                style={styles.plusIcon}
-              />
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => setIsModalVisible(true)}
+            >
+              <Icon name="plus" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -71,7 +92,6 @@ const Header = () => {
         animationType="fade"
         onRequestClose={() => setIsModalVisible(false)}
       >
-
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
@@ -79,56 +99,22 @@ const Header = () => {
         >
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => {
-                  setIsModalVisible(false);
-                  setTimeout(() => navigation.navigate("AddFriend"), 300);
-                }}
-              >
-                <Icon name="account-plus" size={20} color="#000" />
-                <Text style={styles.modalText}>Add Friend</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => {
-                  setIsModalVisible(false);
-                  setTimeout(() => navigation.navigate("ContactRequests"), 300);
-                }}
-              >
-                <Icon name="account-clock" size={20} color="#000" />
-                <Text style={styles.modalText}>Contact Requests</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => {
-                  setIsModalVisible(false);
-                  setTimeout(() => navigation.navigate("AddGroupScreen"), 300);
-                }}
-              >
-                <Icon name="account-group" size={20} color="#000" />
-                <Text style={styles.modalText}>Add Group</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => {
-                  setIsModalVisible(false);
-                  setTimeout(() => navigation.navigate("GroupCallScreen"), 300);
-                }}
-              >
-                <Icon name="phone" size={20} color="#000" />
-                <Text style={styles.modalText}>Call Group</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalClose}
-                onPress={() => setIsModalVisible(false)}
-              >
-                <Icon name="close" size={22} color="red" />
-              </TouchableOpacity>
+              {modalOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.modalOption,
+                    index === modalOptions.length - 1 && styles.lastOption
+                  ]}
+                  onPress={() => {
+                    setIsModalVisible(false);
+                    setTimeout(() => option.onPress(), 300);
+                  }}
+                >
+                  <Icon name={option.icon} size={22} color="#135CAF" />
+                  <Text style={styles.modalText}>{option.text}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </TouchableOpacity>
@@ -136,20 +122,13 @@ const Header = () => {
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   header: {
     backgroundColor: "#135CAF",
-    width: "100%",
-    borderColor: "#ccc",
-    borderWidth: 1,
-    height: 70, 
-    justifyContent: "center",
-    paddingHorizontal: 10,
-  },
-  logo: {
-    width: 60,
-    height: 60,
-    resizeMode: "contain",
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0, 0, 0, 0.1)",
   },
   headerContent: {
     flexDirection: "row",
@@ -159,80 +138,98 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
+    marginLeft: -15,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    resizeMode: "contain",
+  },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
+    marginLeft: 8,
   },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
   },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+  },
   searchIcon: {
-    marginHorizontal: 8,
-  },
-  plusIcon: {
-    marginHorizontal: 5,
-  },
-  iconBack: {
-    marginLeft: 10,
-  },
-  text_header: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 24,
-    marginLeft: 5,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    backgroundColor: "#fff",
+    height: 36,
+    fontSize: 16,
     color: "#000",
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    height: 30,
-    paddingVertical: 5,
-    textAlignVertical: "center",
+  },
+  cancelButton: {
+    marginLeft: 12,
+    paddingVertical: 8,
+  },
+  cancelText: {
+    color: "#fff",
     fontSize: 16,
-  },
-  modalContainer: {
-    position: "absolute",
-    top: "12%", 
-    right: "5%", 
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 10,
-    width: 200,
-    alignItems: "center",
-  },
-  modalOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    width: "100%",
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-  },
-  modalText: {
-    fontSize: 16,
-    marginLeft: 10,
-  },
-  modalClose: {
-    marginTop: 10,
-  },
-  modalCloseText: {
-    color: "red",
-    fontWeight: "bold",
+    fontWeight: "500",
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
+  },
+  modalContainer: {
+    position: "absolute",
+    top: 80,
+    right: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: 200,
+  },
+  modalContent: {
+    padding: 8,
+  },
+  modalOption: {
+    flexDirection: "row",
     alignItems: "center",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  lastOption: {
+    borderBottomWidth: 0,
+  },
+  modalText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: "#1a1a1a",
+    fontWeight: "500",
   },
 });
 
