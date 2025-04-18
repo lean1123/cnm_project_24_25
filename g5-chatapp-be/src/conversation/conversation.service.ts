@@ -167,7 +167,7 @@ export class ConversationService {
     }
     const conversations = await this.convenstationModel
       .find({
-        members: new Types.ObjectId(userId),
+        'members.user': new Types.ObjectId(userId),
       })
       .exec();
     return (
