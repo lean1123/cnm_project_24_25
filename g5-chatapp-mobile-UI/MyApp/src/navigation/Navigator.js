@@ -2,8 +2,33 @@ import React, { use, useEffect } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useAuth } from "../contexts/AuthContext";
 import { ActivityIndicator, View } from "react-native";
+import { createNavigationContainerRef } from '@react-navigation/native';
 
-// Import màn hình
+// Export navigation reference and helper functions
+export const navigationRef = createNavigationContainerRef();
+
+export function navigate(name, params) {
+  if (navigationRef.isReady()) {
+    navigationRef.navigate(name, params);
+  }
+}
+
+export function reset(name, params = {}) {
+  if (navigationRef.isReady()) {
+    navigationRef.reset({
+      index: 0,
+      routes: [{ name, params }],
+    });
+  }
+}
+
+export function goBack() {
+  if (navigationRef.isReady() && navigationRef.canGoBack()) {
+    navigationRef.goBack();
+  }
+}
+
+// Import screens
 import Loading_start from "../screens/onboarding/Loading_start";
 import Loading_Middle from "../screens/onboarding/Loading_Middle";
 import Loading_done from "../screens/onboarding/Loading_done";
@@ -34,7 +59,6 @@ import VerifyOTPScreen from "../screens/auth/verifyOTP";
 import ForgotPasswordScreen from "../screens/account/forgotPassword";
 import { useNavigation } from "@react-navigation/native";
 import { getSocket, reconnectSocket } from "../services/socket";
-
 
 const Stack = createStackNavigator();
 

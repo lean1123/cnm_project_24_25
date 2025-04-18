@@ -1,7 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../config/api";
 import axiosInstance from "../config/axiosInstance";
-import { getSocket } from "../config/socket";
+import { getSocket } from "../services/socket";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const chatService = {
