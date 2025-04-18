@@ -69,16 +69,21 @@ export class ConvensationController {
 
   @Delete('remove-member/:conversationId')
   @UseGuards(AuthGuard('jwt'))
-  removeMemberFromGroupConversation(
+  async removeMemberFromGroupConversation(
     @UserDecorator() userPayload: JwtPayload,
     @Param('conversationId') conversationId: string,
     @Body() memberRemove: MemberRemovationRequest,
   ) {
-    return this.convensationService.removeMemberFromGroupConversation(
-      userPayload,
-      conversationId,
-      memberRemove.memberId,
-    );
+    const updatedConversation =
+      await this.convensationService.removeMemberFromGroupConversation(
+        userPayload,
+        conversationId,
+        memberRemove.memberId,
+      );
+
+    this.chatGateWay.handleUpdateConversation(updatedConversation);
+
+    return updatedConversation;
   }
 
   @Put(':id')
