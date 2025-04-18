@@ -71,8 +71,6 @@ const ProfileScreen = ({ navigation }) => {
 
       const result = await response.json();
 
-      console.log("Profile fetch result:", result); // Debug log
-
       if (!response.ok) {
         throw new Error(result.message || "Failed to fetch user profile");
       }
@@ -250,43 +248,46 @@ const ProfileScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollView}>
+        <View style={styles.coverPhoto}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarContainer}>
+              <Image
+                source={{
+                  uri: user.avatar || "https://i.pravatar.cc/150?img=5",
+                }}
+                style={styles.avatar}
+              />
+              <TouchableOpacity
+                style={styles.editAvatar}
+                onPress={() => handleChangeAvatar()}
+              >
+                <Icon name="camera" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
 
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <Image
-              source={{ uri: user.avatar || require("../../../assets/chat/avatar.png") }}
-              style={styles.avatar}
-            />
-//         <View style={styles.coverPhoto}>
-//           <View style={styles.profileHeader}>
-//             <View style={styles.avatarContainer}>
-//               <Image
-//                 source={{ uri: user.avatar || "https://i.pravatar.cc/150?img=5" }}
-//                 style={styles.avatar}
-//               />
-//               <TouchableOpacity
-//                 style={styles.editAvatar}
-//                 onPress={() => handleChangeAvatar()}
-//               >
-//                 <Icon name="camera" size={20} color="#fff" />
-//               </TouchableOpacity>
-//             </View>
-//           </View>
-//         </View>
-
-//         <View style={styles.contentContainer}>
-//           <View style={styles.section}>
-//             <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
-//             <Text style={styles.sectionTitle}>Personal Information</Text>
-//             <View style={styles.infoContainer}>
-//               <InfoRow label="Email" value={user.email} icon="email" />
-//               <InfoRow label="Gender" value={user.gender} icon="gender-male-female" />
-//               <InfoRow
-//                 label="Birthday"
-//                 value={user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"}
-//                 icon="cake-variant"
-//               />
-//             </View>
+        <View style={styles.contentContainer}>
+          <View style={styles.section}>
+            <Text
+              style={styles.name}
+            >{`${user.firstName} ${user.lastName}`}</Text>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
+            <View style={styles.infoContainer}>
+              <InfoRow label="Email" value={user.email} icon="email" />
+              <InfoRow
+                label="Gender"
+                value={user.gender}
+                icon="gender-male-female"
+              />
+              <InfoRow
+                label="Birthday"
+                value={
+                  user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"
+                }
+                icon="cake-variant"
+              />
+            </View>
 
             <TouchableOpacity
               style={styles.editButton}
@@ -300,24 +301,32 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Security</Text>
             <TouchableOpacity
-              style={[styles.menuItem, showChangePassword && styles.menuItemActive]}
+              style={[
+                styles.menuItem,
+                showChangePassword && styles.menuItemActive,
+              ]}
               onPress={() => setShowChangePassword(!showChangePassword)}
             >
               <View style={styles.menuItemLeft}>
                 <Icon name="lock" size={24} color="#135CAF" />
                 <Text style={styles.menuItemText}>Change Password</Text>
               </View>
-              <Icon 
-                name={showChangePassword ? "chevron-up" : "chevron-right"} 
-                size={24} 
-                color="#666" 
+              <Icon
+                name={showChangePassword ? "chevron-up" : "chevron-right"}
+                size={24}
+                color="#666"
               />
             </TouchableOpacity>
 
             {showChangePassword && (
               <View style={styles.passwordForm}>
                 <View style={styles.inputContainer}>
-                  <Icon name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <Icon
+                    name="lock-outline"
+                    size={20}
+                    color="#666"
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="Current Password"
@@ -339,7 +348,12 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Icon name="lock-plus-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <Icon
+                    name="lock-plus-outline"
+                    size={20}
+                    color="#666"
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="New Password"
@@ -361,7 +375,12 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Icon name="lock-check-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <Icon
+                    name="lock-check-outline"
+                    size={20}
+                    color="#666"
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="Confirm New Password"
@@ -395,7 +414,10 @@ const ProfileScreen = ({ navigation }) => {
               </View>
             )}
 
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+            >
               <Icon name="logout" size={24} color="#E74C3C" />
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
@@ -415,7 +437,7 @@ const ProfileScreen = ({ navigation }) => {
         message={notificationMessage}
         onDismiss={() => setNotificationModalVisible(false)}
       />
-      
+
       <Footer />
     </SafeAreaView>
   );

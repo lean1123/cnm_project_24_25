@@ -106,7 +106,7 @@ export class ContactService {
     // Nếu chưa có cuộc trò chuyện, tạo mới
     if (!existingConversation) {
       try {
-        await this.conversationService.createConvensation({
+        await this.conversationService.createConvensation(userPayload, {
           isGroup: false,
           members: [user._id as string, contactUser._id as string],
           lastMessage: null,

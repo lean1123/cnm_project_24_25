@@ -422,7 +422,7 @@ const AudioRecordingModal = ({ visible, onClose, onSend }) => {
 };
 
 const ChatDetailScreen = ({ navigation, route }) => {
-  console.log("ChatDetailScreen mounted with route params:", route.params);
+  // console.log("ChatDetailScreen mounted with route params:", route.params);
   const { conversation } = route.params || {};
   console.log("Extracted conversation:", conversation);
   const insets = useSafeAreaInsets();
@@ -469,7 +469,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
     );
     return () => {
       keyboardDidShowListener.remove();
-    }
+    };
   }, []);
 
   const handleReturn = () => {
@@ -497,28 +497,28 @@ const ChatDetailScreen = ({ navigation, route }) => {
         if (userData) {
           const currentUserData = JSON.parse(userData);
           const response = await fetch(`${API_URL}/auth/get-my-profile`, {
-                  method: "GET",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${currentUserData.token}`,
-                  },
-                });
-                const result = await response.json();
-                if (result.data) {
-                  const userData = result.data;
-                  setCurrentUser({
-                    _id: userData._id || currentUserData._id,
-                    firstName: userData.firstName || "",
-                    lastName: userData.lastName || "",
-                    email: userData.email || "",
-                    gender: userData.gender || "Not set",
-                    role: Array.isArray(userData.role)
-                      ? userData.role
-                      : [userData.role].filter(Boolean),
-                    avatar: userData.avatar || null,
-                    dob: userData.dob || null,
-                  });
-                }
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${currentUserData.token}`,
+            },
+          });
+          const result = await response.json();
+          if (result.data) {
+            const userData = result.data;
+            setCurrentUser({
+              _id: userData._id || currentUserData._id,
+              firstName: userData.firstName || "",
+              lastName: userData.lastName || "",
+              email: userData.email || "",
+              gender: userData.gender || "Not set",
+              role: Array.isArray(userData.role)
+                ? userData.role
+                : [userData.role].filter(Boolean),
+              avatar: userData.avatar || null,
+              dob: userData.dob || null,
+            });
+          }
           // setCurrentUser(currentUserData);
           console.log("Current user:", currentUserData);
 
@@ -777,6 +777,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
     let messageType = "TEXT";
     if (files.length > 0) {
       const mimetype = files[0]?.type;
+
+      console.log("File type:", mimetype);
+
       if (mimetype.startsWith("image/") || mimetype === "image") {
         messageType = "IMAGE";
       } else if (mimetype.startsWith("video/") || mimetype === "video") {
@@ -813,7 +816,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
       })),
     };
 
-    console.log("Creating temp message:", tempMessage);
+    // console.log("Creating temp message:", tempMessage);
     setTempMessages((prev) => [...prev, tempMessage]);
     setNewMessage("");
 
@@ -854,7 +857,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         );
       }
 
-      console.log("Send message response:", response);
+      // console.log("Send message response:", response);
 
       if (response.success) {
         setTempMessages((prev) => prev.filter((msg) => msg._id !== tempId));
@@ -926,7 +929,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           size: asset.fileSize || asset.size || 0,
         };
 
-        console.log("Captured image for sending:", preparedFile);
+        // console.log("Captured image for sending:", preparedFile);
 
         await sendMessage({ files: [preparedFile] });
       }
@@ -962,7 +965,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           size: asset.fileSize || asset.size || 0,
         }));
 
-        console.log("Prepared files for sending:", preparedFiles);
+        // console.log("Prepared files for sending:", preparedFiles);
         await sendMessage({ files: preparedFiles });
       }
     } catch (error) {
@@ -1009,7 +1012,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const videoAsset = result.assets[0];
-        console.log("Selected video:", videoAsset);
+        // console.log("Selected video:", videoAsset);
 
         // Create a video message
         const videoMessage = {
@@ -1963,142 +1966,149 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-       behavior={Platform.OS === "ios" ? "padding" : "height"}
-       style={{flex: 1}}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 0 : 0}
       >
         <View style={styles.header}>
-        <TouchableOpacity onPress={handleReturn}>
-          <Icon name="chevron-left" size={30} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity
-        onPress={() => {
-          if (otherUser && conversation) {
-            navigation.navigate("UserInfo", {
-              conversation: {
-                _id: conversation._id,
-                name:
-                  otherUser.name ||
-                  `${otherUser.firstName} ${otherUser.lastName}`,
-                members: conversation.members || [],
-                avatar: otherUser.avatar,
-                isGroup: false,
-                isOnline: isOnline,
-                user: otherUser,
-              },
-            });
-          }
-        }}
-        >
-        <Image
-          source={
-            otherUser?.avatar
-              ? { uri: otherUser.avatar }
-              : require("../../../assets/chat/avatar.png")
-          }
-          style={styles.avatar}
-        />
-        </TouchableOpacity>
-        <TouchableOpacity style={{ flex: 1 }} 
-          onPress={() => {
-            if (otherUser && conversation) {
-              navigation.navigate("UserInfo", {
-                conversation: {
-                  _id: conversation._id,
-                  name:
-                    otherUser.name ||
-                    `${otherUser.firstName} ${otherUser.lastName}`,
-                  members: conversation.members || [],
-                  avatar: otherUser.avatar,
-                  isGroup: false,
-                  isOnline: isOnline,
-                  user: otherUser,
-                },
-              });
+          <TouchableOpacity onPress={handleReturn}>
+            <Icon name="chevron-left" size={30} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (otherUser && conversation) {
+                navigation.navigate("UserInfo", {
+                  conversation: {
+                    _id: conversation._id,
+                    name:
+                      otherUser.name ||
+                      `${otherUser.firstName} ${otherUser.lastName}`,
+                    members: conversation.members || [],
+                    avatar: otherUser.avatar,
+                    isGroup: false,
+                    isOnline: isOnline,
+                    user: otherUser,
+                  },
+                });
+              }
+            }}
+          >
+            <Image
+              source={
+                otherUser?.avatar
+                  ? { uri: otherUser.avatar }
+                  : require("../../../assets/chat/avatar.png")
+              }
+              style={styles.avatar}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => {
+              if (otherUser && conversation) {
+                navigation.navigate("UserInfo", {
+                  conversation: {
+                    _id: conversation._id,
+                    name:
+                      otherUser.name ||
+                      `${otherUser.firstName} ${otherUser.lastName}`,
+                    members: conversation.members || [],
+                    avatar: otherUser.avatar,
+                    isGroup: false,
+                    isOnline: isOnline,
+                    user: otherUser,
+                  },
+                });
+              }
+            }}
+          >
+            <Text style={styles.friendName}>
+              {otherUser
+                ? otherUser.name ||
+                  `${otherUser.firstName} ${otherUser.lastName}`
+                : "Chat"}
+            </Text>
+            <Text style={styles.statusUser}>
+              {isOnline ? "Online" : "Offline"}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.actionIcons}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => {
+                Alert.alert("Audio call");
+              }}
+            >
+              <Ionicons name="call-outline" size={24} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => {
+                Alert.alert("Video call");
+              }}
+            >
+              <AntDesign name="videocamera" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <PinnedMessageBar />
+
+        <FlatList
+          data={combinedMessages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item._id}
+          style={[styles.messageList, pinnedMessage && { marginTop: 50 }]}
+          contentContainerStyle={pinnedMessage ? { paddingTop: 50 } : null}
+          inverted={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onContentSizeChange={() => {
+            if (flatListRef.current) {
+              flatListRef.current.scrollToEnd({ animated: true });
             }
           }}
-        >
-          <Text style={styles.friendName}>
-            {otherUser
-              ? otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`
-              : "Chat"}
-          </Text>
-          <Text style={styles.statusUser}>
-            {isOnline ? "Online" : "Offline"}
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.actionIcons}>
-          <TouchableOpacity style={styles.iconButton}
-            onPress={() => {Alert.alert("Audio call")}}
-          >
-            <Ionicons name="call-outline" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}
-            onPress={() => {Alert.alert("Video call")}}
-          >
-            <AntDesign name="videocamera" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-        </View>
-        
-
-      <PinnedMessageBar />
-
-      <FlatList
-        data={combinedMessages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item._id}
-        style={[styles.messageList, pinnedMessage && { marginTop: 50 }]}
-        contentContainerStyle={pinnedMessage ? { paddingTop: 50 } : null}
-        inverted={false}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        onContentSizeChange={() => {
-          if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
-          }
-        }}
-        onLayout={() => {
-          if (flatListRef.current) {
-            flatListRef.current.scrollToEnd({ animated: true });
-          }
-        }}
-        ref={flatListRef}
-      />
-
-      <View style={styles.inputContainer}>
-        <TouchableOpacity onPress={() => setShowOptions(true)}>
-          <View style={styles.addButton}>
-            <Ionicons name="add-circle" size={32} color="#0099ff" />
-            <Ionicons
-              name="add"
-              size={20}
-              color="white"
-              style={{ position: "absolute" }}
-            />
-          </View>
-        </TouchableOpacity>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Type a message..."
-          value={newMessage}
-          onChangeText={(text) => setNewMessage(text)}
-          onSubmitEditing={handleSubmitEditing}
-          onFocus={scrollToBottom}
+          onLayout={() => {
+            if (flatListRef.current) {
+              flatListRef.current.scrollToEnd({ animated: true });
+            }
+          }}
+          ref={flatListRef}
         />
 
-        {newMessage.trim().length > 0 ? (
-          <TouchableOpacity onPress={handlePressSend}>
-            <Ionicons name="send" size={28} color="#0099ff" />
+        <View style={styles.inputContainer}>
+          <TouchableOpacity onPress={() => setShowOptions(true)}>
+            <View style={styles.addButton}>
+              <Ionicons name="add-circle" size={32} color="#0099ff" />
+              <Ionicons
+                name="add"
+                size={20}
+                color="white"
+                style={{ position: "absolute" }}
+              />
+            </View>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={handlePressLike}>
-            <Ionicons name="thumbs-up" size={28} color="#0099ff" />
-          </TouchableOpacity>
-        )}
-      </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Type a message..."
+            value={newMessage}
+            onChangeText={(text) => setNewMessage(text)}
+            onSubmitEditing={handleSubmitEditing}
+            onFocus={scrollToBottom}
+          />
+
+          {newMessage.trim().length > 0 ? (
+            <TouchableOpacity onPress={handlePressSend}>
+              <Ionicons name="send" size={28} color="#0099ff" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={handlePressLike}>
+              <Ionicons name="thumbs-up" size={28} color="#0099ff" />
+            </TouchableOpacity>
+          )}
+        </View>
       </KeyboardAvoidingView>
 
       <ChatOptions
