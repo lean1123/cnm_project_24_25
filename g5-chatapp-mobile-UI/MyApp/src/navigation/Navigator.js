@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useAuth } from "../contexts/AuthContext";
 import { ActivityIndicator, View } from "react-native";
@@ -31,12 +31,25 @@ import SignUpScreen from "../screens/auth/register";
 import SignInScreen from "../screens/auth/login";
 import VerifyOTPScreen from "../screens/auth/verifyOTP";
 import ForgotPasswordScreen from "../screens/account/forgotPassword";
+import { useNavigation } from "@react-navigation/native";
 
 
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   const { user, loading } = useAuth();
+
+  const navigation = useNavigation();
+
+useEffect(() => {
+  if (user) {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home_Chat' }],
+    });
+  }
+}, [user]);
+
 
   if (loading) {
     return (

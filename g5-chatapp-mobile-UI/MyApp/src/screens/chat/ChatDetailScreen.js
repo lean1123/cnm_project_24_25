@@ -548,10 +548,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
             setIsOnline(socketInstance.connected);
 
             console.log("Joining conversation room:", conversation._id);
-            socketInstance.emit("join", {
-              conversationId: conversation._id,
-              userId: currentUserData._id,
-            });
+            // socketInstance.emit("join", {
+            //   conversationId: conversation._id,
+            //   userId: currentUserData._id,
+            // });
 
             const handleNewMessage = (data) => {
               console.log("New message received:", data);
@@ -2321,8 +2321,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   fileContainer: {
-    padding: 10,
-    marginVertical: 5,
+    // padding: 4,
+    // marginVertical: 1,
     backgroundColor: "transparent",
     maxWidth: "100%",
     borderRadius: 8,

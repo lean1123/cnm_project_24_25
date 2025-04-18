@@ -31,6 +31,8 @@ interface iAuthStore {
   setActiveUsers: (activeUsers: string[]) => void;
   changeAvatar: (file: File) => Promise<void>;
   updateProfile: (data: UserUpdate) => Promise<void>;
+  subscribeActiveUsers: () => void;
+  unsubscribeActiveUsers: () => void;
 }
 
 export const useAuthStore = create<iAuthStore>()(
@@ -281,6 +283,23 @@ export const useAuthStore = create<iAuthStore>()(
           toast.error("Failed to update profile. Please try again.", {
             id: "profile-update",
           });
+        }
+      },
+      subscribeActiveUsers: () => {
+        const socket = get().socket;
+        if (socket) {
+          console.log("Subscribing to active users events...");
+          socket.on("activeUsers", (data) => {
+            console.log("Received active users:", data.activeUsers);
+            set({ activeUsers: data.activeUsers });
+          });
+        }
+      },
+      unsubscribeActiveUsers: () => {
+        const socket = get().socket;
+        if (socket) {
+          console.log("Unsubscribing from active users events...");
+          socket.off("activeUsers");
         }
       },
     }),
