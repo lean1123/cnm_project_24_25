@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { use, useEffect } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { useAuth } from "../contexts/AuthContext";
 import { ActivityIndicator, View } from "react-native";
@@ -33,6 +33,7 @@ import SignInScreen from "../screens/auth/login";
 import VerifyOTPScreen from "../screens/auth/verifyOTP";
 import ForgotPasswordScreen from "../screens/account/forgotPassword";
 import { useNavigation } from "@react-navigation/native";
+import { getSocket, reconnectSocket } from "../services/socket";
 
 
 const Stack = createStackNavigator();
@@ -51,6 +52,9 @@ useEffect(() => {
   }
 }, [user]);
 
+useEffect(() => {
+  reconnectSocket()
+}, []);
 
   if (loading) {
     return (

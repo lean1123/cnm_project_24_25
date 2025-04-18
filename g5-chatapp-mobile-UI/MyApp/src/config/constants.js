@@ -1,9 +1,9 @@
-// export const API_URL =
-//   " https://f1da-2402-800-63f9-5f4b-ec05-f80b-f59f-4c98.ngrok-free.app";
-// export const SOCKET_URL =
-//   "wss://f1da-2402-800-63f9-5f4b-ec05-f80b-f59f-4c98.ngrok-free.app";
+// export const API_URL = "https://1be5-2405-4800-5717-a460-13b-a83f-d139-8b6.ngrok-free.app";
+// export const SOCKET_URL = "wss://1be5-2405-4800-5717-a460-13b-a83f-d139-8b6.ngrok-free.app";
 
 
-  export const API_URL =
-  "http://192.168.0.101:3000";
-export const SOCKET_URL = "http://192.168.0.101:3000";
+export const API_URL = "http://192.168.3.48:3000";
+export const SOCKET_URL = "http://192.168.3.48:3000";
+
+// export const API_URL = "https://3811-58-186-28-253.ngrok-free.app";
+// export const SOCKET_URL = "wss://3811-58-186-28-253.ngrok-free.app";

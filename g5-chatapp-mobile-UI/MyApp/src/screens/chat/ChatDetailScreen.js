@@ -548,10 +548,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
             setIsOnline(socketInstance.connected);
 
             console.log("Joining conversation room:", conversation._id);
-            // socketInstance.emit("join", {
-            //   conversationId: conversation._id,
-            //   userId: currentUserData._id,
-            // });
+            socketInstance.emit("join", {
+              conversationId: conversation._id,
+              userId: currentUserData._id,
+            });
 
             const handleNewMessage = (data) => {
               console.log("New message received:", data);
@@ -915,8 +915,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.5,
+        quality: 1,
         allowsEditing: true,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -952,9 +953,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.5,
+        quality: 1,
         allowsMultipleSelection: true,
         selectionLimit: 10,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -2374,8 +2376,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   fileContainer: {
-    // padding: 4,
-    // marginVertical: 1,
+    padding: 10,
+    marginVertical: 5,
     backgroundColor: "transparent",
     maxWidth: "100%",
     borderRadius: 8,
