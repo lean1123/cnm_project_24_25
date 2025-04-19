@@ -8,7 +8,9 @@ import {
   Param,
   Post,
   Put,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConversationService } from './conversation.service';
@@ -18,6 +20,7 @@ import { JwtPayload } from './interfaces/jwtPayload.interface';
 import { ChatGateway } from '../message/gateway/chat.gateway';
 import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
 import { MemberRemovationRequest } from './dto/requests/memberRemovation.request';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('conversation')
 export class ConvensationController {
@@ -34,13 +37,16 @@ export class ConvensationController {
 
   @Post()
   @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file'))
   async createConvensation(
     @UserDecorator() userPayload: JwtPayload,
     @Body() convensationReq: ConvensationRequest,
+    @UploadedFile() file: Express.Multer.File,
   ) {
     const savedConversation = await this.convensationService.createConvensation(
       userPayload,
       convensationReq,
+      file,
     );
 
     this.chatGateWay.handleCreateConversationForGroup(savedConversation);

@@ -8,6 +8,7 @@ import { UserModule } from 'src/user/user.module';
 import { ConvensationController } from './conversation.controller';
 import { ConversationService } from './conversation.service';
 import { ConvensationSchema } from './schema/convensation.schema';
+import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ConvensationSchema } from './schema/convensation.schema';
     forwardRef(() => AuthModule),
     forwardRef(() => UserModule),
     forwardRef(() => MessageModule),
+    CloudinaryModule,
   ],
   providers: [
     ConversationService,
