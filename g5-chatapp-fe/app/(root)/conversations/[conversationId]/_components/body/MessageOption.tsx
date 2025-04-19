@@ -1,18 +1,18 @@
 import {
-    MessageCircleX,
-    Trash2
+  MessageCircleX,
+  Trash2
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { useConversationStore } from "@/store/useConversationStore";
-import { Message } from "@/types";
 import { Separator } from "@/components/ui/separator";
+import { useMessageStore } from "@/store/useMessageStore";
+import { Message } from "@/types";
 
 type Props = {
     message: Message;
@@ -21,7 +21,7 @@ type Props = {
 };
 
 export function MessageOption({message, setIsDropdownOpen, setIsHovered} : Props) {
-    const {deleteMessage, revokeMessage} = useConversationStore();
+    const {deleteMessage, revokeMessage} = useMessageStore();
   return (
     <DropdownMenu onOpenChange={(open) => {
         setIsDropdownOpen(open);
