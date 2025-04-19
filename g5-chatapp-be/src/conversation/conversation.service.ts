@@ -8,6 +8,7 @@ import { JwtPayload } from './interfaces/jwtPayload.interface';
 import { Convensation } from './schema/convensation.schema';
 import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
 import { ConversationRole } from './schema/conversationRole.enum';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Injectable()
 export class ConversationService {
@@ -18,11 +19,13 @@ export class ConversationService {
     private readonly userService: UserService,
     @Inject(forwardRef(() => MessageService))
     private readonly messageService: MessageService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createConvensation(
     userPayload: JwtPayload,
     conversation: ConvensationRequest,
+    file: Express.Multer.File,
   ): Promise<Convensation> {
     const adminUser = await this.userService.findById(userPayload._id);
     if (!adminUser) {
@@ -74,6 +77,11 @@ export class ConversationService {
         conversation.name = name;
       }
 
+      if (file) {
+        const uploadedResult = await this.cloudinaryService.uploadFile(file);
+        conversation.profilePicture = uploadedResult.url;
+      }
+
       const existedGroup = await this.convenstationModel.findOne({
         isGroup: true,
         name: conversation.name,
@@ -90,7 +98,7 @@ export class ConversationService {
     const newConversation = await this.convenstationModel.create({
       name: conversation.name ?? null,
       isGroup,
-      profilePicture: null,
+      profilePicture: conversation.profilePicture ?? null,
       lastMessage: null,
       members: membersWithRole,
     });
