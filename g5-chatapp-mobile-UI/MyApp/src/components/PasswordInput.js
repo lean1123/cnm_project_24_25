@@ -3,10 +3,10 @@ import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 const PasswordInput = ({ value, onChangeText }) => {
-  const [secureTextEntry, setSecureTextEntry] = useState(true); // state quản lý việc ẩn/mở mật khẩu
+  const [secureTextEntry, setSecureTextEntry] = useState(true); 
 
   const toggleSecureTextEntry = () => {
-    setSecureTextEntry((prevState) => !prevState); // toggle giữa true/false
+    setSecureTextEntry((prevState) => !prevState); 
   };
 
   return (
@@ -17,7 +17,7 @@ const PasswordInput = ({ value, onChangeText }) => {
         placeholder="Password"
         value={value}
         onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry} // sử dụng state này để ẩn/mở mật khẩu
+        secureTextEntry={secureTextEntry} 
       />
       <TouchableOpacity onPress={toggleSecureTextEntry} style={styles.eyeIcon}>
         <Icon name={secureTextEntry ? "eye-off" : "eye"} size={24} color="#4484CD" />
@@ -50,6 +50,9 @@ const styles = StyleSheet.create({
     paddingLeft: 45,
     borderRadius: 10,
     backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: '#E8ECF4',
+    boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
   },
 });
 

@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { forwardRef, Module } from '@nestjs/common';
+// import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ThrottlerGuard } from '@nestjs/throttler';
+// import { ThrottlerGuard } from '@nestjs/throttler';
 import { ConversationModule } from 'src/conversation/conversation.module';
 import { MessageModule } from 'src/message/message.module';
 import { UserModule } from 'src/user/user.module';
@@ -14,14 +14,14 @@ import { Contact, ContactSchema } from './schema/contact.schema';
     MongooseModule.forFeature([{ name: Contact.name, schema: ContactSchema }]),
     UserModule,
     ConversationModule,
-    MessageModule,
+    forwardRef(() => MessageModule),
   ],
   providers: [
     ContactService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
   controllers: [ContactController],
   exports: [ContactService, MongooseModule],

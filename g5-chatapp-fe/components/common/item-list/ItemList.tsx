@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { useConversation } from "@/hooks/useConversation";
 import { cn } from "@/lib/utils";
 import React from "react";
+import SearchNav from "../search/SearchNav";
 
 type Props = React.PropsWithChildren<{
   title: string;
@@ -19,8 +20,9 @@ const ItemList = ({ children, title, action }: Props) => {
       })}
     >
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {action ? action : null}
+        {/* <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {action ? action : null} */}
+        <SearchNav isOpenSearchResult={false} setIsOpenSearchResult={()=>{}}/>
       </div>
       <div className="w-full h-full flex flex-col items-center justify-start gap-2">
         {children}

@@ -1,154 +1,339 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
-  ScrollView,
-  Switch,
   SafeAreaView,
-  Alert,
+  ActivityIndicator,
+  FlatList,
+  Dimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import styles from "./styles";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { chatService } from "../../../services/chat.service";
 
 const UserInfoScreen = ({ navigation, route }) => {
-  const [muted, setMuted] = useState(false);
-  const [pinned, setPinned] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const [callAlerts, setCallAlerts] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [mediaMessages, setMediaMessages] = useState({
+    images: [],
+    videos: [],
+    files: []
+  });
+  
+  const conversation = route.params?.conversation;
+  const otherUser = conversation?.user || {};
 
-  const mockUser = {
-    avatar: require("../../../../assets/chat/man.png"),
-    name: "Nguyen Duc Nhat",
-    phone: "(+84) 123 456 789",
-    commonGroups: ["Nhóm bạn thân", "Công việc", "Dự án React Native"],
-    sharedMedia: [
-      require("../../../../assets/chat/OIP.jpg"),
-      require("../../../../assets/chat/messenger.png"),
-      require("../../../../assets/chat/man2.png"),
-      require("../../../../assets/chat/OIP.jpg"),
-      require("../../../../assets/chat/OIP.jpg"),
-      require("../../../../assets/chat/man.png"),
-    ],
-    sharedFiles: [
-      { name: "Báo cáo tài chính.pdf", size: "3.2MB" },
-      { name: "Hợp đồng.docx", size: "1.8MB" },
-    ],
-    sharedLinks: [
-      { title: "React Native Docs", url: "https://reactnative.dev/" },
-      { title: "Figma UI Kit", url: "https://figma.com/community/file/123" },
-    ],
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          setCurrentUser(JSON.parse(userData));
+        }
+
+        if (conversation?._id) {
+          const response = await chatService.getMessages(conversation._id);
+          if (response?.data) {
+            const messages = Array.isArray(response.data) ? response.data : response.data.data;
+            
+            const images = [];
+            const videos = [];
+            const files = [];
+
+            messages.forEach(message => {
+              if (message.files && message.files.length > 0) {
+                message.files.forEach(file => {
+                  const fileType = file.type || file.fileName?.split('.').pop()?.toLowerCase();
+                  
+                  if (message.type === 'IMAGE' || /\.(jpg|jpeg|png|gif)$/i.test(file.fileName)) {
+                    images.push(file);
+                  } else if (message.type === 'VIDEO' || /\.(mp4|mov|avi)$/i.test(file.fileName)) {
+                    videos.push(file);
+                  } else {
+                    files.push(file);
+                  }
+                });
+              }
+            });
+
+            setMediaMessages({ images, videos, files });
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const processUserInfo = (conversation) => {
+    if (!conversation) return;
+    
+    let userData = {
+      avatar: require("../../../../assets/chat/avatar.png"),
+      name: "Unknown",
+      phone: "N/A",
+      commonGroups: [],
+      sharedMedia: [],
+      sharedFiles: [],
+      sharedLinks: [],
+    };
+    
+    // Nếu là cuộc trò chuyện nhóm
+    if (conversation.isGroup) {
+      userData.name = conversation.name || "Unknown Group";
+      userData.avatar = conversation.avatar 
+        ? { uri: conversation.avatar } 
+        : require("../../../../assets/chat/avatar.png");
+    } 
+    // Nếu là cuộc trò chuyện 1-1
+    else if (conversation.members) {
+      // Tìm thông tin người dùng khác
+      const otherUser = conversation.members.find(member => member._id !== userId);
+      
+      if (otherUser) {
+        userData = {
+          ...userData,
+          name: `${otherUser.firstName} ${otherUser.lastName}`,
+          phone: otherUser.phone || "N/A",
+          avatar: otherUser.avatar 
+            ? { uri: otherUser.avatar } 
+            : require("../../../../assets/chat/avatar.png"),
+          isOnline: otherUser.isOnline || false,
+          email: otherUser.email,
+        };
+      }
+    }
+    
+    setUserInfo(userData);
+    setLoading(false);
   };
 
-  //   hanlde gim tin nhăn
-  const hanldeSearchMessage = () => {
-    Alert.alert("Tìm kiếm tin nhắn", "Chức năng này chưa được triển khai.");
+    initialize();
+  }, [conversation]);
+
+  const renderMediaGrid = ({ item }) => {
+    const isVideo = item.type === 'video' || /\.(mp4|mov|avi)$/i.test(item.fileName);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.mediaItem}
+        onPress={() => {
+          if (isVideo) {
+            navigation.navigate("VideoPlayer", { uri: item.url });
+          } else {
+            navigation.navigate("ImageViewer", { uri: item.url });
+          }
+        }}
+      >
+        <Image 
+          source={{ uri: item.url }} 
+          style={styles.mediaThumbnail}
+        />
+        {isVideo && (
+          <View style={styles.videoOverlay}>
+            <Icon name="play" size={20} color="#fff" />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
-  const handleUserInfo = () => {
-    Alert.alert("Thông tin người dùng", "Chức năng này chưa được triển khai.");
-  };
+  const renderFileItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.fileItem}
+      onPress={() => {
+        // Handle file opening
+      }}
+    >
+      <Icon name="file" size={24} color="#666" />
+      <Text style={styles.fileName} numberOfLines={1}>
+        {item.fileName || 'Unnamed file'}
+      </Text>
+    </TouchableOpacity>
+  );
 
-  const handleChangeBackground = () => {
-    Alert.alert("Đổi hình nền", "Chức năng này chưa được triển khai.");
-  };
+  const renderHeader = () => (
+    <>
+      <View style={styles.avatarSection}>
+        <Image 
+          source={
+            otherUser.avatar 
+              ? { uri: otherUser.avatar }
+              : require("../../../../assets/chat/man.png")
+          } 
+          style={styles.avatarLarge} 
+        />
+        <Text style={styles.name}>
+          {otherUser.firstName} {otherUser.lastName}
+        </Text>
+        {otherUser.isOnline && (
+          <Text style={styles.onlineStatus}>Đang hoạt động</Text>
+        )}
+      </View>
 
-  const handleToggleNotifications = () => {
-    Alert.alert("Tắt thông báo", "Chức năng này chưa được triển khai.");
-  };
+      {mediaMessages.images.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Ảnh đã chia sẻ</Text>
+          <FlatList
+            data={mediaMessages.images}
+            renderItem={renderMediaGrid}
+            keyExtractor={(item, index) => `image-${index}`}
+            numColumns={3}
+            scrollEnabled={false}
+          />
+        </View>
+      )}
+
+      {mediaMessages.videos.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Video đã chia sẻ</Text>
+          <FlatList
+            data={mediaMessages.videos}
+            renderItem={renderMediaGrid}
+            keyExtractor={(item, index) => `video-${index}`}
+            numColumns={3}
+            scrollEnabled={false}
+          />
+        </View>
+      )}
+
+      {mediaMessages.files.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>File đã chia sẻ</Text>
+        </View>
+      )}
+    </>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#135CAF" />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Icon name="chevron-left" size={20} color="white" />
+          <Icon name="chevron-left" size={18} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tùy chọn</Text>
+        <Text style={styles.headerTitle}>Info Chat</Text>
       </View>
-      <ScrollView style={styles.container}>
-        <View style={styles.avatarSection}>
-          <Image source={mockUser.avatar} style={styles.avatarLarge} />
-          <Text style={styles.name}>{mockUser.name}</Text>
-          <Text style={styles.phone}>{mockUser.phone}</Text>
-        </View>
 
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={hanldeSearchMessage}
-          >
-            <Icon name="search" size={18} />
-            <Text style={styles.textAction}>Tìm tin nhắn</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={handleUserInfo}
-          >
-            <Icon name="user" size={18} />
-            <Text style={styles.textAction}>Trang cá nhân</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={handleChangeBackground}
-          >
-            <Icon name="image" size={18} />
-            <Text style={styles.textAction}>Đổi hình nền</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickActionButton}
-            onPress={handleToggleNotifications}
-          >
-            <Icon name="bell-slash" size={18} />
-            <Text style={styles.textAction}>Tắt thông báo</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.optionsSection}>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Đổi tên gọi nhớ</Text>
-          </TouchableOpacity>
-          <View style={styles.optionRow}>
-            <Text>Đánh dấu bạn thân</Text>
-            <Switch value={pinned} onValueChange={setPinned} />
-          </View>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Nhật ký chung</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ảnh, file, link</Text>
-          <ScrollView horizontal>
-            {mockUser.sharedMedia.map((media, index) => (
-              <Image key={index} source={media} style={styles.mediaThumbnail} />
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.optionsSection}>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Tạo nhóm với {mockUser.name}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.optionRow}>
-            <Text>Thêm {mockUser.name} vào nhóm</Text>
-          </TouchableOpacity>
-          <View style={styles.optionRow}>
-            <Text>Ghim trò chuyện</Text>
-            <Switch value={muted} onValueChange={setMuted} />
-          </View>
-          <View style={styles.optionRow}>
-            <Text>Ẩn trò chuyện</Text>
-            <Switch value={hidden} onValueChange={setHidden} />
-          </View>
-          <View style={styles.optionRow}>
-            <Text>Báo cuộc gọi đến</Text>
-            <Switch value={callAlerts} onValueChange={setCallAlerts} />
-          </View>
-        </View>
-      </ScrollView>
+      <FlatList
+        data={mediaMessages.files}
+        renderItem={renderFileItem}
+        keyExtractor={(item, index) => `file-${index}`}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.contentContainer}
+      />
     </SafeAreaView>
   );
 };
+
+const additionalStyles = {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentContainer: {
+    flexGrow: 1,
+  },
+  section: {
+    padding: 15,
+    backgroundColor: '#fff',
+    marginTop: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  mediaItem: {
+    flex: 1/3,
+    aspectRatio: 1,
+    margin: 1,
+    position: 'relative',
+  },
+  mediaThumbnail: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fileItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  fileName: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  avatarLarge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  onlineStatus: {
+    color: '#4CAF50',
+    marginTop: 51,
+    fontSize: 14,
+  },
+  header:{
+    backgroundColor: '#135CAF',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+
+  },
+  headerTitle:{
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+  },
+  backButton:{
+    color: '#fff',
+    marginRight: 16,
+  },
+};
+
+Object.assign(styles, additionalStyles);
 
 export default UserInfoScreen;

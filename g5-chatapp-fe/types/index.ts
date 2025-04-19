@@ -18,11 +18,12 @@ export type User = {
     firstName: string;
     lastName: string;
     email: string;
-    gender: string;
-    role: string[];
-    dob: string;
+    gender?: string;
+    role?: string[];
+    dob?: string;
     refreshToken?: string;
     _id?: string;
+    avatar?: string | null;
 }
 
 export type SocketUser = {
@@ -35,32 +36,41 @@ export type Conversation = {
     name?: string;
     profilePicture?: string | null;
     isGroup: boolean;
-    admin?: string;
     members: Member [];
-    lastMessage: string | null;
+    lastMessage: LastMessage | null;
     createdAt: string;
     updatedAt: string;
 }
 
+
+export type LastMessage = {
+    _id: string;
+    sender: User;
+    content: string;
+    type: string;
+    files: MessageFile[] | null;
+}
+
 export type Member = {
-    userId: string;
-    fullName: string;
+    user: User;
+    role: string;
 }
 
 export type Message = {
     _id: string;
     conversation: string;
-    sender: Member;
+    sender: User;
     content: string;
     files: MessageFile[] | null;
     deletedFor: any[];
     isRevoked: boolean;
-    forwardFrom: string | null;
+    forwardFrom?: string | null;
     type: string;
     createdAt: string;
     updatedAt: string;
     isTemp?: boolean;
     isError?: boolean;
+    reactions?: Reactions[];
 }
 
 export type MessageRequest = {
@@ -73,4 +83,41 @@ export type MessageRequest = {
 export type MessageFile = {
     fileName: string;
     url: string;
+}
+
+export type Contact = {
+    _id: string;
+    user: User;
+    contact: User;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type UserUpdate = {
+    firstName: string;
+    lastName: string;
+    gender: string;
+    dob: string;
+}
+
+// 
+export type OngoingCallex = {
+    callId: string;
+    conversationId: string;
+    callType: "audio" | "video";
+    isCallActive: boolean;
+    isCallAccepted: boolean;
+    callStatus: string;
+    callDuration: number;
+}
+
+export type OngoingCall = {
+    sender: User;
+    isRinging: boolean;
+}
+
+export type Reactions = {
+    user: string
+    reaction: string;
 }

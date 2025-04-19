@@ -10,6 +10,7 @@ import ConversationInfo from "./_components/info/ConversationInfo";
 import { useConversationStore } from "@/store/useConversationStore";
 import { root } from "postcss";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useCallStore } from "@/store/useCallStore";
 
 type Props = {
   params: Promise<{
@@ -18,23 +19,14 @@ type Props = {
 };
 
 function ConversationPage({ params }: Props) {
-  const header = {
-    name: "John Doe",
-    imageUrl: "https://randomuser.me/api/port.jpg",
-  };
-  const conversation = {
-    id: "1a2b3c",
-    senderId: "4d5e6f",
-    content: "Hello, how are you?",
-    createdAt: "2021-12-31T23:59:59Z",
-    isGroup: false,
-  };
 
   const { conversationId } = use(params);
 
-  const { selectedConversation, getConversation, userSelected, fetchingUser } = useConversationStore();
+  const { selectedConversation, getConversation } = useConversationStore();
 
   const {user} = useAuthStore()
+
+  const {handleCall} = useCallStore();
 
   useEffect(() => {
     console.log("Conversation ID:", conversationId);
@@ -43,17 +35,10 @@ function ConversationPage({ params }: Props) {
     }
   }, [conversationId]);
 
-  useEffect(() => {
-    if (selectedConversation) {
-      console.log("Selected conversation:", selectedConversation);
-      if (user?.id !== selectedConversation.members[0].userId) {
-        fetchingUser(selectedConversation.members[0].userId);
-      } else {
-        fetchingUser(selectedConversation.members[1].userId);
-      }
-    }
-  }
-  , [selectedConversation]);
+  const userSelected = selectedConversation?.members.find(
+    (member) => member.user._id !== user?.id
+  );
+
 
   const [removeFriendDialogOpen, setRemoveFriendDialogOpen] = useState(false);
   const [deleteGroupDialogOpen, setDeleteGroupDialogOpen] = useState(false);
@@ -83,14 +68,15 @@ function ConversationPage({ params }: Props) {
         }`}
       >
         <Header
-          firstName={userSelected?.firstName || ""}
-          lastName={userSelected?.lastName || ""}
-          imageUrl={header.imageUrl}
+          userId={userSelected?.user._id || ""}
+          firstName={userSelected?.user.firstName || ""}
+          lastName={userSelected?.user.lastName || ""}
+          imageUrl={userSelected?.user.avatar || ""}
           options={[
             {
               label: "Voice call",
               icon: <Phone />,
-              onClick: () => setLeaveGroupDialogOpen(true),
+              onClick: () => handleCall(conversationId),
             },
             {
               label: "Video call",
@@ -107,7 +93,7 @@ function ConversationPage({ params }: Props) {
         <Body />
         <ChatInput />
       </div>
-      <ConversationInfo isOpen={isOpenRightBar} setOpen={setIsOpenRightBar} />
+      <ConversationInfo isOpen={isOpenRightBar} setOpen={setIsOpenRightBar} userSelected={userSelected?.user || null}/>
     </ConversationContainer>
   );
 }

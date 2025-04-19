@@ -1,7 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+// import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ThrottlerGuard } from '@nestjs/throttler';
+// import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from 'src/auth/auth.module';
 import { MessageController } from './message.controller';
 import { MessageService } from './message.service';
@@ -11,6 +11,7 @@ import { ConversationModule } from 'src/conversation/conversation.module';
 import { UploadModule } from 'src/upload/upload.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { ChatGateway } from 'src/message/gateway/chat.gateway';
+import { ContactModule } from 'src/contact/contact.module';
 
 @Module({
   imports: [
@@ -20,13 +21,14 @@ import { ChatGateway } from 'src/message/gateway/chat.gateway';
     forwardRef(() => ConversationModule),
     CloudinaryModule,
     UploadModule,
+    forwardRef(() => ContactModule),
   ],
   providers: [
     MessageService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
     ChatGateway,
   ],
   controllers: [MessageController],

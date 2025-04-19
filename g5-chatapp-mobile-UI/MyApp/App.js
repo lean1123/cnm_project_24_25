@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider } from 'react-native-paper';
+import { navigationRef } from './src/navigation/Navigator';
+import useAuthStore from './src/store/useAuthStore';
 import MainNavigator from './src/navigation/Navigator';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { API_URL } from './src/config/constants';
+import { AuthProvider } from './src/contexts/AuthContext';
 
-const App = () => {
+export default function App() {
+  const { checkAuth, user, isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      await checkAuth();
+    };
+
+    initializeApp();
+  }, []);
+
   return (
-    <SafeAreaProvider>
-        <PaperProvider>
-          <NavigationContainer>
-            <MainNavigator />
-          </NavigationContainer>
-        </PaperProvider>
-    </SafeAreaProvider>
+    <PaperProvider>
+      <AuthProvider>
+        <NavigationContainer ref={navigationRef}>
+          <MainNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </PaperProvider>
   );
-};
-
-export default App; 
+} 

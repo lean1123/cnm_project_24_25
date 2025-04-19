@@ -1,5 +1,4 @@
 import { Optional } from '@nestjs/common';
-import { MemberRequest } from './member.request';
 
 export class ConvensationRequest {
   @Optional()
@@ -12,7 +11,7 @@ export class ConvensationRequest {
   isGroup: boolean;
   @Optional()
   admin: string;
-  members: MemberRequest[];
+  members: string[];
   @Optional()
   lastMessage: string;
 }

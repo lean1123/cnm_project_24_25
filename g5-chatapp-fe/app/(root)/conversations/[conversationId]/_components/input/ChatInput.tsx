@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useConversationStore } from "@/store/useConversationStore";
 import EmojiPicker from "emoji-picker-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { toast } from "sonner";
 
 type Props = {};
 
@@ -60,7 +61,7 @@ const ChatInput = (props: Props) => {
   const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const { user } = useAuthStore();
-  const { selectedConversation, addTempMessage, sendMessage } =
+  const { selectedConversation, addTempMessage, sendMessage, typing } =
     useConversationStore();
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -69,8 +70,12 @@ const ChatInput = (props: Props) => {
     return {
       _id: "temp",
       sender: {
-        fullName: user?.firstName + " " + user?.lastName,
-        userId: user?.id || "",
+        _id: user?.id || "",
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+        avatar: user?.avatar || "",
+        id: user?.id || "",
+        email: user?.email || "",
       },
       conversation: selectedConversation?._id || "",
       content: form.getValues("content") || "",
@@ -125,6 +130,7 @@ const ChatInput = (props: Props) => {
       );
 
       addTempMessage(tempMessage);
+      console.log("Sent message:", tempMessage);
     } else {
       otherFiles.forEach((file, index) => {
         sendMessage({ content: "", files: [file] });
@@ -144,6 +150,7 @@ const ChatInput = (props: Props) => {
     const { value, selectionStart } = event.target;
     if (selectionStart !== null) {
       form.setValue("content", value);
+      typing(selectedConversation?._id || "");
     }
   };
 
@@ -155,6 +162,7 @@ const ChatInput = (props: Props) => {
         resolve(reader.result as string);
       };
       reader.readAsDataURL(file);
+      typing(selectedConversation?._id || "");
     });
   };
 
@@ -176,7 +184,7 @@ const ChatInput = (props: Props) => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      addFilesWithPreview(Array.from(files));
+      addFilesWithPreview(Array.from(files)).then(() => typing(selectedConversation?._id || ""));
     }
   };
 
@@ -185,6 +193,7 @@ const ChatInput = (props: Props) => {
 
     const items = e.clipboardData.items;
     const files: File[] = [];
+    let pasteText = "";
 
     for (const item of items) {
       // Xử lý ảnh từ Snip & Sketch
@@ -209,10 +218,18 @@ const ChatInput = (props: Props) => {
           files.push(file);
         }
       }
+      else if (item.kind === "string" && item.type === "text/plain") {
+        pasteText = await new Promise<string>((resolve) =>
+          item.getAsString(resolve)
+        );
+      }
     }
 
     if (files.length > 0) {
       await addFilesWithPreview(files);
+    }
+    if (pasteText) {
+      form.setValue("content", pasteText);
     }
   };
 
@@ -263,7 +280,7 @@ const ChatInput = (props: Props) => {
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      addFilesWithPreview(Array.from(files));
+      addFilesWithPreview(Array.from(files)).then(() => typing(selectedConversation?._id || ""));
     }
   };
 
@@ -384,7 +401,7 @@ const ChatInput = (props: Props) => {
               name="content"
               render={({ field }) => {
                 return (
-                  <FormItem className="h-full w-full">
+                  <FormItem className="w-full">
                     <FormControl>
                       <TextareaAutosize
                         onKeyDown={async (e) => {
@@ -400,7 +417,7 @@ const ChatInput = (props: Props) => {
                         onChange={handleInputChange}
                         onClick={handleInputChange}
                         placeholder="Type a message..."
-                        className="min-h-full w-full resize-none border-0 outline-0 placeholder:text-muted-foreground p-1.5"
+                        className="min-h-[36px] w-full resize-none border-0 outline-0 placeholder:text-muted-foreground p-1.5"
                       />
                     </FormControl>
                     <FormMessage />
@@ -446,7 +463,7 @@ const ChatInput = (props: Props) => {
         )}
 
         {filePreviews.length > 0 && (
-          <div className="flex flex-wrap gap-2 w-full">
+          <div className="flex flex-wrap gap-2 w-full absolute -top-24 left-0 p-2 bg-white rounded-lg shadow-lg ">
             {filePreviews.map((file, index) => {
               const isImage = file.file.type.startsWith("image/");
               const isVideo = file.file.type.startsWith("video/");

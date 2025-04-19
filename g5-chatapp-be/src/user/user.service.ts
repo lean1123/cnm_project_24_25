@@ -31,6 +31,14 @@ export class UserService {
     return await this.userModel.findOne({ email });
   }
 
+  async search(keyword: string, userPayload: JwtPayload): Promise<User[]> {
+    const regex = new RegExp(keyword, 'i'); // 'i' for case-insensitive
+    return await this.userModel.find({
+      _id: { $ne: userPayload._id }, // Exclude the current user
+      $or: [{ firstName: regex }, { lastName: regex }, { email: regex }],
+    });
+  }
+
   async update(
     userPayload: JwtPayload,
     user: UserRequest,

@@ -7,13 +7,14 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ConversationService } from 'src/conversation/conversation.service';
-// import { UploadService } from 'src/upload/upload.service';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { UploadService } from 'src/upload/upload.service';
 import { UserService } from 'src/user/user.service';
 import { MessageRequest } from './dtos/requests/message.request';
-import { Message } from './schema/messege.chema';
-import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { MessageForwardationRequest } from './dtos/requests/messageForwardation.request';
 import { MessageType } from './schema/messageType.enum';
+import { Message } from './schema/messege.chema';
+import { MessageReactionRequest } from './dtos/requests/messageReaction.request';
 
 @Injectable()
 export class MessageService {
@@ -45,8 +46,8 @@ export class MessageService {
     }
 
     // Kiểm tra người gửi có tồn tại trong participant không
-    const isParticipant = conversation.members.some(
-      (member) => member.userId.toString() === user._id.toString(),
+    const isParticipant = conversation.members.some((member) =>
+      member.user.equals(sender._id as Types.ObjectId),
     );
 
     if (!isParticipant) {
@@ -62,9 +63,10 @@ export class MessageService {
           const url = await this.uploadFileService.uploadFile(
             file.originalname,
             file.buffer,
+            file.mimetype,
           );
 
-          if (file.mimetype.startsWith('image/')) {
+          if (file.mimetype.startsWith('image/') || file.mimetype === 'image') {
             type = MessageType.IMAGE;
           }
           if (file.mimetype.startsWith('video/')) {
@@ -84,16 +86,16 @@ export class MessageService {
 
     const messageSchema = {
       conversation: new Types.ObjectId(convensationId),
-      sender: {
-        userId: user._id,
-        fullName: `${sender.firstName} ${sender.lastName}`,
-      },
+      sender: sender._id,
       content: dto.content,
       files: fileUrls || [],
       type,
     };
 
-    const messageSaved = await this.messageModel.create(messageSchema);
+    const messageSaved = await (
+      await this.messageModel.create(messageSchema)
+    ).populate('sender', 'firstName lastName email avatar');
+
     await this.conversationService.updateLastMessageField(
       convensationId,
       messageSaved._id as string,
@@ -114,6 +116,7 @@ export class MessageService {
     const [data, total] = await Promise.all([
       this.messageModel
         .find({ conversation: new Types.ObjectId(conversationId) })
+        .populate('sender', 'firstName lastName email avatar')
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -135,13 +138,16 @@ export class MessageService {
   ): Promise<Message[]> {
     return await this.messageModel
       .find({ conversation: new Types.ObjectId(conversationId) })
+      .populate('sender', 'firstName lastName email avatar')
       .sort({ createdAt: 1 }) // Sắp xếp mới nhất trước
       .limit(20) // Giới hạn 20 tin nhắn
       .exec();
   }
 
   async getMessageById(messageId: string): Promise<Message> {
-    return await this.messageModel.findById(messageId);
+    return await this.messageModel
+      .findById(messageId)
+      .populate('sender', 'firstName lastName email avatar');
   }
 
   async updateMessage(
@@ -155,5 +161,223 @@ export class MessageService {
 
   async deleteMessage(messageId: string): Promise<Message> {
     return await this.messageModel.findByIdAndDelete(messageId);
+  }
+  // xoa msg -> an tin nhan o 1 ben
+  async revokeMessage(messageId: string, userId: string): Promise<Message> {
+    const message = await this.messageModel.findById(messageId);
+
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    const deletedFor = message.deletedFor || [];
+    const isDeletedForUser = deletedFor.some(
+      (user) => String(user) === String(userId),
+    );
+
+    if (isDeletedForUser) {
+      throw new NotFoundException('Message already deleted for this user');
+    }
+
+    const updatedMessage = await this.messageModel.findByIdAndUpdate(
+      messageId,
+      {
+        $set: {
+          updatedAt: new Date(),
+        },
+        $addToSet: {
+          deletedFor: userId, // ✅ Thêm userId vào mảng deletedFor
+        },
+      },
+      { new: true },
+    );
+
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
+  }
+
+  // xoa msg -> an tin nhan o ca 2 ben
+  async revokeMessageBoth(
+    messageId: string,
+    // conversationId: string,
+    userRequestId: string,
+  ): Promise<Message> {
+    // const conversation =  await this.conversationService.getConvensationById(conversationId);
+
+    // if (!conversation) {
+    //   throw new NotFoundException('Conversation not found');
+    // }
+
+    // ✅ Lấy tất cả userId từ members
+    // const memberIds = conversation.members;
+
+    const updatedMessage = await this.messageModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(messageId),
+        sender: new Types.ObjectId(userRequestId), // Chỉ cho phép sender thu hồi
+      },
+      {
+        $set: {
+          isRevoked: true,
+          updatedAt: new Date(),
+        },
+      },
+      { new: true },
+    );
+
+    if (!updatedMessage) {
+      throw new NotFoundException(
+        'Message not found or you are not the sender',
+      );
+    }
+
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
+  }
+
+  async forwardMessageToMultipleConversations(
+    messageForwardationDto: MessageForwardationRequest,
+    userPayload: JwtPayload,
+  ): Promise<Message[]> {
+    // Tìm tin nhắn gốc
+    const originalMessage = await this.messageModel.findById(
+      messageForwardationDto.originalMessageId,
+    );
+    if (!originalMessage || originalMessage.isRevoked) {
+      throw new NotFoundException(
+        'Original message not found or has been revoked',
+      );
+    }
+
+    const sender = await this.userService.findById(userPayload._id);
+
+    // Duyệt qua tất cả các cuộc trò chuyện và forward tin nhắn
+    const forwardedMessages = [];
+
+    for (const newConversationId of messageForwardationDto.conversationIds) {
+      // Kiểm tra xem cuộc trò chuyện có tồn tại không
+      const conversation =
+        await this.conversationService.getConvensationById(newConversationId);
+      if (!conversation) {
+        throw new NotFoundException(
+          `Conversation with ID ${newConversationId} not found`,
+        );
+      }
+
+      // Tạo bản sao của tin nhắn gốc cho mỗi cuộc trò chuyện
+      const forwardedMessage = await this.messageModel.create({
+        conversation: new Types.ObjectId(newConversationId),
+        sender: sender._id,
+        content: originalMessage.content,
+        files: originalMessage.files,
+        type: originalMessage.type,
+        forwardFrom: originalMessage._id, // Đánh dấu tin nhắn gốc
+      });
+
+      // Lưu tin nhắn đã forward vào mảng để trả về sau
+      forwardedMessages.push(forwardedMessage);
+
+      // Cập nhật trường lastMessageId của cuộc trò chuyện
+
+      await this.conversationService.updateLastMessageField(
+        newConversationId,
+        forwardedMessage._id as string,
+      );
+    }
+
+    // Trả về tất cả các tin nhắn đã được forward
+    return forwardedMessages as Message[];
+  }
+
+  async reactToMessage(
+    userPayload: JwtPayload,
+    messageReactionDto: MessageReactionRequest,
+  ) {
+    const matchedMessage = await this.messageModel.findById(
+      messageReactionDto.messageId,
+    );
+
+    if (!matchedMessage) {
+      throw new NotFoundException('Message not found to react');
+    }
+
+    const reacter = await this.userService.findById(userPayload._id);
+    if (!reacter) {
+      throw new NotFoundException('User not found to react');
+    }
+
+    // check user đã react chưa
+    const existingReaction = matchedMessage.reactions.find((reaction) =>
+      reaction.user.equals(reacter._id as Types.ObjectId),
+    );
+
+    if (existingReaction) {
+      // Nếu đã có reaction, cập nhật lại reaction
+      matchedMessage.reactions = matchedMessage.reactions.map((reaction) => {
+        if (reaction.user.equals(reacter._id as Types.ObjectId)) {
+          return { ...reaction, reaction: messageReactionDto.reaction };
+        }
+        return reaction;
+      });
+    } else {
+      // Nếu chưa có reaction, thêm mới
+      matchedMessage.reactions.push({
+        user: reacter._id as Types.ObjectId,
+        reaction: messageReactionDto.reaction,
+      });
+    }
+
+    // Lưu lại tin nhắn đã được react
+
+    const updatedMessage = await this.messageModel.findByIdAndUpdate(
+      matchedMessage._id,
+      { reactions: matchedMessage.reactions },
+      { new: true },
+    );
+    if (!updatedMessage) {
+      throw new NotFoundException('Failed to update message reaction');
+    }
+
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
+  }
+
+  async unReactToMessage(userPayload: JwtPayload, messageId: string) {
+    const matchedMessage = await this.messageModel.findById(
+      new Types.ObjectId(messageId),
+    );
+
+    if (!matchedMessage) {
+      throw new NotFoundException('Message not found to unreact');
+    }
+
+    const reacter = await this.userService.findById(userPayload._id);
+    if (!reacter) {
+      throw new NotFoundException('User not found to unreact');
+    }
+
+    // check user đã react chưa
+    const existingReaction = matchedMessage.reactions.find((reaction) =>
+      reaction.user.equals(reacter._id as Types.ObjectId),
+    );
+
+    if (!existingReaction) {
+      throw new NotFoundException('User not reacted to this message yet');
+    }
+
+    // Nếu đã có reaction, xóa reaction
+    matchedMessage.reactions = matchedMessage.reactions.filter(
+      (reaction) => !reaction.user.equals(reacter._id as Types.ObjectId),
+    );
+
+    // Lưu lại tin nhắn đã được react
+
+    const updatedMessage = await this.messageModel.findByIdAndUpdate(
+      matchedMessage._id,
+      { reactions: matchedMessage.reactions },
+      { new: true },
+    );
+    if (!updatedMessage) {
+      throw new NotFoundException('Failed to update message reaction');
+    }
+
+    return updatedMessage.populate('sender', 'firstName lastName email avatar');
   }
 }
