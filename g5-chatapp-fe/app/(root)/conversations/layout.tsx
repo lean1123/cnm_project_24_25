@@ -90,11 +90,23 @@ const ConversationsLayout = ({ children }: Props) => {
             <p>No conversations found</p>
           ) : (
             conversations && conversations.map((conversation) => {
-              return conversation.isGroup ? null : (
+              return conversation.isGroup ? (
                 <ConversationItem
                   key={conversation._id}
                   id={conversation._id}
-                  imageUrl={getAvatarUrl(conversation) || ""}
+                  imageUrl={conversation.profilePicture || "/group.jpg"}
+                  name={conversation.name || ""}
+                  lastMessage={conversation.lastMessage}
+                  onClick={() => {
+                    setSelectedConversation(conversation);
+                    console.log("Selected conversation:", conversation._id);
+                  }}
+                />
+              ) : (
+                <ConversationItem
+                  key={conversation._id}
+                  id={conversation._id}
+                  imageUrl={getAvatarUrl(conversation) || "/avatar.png"}
                   name={getMemberName(conversation)}
                   lastMessage={conversation.lastMessage}
                   onClick={() => {

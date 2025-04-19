@@ -5,8 +5,8 @@ import { Card } from "@/components/ui/card";
 import { cn, getNameFallBack } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
-import { User } from "@/types";
-import { Bell, Download, FileText, Search } from "lucide-react";
+import { Conversation, User } from "@/types";
+import { Bell, Download, FileText, Search, UserPlus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect } from "react";
@@ -14,7 +14,9 @@ import React, { useEffect } from "react";
 type Props = {
   isOpen: boolean;
   setOpen: (open: boolean) => void;
-  userSelected: User | null;
+  userSelected?: User | null;
+  conversationSelected?: Conversation | null;
+  isGroup?: boolean;
 };
 
 const conversationInfo = {
@@ -51,7 +53,7 @@ const conversationInfo = {
   ],
 };
 
-function ConversationInfo({ isOpen, setOpen, userSelected }: Props) {
+function ConversationInfo({ isOpen, setOpen, userSelected, conversationSelected, isGroup }: Props) {
   // const {userSelected} = useConversationStore()
   return (
     <Card
@@ -63,24 +65,24 @@ function ConversationInfo({ isOpen, setOpen, userSelected }: Props) {
       {/* info */}
       <div className="flex flex-col gap-2 justify-center items-center mt-6">
         <Avatar className="h-16 w-16">
-          <AvatarImage src={userSelected?.avatar || "/avatar.png"} alt="Avatar" />
+          {isGroup ? (
+            <AvatarImage src={conversationSelected?.profilePicture || "/group.jpg"} alt="Group" />
+          ) : (
+            <AvatarImage src={userSelected?.avatar || "/avatar.png"} alt="User" />
+          )}
           <AvatarFallback>{getNameFallBack(userSelected?.firstName || "", userSelected?.lastName || "")}</AvatarFallback>
         </Avatar>
         {/* <div> */}
+        {
+          isGroup ? (
+            <h2 className="font-semibold">{conversationSelected?.name}</h2>
+          ) : (
+            <h2 className="font-semibold">{userSelected?.firstName + " " + userSelected?.lastName}</h2>
+          )}
 
-        <p className="text-base font-semibold text-center">
-          {userSelected?.firstName + " " + userSelected?.lastName}
-        </p>
-        {/* {isOnline ? (
-          <p className="text-sm text-green-500">Active</p>
-        )
-        : (
-          <p className="text-sm text-red-500">Inactive</p>
-        )}
-        </div> */}
         {/* button */}
         <div className="mt-2 flex justify-evenly items-start w-full">
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1">
             <Button
               className="rounded-full size-8 flex justify-center items-center"
               variant="secondary"
@@ -89,7 +91,18 @@ function ConversationInfo({ isOpen, setOpen, userSelected }: Props) {
             </Button>
             <span className="text-base-content text-sm">Mute</span>
           </div>
-          <div className="flex flex-col items-center gap-2">
+          {isGroup && (
+            <div className="flex flex-col items-center gap-1">
+            <Button
+              className="rounded-full size-8 flex justify-center items-center"
+              variant="secondary"
+            >
+              <UserPlus className="size-4 text-base-content" />
+            </Button>
+            <span className="text-base-content text-sm">Add</span>
+          </div>
+          )}
+          <div className="flex flex-col items-center gap-1">
             <Button
               className="rounded-full size-8 flex justify-center items-center"
               variant="secondary"

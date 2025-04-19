@@ -26,17 +26,32 @@ export function CreateGroupDialog() {
   const [inputValue, setInputValue] = useState("");
   const { searchUsers, isSearching } = useUserStore();
   const { contacts, getMyContact } = useContactStore();
-  const {membersCreateGroup, addMemberCreateGroup, removeMemberCreateGroup } = useConversationStore();
+  const {
+    membersCreateGroup,
+    addMemberCreateGroup,
+    removeMemberCreateGroup,
+    createGroup,
+  } = useConversationStore();
   const router = useRouter();
   const { user } = useAuthStore();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
+  const [name, setName] = useState<string | null>(null);
 
   const [friends, setFriends] = useState<User[]>([]);
 
   const handleCreateGroup = async () => {
-    // console.log("handleSearch", inputValue);
+    if (!name || !membersCreateGroup || membersCreateGroup.length < 2) return;
+    const groupMembers = membersCreateGroup
+      .map((member) => member._id)
+      .filter((id): id is string => id !== undefined);
+    const groupData = {
+      name,
+      members: groupMembers,
+    };
+    await createGroup(groupData);
+    setName(null);
+    setFile(null);
   };
 
   const getFriends = () => {
@@ -125,7 +140,11 @@ export function CreateGroupDialog() {
                   document.getElementById("avatar-upload")?.click();
                 }}
               >
-                <AvatarImage src={previewUrl || "/camera.jpg"} alt="User" className="" />
+                <AvatarImage
+                  src={previewUrl || "/camera.jpg"}
+                  alt="User"
+                  className=""
+                />
               </Avatar>
               <input
                 id="avatar-upload"
@@ -138,6 +157,8 @@ export function CreateGroupDialog() {
             <input
               placeholder="Enter group name "
               className="w-full outline-none border-b-2 border-gray-300 focus:border-primary focus:ring-0 pb-3"
+              value={name || ""}
+              onChange={(e) => setName(e.target.value)}
             />
           </div>
           {/* Search */}
@@ -157,7 +178,9 @@ export function CreateGroupDialog() {
                 friendFilter.map((contact, idx) => (
                   <div
                     key={contact._id}
-                    className={`flex items-center justify-start gap-2 p-4 border-t border-base-300 ${idx === 0 ? "border-t-0" : ""}`}
+                    className={`flex items-center justify-start gap-2 p-4 border-t border-base-300 ${
+                      idx === 0 ? "border-t-0" : ""
+                    }`}
                   >
                     {/* checkbox */}
                     <input
@@ -213,7 +236,10 @@ export function CreateGroupDialog() {
                       </p>
                     </div>
                   </div>
-                  <button className="bg-primary text-base-100 rounded-full" onClick={() => handleRemoveMember(member)}>
+                  <button
+                    className="bg-primary text-base-100 rounded-full"
+                    onClick={() => handleRemoveMember(member)}
+                  >
                     <X className="size-4" />
                   </button>
                 </div>
@@ -226,7 +252,14 @@ export function CreateGroupDialog() {
             <DialogClose asChild>
               <Button variant="ghost">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleCreateGroup}>Create</Button>
+            <Button
+              onClick={() => {
+                handleCreateGroup();
+                console.log("membersCreateGroup", membersCreateGroup);
+              }}
+            >
+              Create
+            </Button>
           </DialogFooter>
         </div>
       </DialogContent>

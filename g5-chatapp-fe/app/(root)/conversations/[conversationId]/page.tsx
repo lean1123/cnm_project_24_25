@@ -19,14 +19,13 @@ type Props = {
 };
 
 function ConversationPage({ params }: Props) {
-
   const { conversationId } = use(params);
 
   const { selectedConversation, getConversation } = useConversationStore();
 
-  const {user} = useAuthStore()
+  const { user } = useAuthStore();
 
-  const {handleCall} = useCallStore();
+  const { handleCall } = useCallStore();
 
   useEffect(() => {
     console.log("Conversation ID:", conversationId);
@@ -38,7 +37,6 @@ function ConversationPage({ params }: Props) {
   const userSelected = selectedConversation?.members.find(
     (member) => member.user._id !== user?.id
   );
-
 
   const [removeFriendDialogOpen, setRemoveFriendDialogOpen] = useState(false);
   const [deleteGroupDialogOpen, setDeleteGroupDialogOpen] = useState(false);
@@ -67,33 +65,75 @@ function ConversationPage({ params }: Props) {
           isOpenRightBar ? "col-span-6" : "col-span-9"
         }`}
       >
-        <Header
-          userId={userSelected?.user._id || ""}
-          firstName={userSelected?.user.firstName || ""}
-          lastName={userSelected?.user.lastName || ""}
-          imageUrl={userSelected?.user.avatar || ""}
-          options={[
-            {
-              label: "Voice call",
-              icon: <Phone />,
-              onClick: () => handleCall(conversationId),
-            },
-            {
-              label: "Video call",
-              icon: <Video />,
-              onClick: () => setDeleteGroupDialogOpen(true),
-            },
-            {
-              label: "Info",
-              icon: <Info />,
-              onClick: () => setIsOpenRightBar(!isOpenRightBar),
-            },
-          ]}
-        />
+        {selectedConversation?.isGroup ? (
+          <Header
+            isGroup={selectedConversation?.isGroup || false}
+            name={selectedConversation?.name}
+            imageUrl={selectedConversation?.profilePicture || ""}
+            numMembers={selectedConversation?.members.length}
+            options={[
+              {
+                label: "Voice call",
+                icon: <Phone />,
+                onClick: () => handleCall(conversationId),
+              },
+              {
+                label: "Video call",
+                icon: <Video />,
+                onClick: () => setDeleteGroupDialogOpen(true),
+              },
+              {
+                label: "Info",
+                icon: <Info />,
+                onClick: () => setIsOpenRightBar(!isOpenRightBar),
+              },
+            ]}
+          />
+        ) : (
+          <Header
+            isGroup={selectedConversation?.isGroup || false}
+            userId={userSelected?.user._id || ""}
+            firstName={userSelected?.user.firstName || ""}
+            lastName={userSelected?.user.lastName || ""}
+            imageUrl={userSelected?.user.avatar || ""}
+            options={[
+              {
+                label: "Voice call",
+                icon: <Phone />,
+                onClick: () => handleCall(conversationId),
+              },
+              {
+                label: "Video call",
+                icon: <Video />,
+                onClick: () => setDeleteGroupDialogOpen(true),
+              },
+              {
+                label: "Info",
+                icon: <Info />,
+                onClick: () => setIsOpenRightBar(!isOpenRightBar),
+              },
+            ]}
+          />
+        )}
+
         <Body />
         <ChatInput />
       </div>
-      <ConversationInfo isOpen={isOpenRightBar} setOpen={setIsOpenRightBar} userSelected={userSelected?.user || null}/>
+      {selectedConversation?.isGroup ? (
+        <ConversationInfo
+          isOpen={isOpenRightBar}
+          setOpen={setIsOpenRightBar}
+          conversationSelected={selectedConversation}
+          isGroup={true}
+        />
+      ) : (
+        <ConversationInfo
+          isOpen={isOpenRightBar}
+          setOpen={setIsOpenRightBar}
+          userSelected={userSelected?.user || null}
+          isGroup={false}
+        />
+      )}
     </ConversationContainer>
   );
 }

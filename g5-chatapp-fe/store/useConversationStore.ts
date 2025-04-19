@@ -1,6 +1,6 @@
 import api from "@/api/api";
 import { getSocket } from "@/lib/socket";
-import { Conversation, Message, MessageRequest, User } from "@/types";
+import { Conversation, CreateGroupRequest, Message, MessageRequest, User } from "@/types";
 import { toast } from "sonner";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
@@ -18,6 +18,7 @@ interface iConversationStore {
   membersCreateGroup: User[];
   addMemberCreateGroup: (member: User) => void;
   removeMemberCreateGroup: (member: User) => void;
+  createGroup: (group: CreateGroupRequest) => Promise<void>;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -79,6 +80,20 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     } catch (error) {
       set({ error: "Failed to fetch conversation" });
       return null;
+    }
+  },
+  createGroup: async (group: CreateGroupRequest) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.post("/conversation", group);
+      console.log("Create group response:", data);
+      toast.success("Group created successfully!");
+      set({ membersCreateGroup: [] });
+      get().getConversations(useAuthStore.getState().user?._id as string);
+    } catch (error) {
+      set({ error: "Failed to create group" });
+    } finally {
+      set({ isLoading: false });
     }
   },
 }));
