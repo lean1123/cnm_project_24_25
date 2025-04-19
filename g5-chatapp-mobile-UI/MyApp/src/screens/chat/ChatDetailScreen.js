@@ -547,7 +547,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
             setSocket(socketInstance);
             setIsOnline(socketInstance.connected);
 
-            console.log("[Socket] Joining conversation room:", conversation._id);
+            console.log(
+              "[Socket] Joining conversation room:",
+              conversation._id
+            );
             socketInstance.emit("join", {
               conversationId: conversation._id,
               userId: currentUserData._id,
@@ -855,15 +858,35 @@ const ChatDetailScreen = ({ navigation, route }) => {
       if (files.length > 0) {
         const preparedFiles = files.map((file) => ({
           uri: file.uri,
-          type: file.type?.includes("/")
-            ? file.type
-            : file.name?.endsWith(".mp4")
-            ? "video/mp4"
-            : file.name?.endsWith(".mp3")
-            ? "audio/mpeg"
-            : file.name?.endsWith(".pdf")
-            ? "application/pdf"
-            : "application/octet-stream", // đảm bảo là kiểu MIME
+          type:
+            file.type && file.type.includes("/")
+              ? file.type
+              : (() => {
+                  const fileName =
+                    file.name ||
+                    file.fileName ||
+                    file.uri?.split("/").pop() ||
+                    "";
+                  const ext = fileName.split(".").pop()?.toLowerCase();
+
+                  switch (ext) {
+                    case "jpg":
+                    case "jpeg":
+                      return "image/jpeg";
+                    case "png":
+                      return "image/png";
+                    case "gif":
+                      return "image/gif";
+                    case "mp4":
+                      return "video/mp4";
+                    case "mp3":
+                      return "audio/mpeg";
+                    case "pdf":
+                      return "application/pdf";
+                    default:
+                      return "application/octet-stream";
+                  }
+                })(),
           name: file.name || file.fileName || file.uri.split("/").pop(),
         }));
 
@@ -944,8 +967,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.5,
+        quality: 1,
         allowsEditing: true,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -981,9 +1005,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.5,
+        quality: 1,
         allowsMultipleSelection: true,
         selectionLimit: 10,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -1003,49 +1028,52 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
- const handleDocument = async () => {
-  try {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: "*/*",
-      copyToCacheDirectory: true,
-      multiple: false
-    });
+  const handleDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "*/*",
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
 
-    console.log("Document picker result:", result);
+      console.log("Document picker result:", result);
 
-    if (result.assets && Array.isArray(result.assets) && result.assets.length > 0) {
-      const file = result.assets[0];
-      
-      // Validate file
-      if (!file.uri || !file.mimeType) {
-        throw new Error("Invalid file selected");
+      if (
+        result.assets &&
+        Array.isArray(result.assets) &&
+        result.assets.length > 0
+      ) {
+        const file = result.assets[0];
+
+        // Validate file
+        if (!file.uri || !file.mimeType) {
+          throw new Error("Invalid file selected");
+        }
+
+        // Check file size (limit to 10MB)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+        if (file.size > MAX_FILE_SIZE) {
+          alert("File size must be less than 10MB");
+          return;
+        }
+
+        // Create a valid file object
+        const validFile = {
+          uri: file.uri,
+          type: file.mimeType,
+          name: file.name,
+          size: file.size,
+        };
+
+        await sendMessage({ files: [validFile] });
+      } else {
+        console.warn("No documents selected or invalid document format");
       }
-
-      // Check file size (limit to 10MB)
-      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
-      if (file.size > MAX_FILE_SIZE) {
-        alert("File size must be less than 10MB");
-        return;
-      }
-
-      // Create a valid file object
-      const validFile = {
-        uri: file.uri,
-        type: file.mimeType,
-        name: file.name,
-        size: file.size
-      };
-
-      await sendMessage({ files: [validFile] });
-    } else {
-      console.warn("No documents selected or invalid document format");
+    } catch (error) {
+      console.error("Error picking documents:", error);
+      alert(error.message || "Error selecting documents");
     }
-  } catch (error) {
-    console.error("Error picking documents:", error);
-    alert(error.message || "Error selecting documents");
-  }
-};
-
+  };
 
   const handleVideo = async () => {
     try {
