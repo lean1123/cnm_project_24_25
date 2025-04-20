@@ -89,7 +89,8 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
         formData.append("files", file); // tên 'files' này cần trùng với bên backend
       });
     try {
-      const selectedConversation = useConversationStore.getState().selectedConversation;
+      const selectedConversation =
+        useConversationStore.getState().selectedConversation;
       const response = await api.post(
         `/message/send-message/${selectedConversation?._id}`,
         formData
@@ -128,60 +129,64 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
   },
   subscribeToNewMessages: () => {
     const socket = getSocket();
-  
+
     if (!socket) return;
-  
+
     socket.on("newMessage", (message: Message) => {
       set((state) => {
-        const selectedId = useConversationStore.getState().selectedConversation?._id;
+        const selectedId =
+          useConversationStore.getState().selectedConversation?._id;
         const isSelected = message.conversation === selectedId;
         const isForward = message.forwardFrom !== null;
         const isCurrentUser =
           message.sender._id === useAuthStore.getState().user?.id;
-  
+
         // ✅ Luôn cập nhật conversations
-        let updatedConversations = useConversationStore.getState().conversations.map((conversation) => {
-          if (conversation._id === message.conversation) {
-            return {
-              ...conversation,
-              lastMessage: {
-                _id: message._id,
-                sender: message.sender,
-                content: message.content,
-                type: message.type,
-                files: message.files,
-              },
-              updatedAt: new Date().toISOString(),
-            };
-          }
-          return conversation;
-        });
-  
+        let updatedConversations = useConversationStore
+          .getState()
+          .conversations.map((conversation) => {
+            if (conversation._id === message.conversation) {
+              return {
+                ...conversation,
+                lastMessage: {
+                  _id: message._id,
+                  sender: message.sender,
+                  content: message.content,
+                  type: message.type,
+                  files: message.files,
+                },
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            return conversation;
+          });
+
         updatedConversations = updatedConversations.sort((a, b) => {
           return (
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           );
         });
 
-        useConversationStore.setState({ conversations: updatedConversations });
-  
+        useConversationStore
+          .getState()
+          .updateConversations(updatedConversations);
+
         // ✅ Điều kiện thêm vào messages:
         // 1. Thuộc selectedConversation
         // 2. Nếu là forward, thì phải là từ người khác gửi
         const shouldAddToMessages =
           isSelected && (!isForward || (isForward && !isCurrentUser));
-  
+
         return {
           messages: shouldAddToMessages
             ? [message, ...state.messages.filter((m) => m._id !== "temp")]
             : state.messages,
-  
+
           messagesTemp: state.messagesTemp.filter((m) => m._id !== "temp"),
         };
       });
     });
   },
-  
 
   unsubscribeFromNewMessages: () => {
     const socket = getSocket(); // Ensure socket is initialized
@@ -294,7 +299,11 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
           console.log("User is typing:", data);
           const { userId, conversationId } = data;
           if (userId === useAuthStore.getState().user?.id) return;
-          if (conversationId !== useConversationStore.getState().selectedConversation?._id) return; // Ignore own typing event
+          if (
+            conversationId !==
+            useConversationStore.getState().selectedConversation?._id
+          )
+            return; // Ignore own typing event
           set({ isTyping: true });
           setTimeout(() => {
             set({ isTyping: false });

@@ -8,71 +8,11 @@ import { useMessageStore } from "@/store/useMessageStore";
 type Props = {};
 
 const Body = (props: Props) => {
-  const mockMessages = [
-    {
-      message: {
-        senderId: "user_1",
-        content: "Xin chào!",
-        createdAt: "2025-02-19T08:30:00Z",
-        type: "text",
-      },
-      senderImage: "https://example.com/avatar1.jpg",
-      senderName: "John Doe",
-      isCurrentUser: false,
-    },
-    {
-      message: {
-        senderId: "user_2",
-        content: "Chào bạn! Bạn khỏe không?",
-        createdAt: "2025-02-19T08:32:00Z",
-        type: "text",
-      },
-      senderImage: "https://example.com/avatar2.jpg",
-      senderName: "Jane Smith",
-      isCurrentUser: true,
-    },
-    {
-      message: {
-        senderId: "user_2",
-        content: "Hôm nay bạn có rảnh không?",
-        createdAt: "2025-02-19T08:33:00Z",
-        type: "text",
-      },
-      senderImage: "https://example.com/avatar2.jpg",
-      senderName: "Jane Smith",
-      isCurrentUser: true,
-    },
-    {
-      message: {
-        senderId: "user_1",
-        content: "Ừ, mình rảnh. Có gì không?",
-        createdAt: "2025-02-19T08:35:00Z",
-        type: "text",
-      },
-      senderImage: "https://example.com/avatar1.jpg",
-      senderName: "John Doe",
-      isCurrentUser: false,
-    },
-  ];
   const { selectedConversation } = useConversationStore();
   const {
-    sendMessage,
     messages,
     fetchMessages,
-    subscribeToNewMessages,
-    unsubscribeFromNewMessages,
-    subscribeToDeleteMessage,
-    unsubscribeFromDeleteMessage,
-    subscribeToRevokeMessage,
-    unsubscribeFromRevokeMessage,
-    typing,
     isTyping,
-    subscribeToTyping,
-    unsubscribeFromTyping,
-    subscribeToReaction,
-    unsubscribeFromReaction,
-    subscribeToUnReaction,
-    unsubscribeFromUnReaction,
   } = useMessageStore();
   const { user } = useAuthStore();
   useEffect(() => {
@@ -81,35 +21,6 @@ const Body = (props: Props) => {
     }
   }, [selectedConversation, fetchMessages]);
 
-  useEffect(() => {
-    subscribeToNewMessages();
-    subscribeToDeleteMessage();
-    subscribeToRevokeMessage();
-    subscribeToTyping();
-    subscribeToReaction();
-    subscribeToUnReaction();
-    return () => {
-      unsubscribeFromNewMessages();
-      unsubscribeFromDeleteMessage();
-      unsubscribeFromRevokeMessage();
-      unsubscribeFromTyping();
-      unsubscribeFromReaction();
-      unsubscribeFromUnReaction();
-    };
-  }, [
-    subscribeToNewMessages,
-    unsubscribeFromNewMessages,
-    subscribeToDeleteMessage,
-    unsubscribeFromDeleteMessage,
-    subscribeToRevokeMessage,
-    unsubscribeFromRevokeMessage,
-    subscribeToTyping,
-    unsubscribeFromTyping,
-    subscribeToReaction,
-    unsubscribeFromReaction,
-    subscribeToUnReaction,
-    unsubscribeFromUnReaction,
-  ]);
 
   const checkDeletedMessage = (message: Message | null) => {
     if (!message) return false;
