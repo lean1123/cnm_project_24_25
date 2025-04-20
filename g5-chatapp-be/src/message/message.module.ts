@@ -12,6 +12,11 @@ import { UploadModule } from 'src/upload/upload.module';
 import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 import { ChatGateway } from 'src/message/gateway/chat.gateway';
 import { ContactModule } from 'src/contact/contact.module';
+import { HandleConversation } from './gateway/handleConvsersation';
+import { HandleConnection } from './gateway/handleConnection';
+import { HandleMessage } from './gateway/handleMessage';
+import { HandleContact } from './gateway/handleContact';
+import { HandleCall } from './gateway/handleCall';
 
 @Module({
   imports: [
@@ -30,6 +35,11 @@ import { ContactModule } from 'src/contact/contact.module';
     //   useClass: ThrottlerGuard,
     // },
     ChatGateway,
+    HandleConversation,
+    HandleConnection,
+    HandleMessage,
+    HandleContact,
+    HandleCall,
   ],
   controllers: [MessageController],
   exports: [MessageService, MongooseModule, ChatGateway],
