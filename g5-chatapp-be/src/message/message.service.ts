@@ -412,4 +412,64 @@ export class MessageService {
     }
     return MessageType.TEXT;
   }
+
+  async getFilesByConversationId(conversationId: string) {
+    const convsersation =
+      await this.conversationService.getConvensationById(conversationId);
+
+    if (!convsersation) {
+      throw new NotFoundException('Conversation not found in get files');
+    }
+
+    const messagesTypeOfFile = await this.messageModel
+      .find({
+        conversation: new Types.ObjectId(conversationId),
+        type: { $in: [MessageType.FILE] },
+      })
+      .sort({ createdAt: -1 });
+
+    const files = messagesTypeOfFile.map((message) => {
+      return message.files.map((file) => {
+        return {
+          fileName: file.fileName,
+          url: file.url,
+        };
+      });
+    });
+
+    return {
+      files: files.flat(),
+    };
+  }
+
+  async getImagesAndVideosByConversationId(conversationId: string) {
+    const conversation =
+      await this.conversationService.getConvensationById(conversationId);
+
+    if (!conversation) {
+      throw new NotFoundException(
+        'Conversation not found in get images/videos',
+      );
+    }
+
+    const messagesTypeOfImageAndVideo = await this.messageModel
+      .find({
+        conversation: new Types.ObjectId(conversationId),
+        type: { $in: [MessageType.IMAGE, MessageType.VIDEO] },
+      })
+      .sort({ createdAt: -1 });
+
+    const imagesAndVideos = messagesTypeOfImageAndVideo.map((message) => {
+      return message.files.map((file) => {
+        return {
+          fileName: file.fileName,
+          url: file.url,
+        };
+      });
+    });
+
+    return {
+      imagesAndVideos: imagesAndVideos.flat(),
+    };
+  }
 }

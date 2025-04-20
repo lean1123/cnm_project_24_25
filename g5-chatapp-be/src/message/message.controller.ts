@@ -190,4 +190,22 @@ export class MessageController {
 
     return messageForwardations;
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('/:conversationId/files')
+  async getFilesByConversationId(
+    @Param('conversationId') conversationId: string,
+  ) {
+    return await this.messageService.getFilesByConversationId(conversationId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('/:conversationId/media')
+  async getMediaByConversationId(
+    @Param('conversationId') conversationId: string,
+  ) {
+    return await this.messageService.getImagesAndVideosByConversationId(
+      conversationId,
+    );
+  }
 }
