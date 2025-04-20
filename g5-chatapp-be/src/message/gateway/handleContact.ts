@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { ContactResponseDto } from 'src/contact/dto/contactResponse.dto';
 
 @Injectable()
@@ -73,5 +73,32 @@ export class HandleContact {
       contactId,
       name,
     });
+  }
+
+  async handleJoinNewConversation(
+    { conversationId, userId }: { conversationId: string; userId: string },
+    client: Socket,
+    logger: Logger,
+    activeUsers: Map<string, string>,
+    server: Server,
+  ) {
+    // Log receiverId và kiểm tra activeUsers
+    logger.log(
+      `[Contact] Receiver ID: ${userId}, Active Users: ${JSON.stringify(Array.from(activeUsers))}`,
+    );
+
+    // Kiểm tra người nhận có online không
+    if (!activeUsers.has(userId)) {
+      logger.error(`[Contact] User ${userId} is offline`);
+      return;
+    }
+
+    // Kiểm tra phòng receiverId có tồn tại không
+    const receiverRoom = server.sockets.adapter.rooms.get(userId);
+    logger.log(`[Contact] Receiver room exists: ${!!receiverRoom}`);
+
+    // Gửi sự kiện
+    await client.join(conversationId);
+    server.to(userId).emit('joinNewConversation', conversationId);
   }
 }

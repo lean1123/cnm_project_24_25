@@ -4,10 +4,14 @@ import { ContactDto } from './dto/contact.dto';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { JwtPayload } from 'src/conversation/interfaces/jwtPayload.interface';
 import { AuthGuard } from '@nestjs/passport';
+import { ChatGateway } from '../message/gateway/chat.gateway';
 
 @Controller('contact')
 export class ContactController {
-  constructor(private readonly contactService: ContactService) {}
+  constructor(
+    private readonly contactService: ContactService,
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Post()
   @UseGuards(AuthGuard('jwt'))

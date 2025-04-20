@@ -179,6 +179,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: data.userId,
     });
   }
+
+  @SubscribeMessage('joinNewConversation')
+  async handleJoinNewConversation(
+    @MessageBody()
+    { conversationId, userId }: { conversationId: string; userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    await this.handleContact.handleJoinNewConversation(
+      { conversationId, userId },
+      client,
+      this.logger,
+      this.activeUsers,
+      this.server,
+    );
+  }
   @SubscribeMessage('sendRequestContact')
   handleRequestContact(
     @MessageBody()
