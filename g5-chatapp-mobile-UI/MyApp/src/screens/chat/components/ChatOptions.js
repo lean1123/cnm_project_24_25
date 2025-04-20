@@ -65,10 +65,11 @@ const ChatOptions = ({
       >
         <View style={styles.modalContainer}>
           <View style={styles.optionsBox}>
+            <View style={styles.grabber} />
             <View style={styles.header}>
-              <Text style={styles.headerText}>Options Chat</Text>
+              <Text style={styles.headerText}>Chat Options</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={26} color="#0099ff" />
               </TouchableOpacity>
             </View>
             
@@ -80,7 +81,7 @@ const ChatOptions = ({
                   onPress={option.onPress}
                 >
                   <View style={[styles.iconContainer, { backgroundColor: option.color }]}>
-                    <Ionicons name={option.icon} size={28} color="#ffffff" />
+                    <Ionicons name={option.icon} size={30} color="#fff" />
                   </View>
                   <Text style={styles.optionText}>{option.label}</Text>
                 </TouchableOpacity>
@@ -96,7 +97,7 @@ const ChatOptions = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
@@ -105,61 +106,74 @@ const styles = StyleSheet.create({
   },
   optionsBox: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 30,
-    paddingTop: 10,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+    paddingTop: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  grabber: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#e4e4e4',
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginVertical: 8,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e4e4e4',
   },
   headerText: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '600',
     color: '#333',
-    marginLeft: '8%',
+    flex: 1,
+    textAlign: 'left',
+    marginLeft: '10%',
   },
   closeButton: {
-    padding: 5,
+    padding: 8,
   },
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
     paddingTop: 20,
   },
   option: {
     width: '33.33%',
     alignItems: 'center',
-    marginBottom: 25,
+    marginBottom: 20,
   },
   iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
-    elevation: 3,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
   optionText: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
-  }
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    textAlign: 'center',
+  },
 });
 
-export default ChatOptions; 
+export default ChatOptions;

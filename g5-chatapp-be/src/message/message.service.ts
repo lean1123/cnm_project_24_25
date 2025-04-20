@@ -60,24 +60,15 @@ export class MessageService {
     if (files) {
       fileUrls = await Promise.all(
         files.map(async (file) => {
+          console.log(file);
+
           const url = await this.uploadFileService.uploadFile(
             file.originalname,
             file.buffer,
             file.mimetype,
           );
 
-          if (file.mimetype.startsWith('image/') || file.mimetype === 'image') {
-            type = MessageType.IMAGE;
-          }
-          if (file.mimetype.startsWith('video/')) {
-            type = MessageType.VIDEO;
-          }
-          if (file.mimetype.startsWith('audio/')) {
-            type = MessageType.AUDIO;
-          }
-          if (file.mimetype.startsWith('application/')) {
-            type = MessageType.FILE;
-          }
+          type = this.getMessageType(file.mimetype);
 
           return { fileName: file.originalname, url };
         }),
@@ -383,7 +374,7 @@ export class MessageService {
 
   /**
    * Xóa tất cả các tin nhắn trong cuộc trò chuyện
-   * @param conversationId ID của cuộc trò chuyện 
+   * @param conversationId ID của cuộc trò chuyện
    */
   async deleteMessageByConversationId(conversationId: string) {
     const messages = await this.messageModel.find({
@@ -399,5 +390,26 @@ export class MessageService {
       conversation: new Types.ObjectId(conversationId),
     });
     return messages;
+  }
+
+  private getMessageType(mime: string): MessageType {
+    if (mime.startsWith('image/') || mime === 'image') {
+      return MessageType.IMAGE;
+    }
+    if (
+      mime === 'audio/webm' ||
+      mime === 'audio/mpeg' ||
+      mime.startsWith('audio/') ||
+      mime === 'video/webm'
+    ) {
+      return MessageType.AUDIO;
+    }
+    if (mime.startsWith('video/')) {
+      return MessageType.VIDEO;
+    }
+    if (mime.startsWith('application/')) {
+      return MessageType.FILE;
+    }
+    return MessageType.TEXT;
   }
 }

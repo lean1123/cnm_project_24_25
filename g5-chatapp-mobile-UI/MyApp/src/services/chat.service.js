@@ -220,6 +220,68 @@ const chatService = {
     }
   },
 
+  // Create a new group conversation
+  createGroup: async (groupData, file) => {
+    try {
+      console.log("Creating group with data:", groupData);
+      
+      const formData = new FormData();
+      formData.append("name", groupData.name);
+      
+      // Add all member IDs to the request
+      if (groupData.members && groupData.members.length > 0) {
+        groupData.members.forEach(memberId => {
+          formData.append("members", memberId);
+        });
+      }
+
+      // Append file if provided
+      if (file) {
+        const fileName = file.name || file.fileName || file.uri.split("/").pop();
+        const fileType = file.type || "image/jpeg";
+        
+        formData.append("file", {
+          uri: file.uri,
+          type: fileType,
+          name: fileName,
+        });
+      }
+
+      console.log("Sending formData:", JSON.stringify(Object.fromEntries(formData._parts)));
+
+      const userData = await AsyncStorage.getItem("userData");
+      const token = userData ? JSON.parse(userData).token : null;
+
+      const response = await axiosInstance.post(
+        "/conversation",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      console.log("Group created successfully:", response.data);
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error creating group:", error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message,
+      };
+    }
+  },
+
   // Update conversation
   updateConversation: async (conversationId, updateData) => {
     try {
@@ -650,6 +712,172 @@ const chatService = {
     } catch (error) {
       console.error("Error deleting message for me:", error);
       throw error;
+    }
+  },
+
+  // Search users for adding to group
+  searchUsers: async (searchQuery) => {
+    try {
+      const response = await axiosInstance.get(`/user/search?q=${encodeURIComponent(searchQuery)}`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error searching users:", error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  },
+
+  // Add members to group
+  addMembersToGroup: async (conversationId, memberIds) => {
+    try {
+      const response = await axiosInstance.post(`/conversation/add-member/${conversationId}`, {
+        members: memberIds
+      });
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error adding members to group:", error);
+      throw new Error(error.response?.data?.message || "Failed to add members");
+    }
+  },
+
+  // Remove member from group
+  removeMemberFromGroup: async (conversationId, memberId) => {
+    try {
+      const response = await axiosInstance.delete(`/conversation/remove-member/${conversationId}`, {
+        data: { memberId }
+      });
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error removing member from group:", error);
+      throw new Error(error.response?.data?.message || "Failed to remove member");
+    }
+  },
+
+  // Change member role (promote/demote admin)
+  changeRoleMember: async (conversationId, memberId) => {
+    try {
+      const response = await axiosInstance.post(`/conversation/change-role/${conversationId}/${memberId}`);
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error changing member role:", error);
+      throw new Error(error.response?.data?.message || "Failed to change member role");
+    }
+  },
+
+  // Update group information
+  updateGroupInfo: async (conversationId, updateData) => {
+    try {
+      const formData = new FormData();
+
+      if (updateData.name) {
+        formData.append("name", updateData.name);
+      }
+
+      if (updateData.avatar) {
+        const fileName = updateData.avatar.name || updateData.avatar.fileName || updateData.avatar.uri.split("/").pop();
+        const fileType = updateData.avatar.type || "image/jpeg";
+
+        formData.append("avatar", {
+          uri: updateData.avatar.uri,
+          type: fileType,
+          name: fileName
+        });
+      }
+
+      const response = await axiosInstance.patch(
+        `/conversation/${conversationId}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data"
+          }
+        }
+      );
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error updating group info:", error);
+      throw new Error(error.response?.data?.message || "Failed to update group information");
+    }
+  },
+
+  // Get group media (images, videos, files)
+  getGroupMedia: async (conversationId, mediaType = 'all', page = 1, limit = 20) => {
+    try {
+      const response = await axiosInstance.get(`/conversation/${conversationId}/media`, {
+        params: {
+          type: mediaType,
+          page,
+          limit
+        }
+      });
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error fetching group media:", error);
+      throw new Error(error.response?.data?.message || "Failed to fetch media");
+    }
+  },
+
+  // Dissolve group (only for group owner)
+  dissolveGroup: async (conversationId) => {
+    try {
+      const response = await axiosInstance.delete(`/conversation/${conversationId}`);
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error dissolving group:", error);
+      throw new Error(error.response?.data?.message || "Failed to dissolve group");
     }
   },
 };
