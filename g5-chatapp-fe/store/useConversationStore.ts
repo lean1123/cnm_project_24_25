@@ -20,6 +20,8 @@ interface iConversationStore {
   addMemberCreateGroup: (member: User) => void;
   removeMemberCreateGroup: (member: User) => void;
   createGroup: (group: CreateGroupRequest) => Promise<void>;
+  subscribeNewGroup: () => void;
+  unsubscribeNewGroup: () => void;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -101,4 +103,21 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       set({ isLoading: false });
     }
   },
+  subscribeNewGroup: () => {
+    const socket = getSocket();
+    if (socket) {
+      socket.on("createConversationForGroup", (data: Conversation) => {
+        console.log("New group created:", data);
+        set((state) => ({
+          conversations: [...state.conversations, data],
+        }));
+      });
+    }
+  },
+  unsubscribeNewGroup: () => {
+    const socket = getSocket();
+    if (socket) {
+      socket.off("createConversationForGroup");
+    }
+  }
 }));

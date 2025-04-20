@@ -3,12 +3,17 @@ import SidebarWrapper from "@/components/common/sidebar/SidebarWrapper";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCallStore } from "@/store/useCallStore";
 import { useContactStore } from "@/store/useContactStore";
+import { useConversationStore } from "@/store/useConversationStore";
 import { useMessageStore } from "@/store/useMessageStore";
 import React, { useEffect, useState } from "react";
 
 type Props = React.PropsWithChildren<{}>;
 
 const Layout = ({ children }: Props) => {
+  const {
+    subscribeNewGroup,
+    unsubscribeNewGroup,
+  } = useConversationStore();
   const {
     subscribeContact,
     unsubscribeContact,
@@ -64,6 +69,7 @@ const Layout = ({ children }: Props) => {
       subscribeToTyping();
       subscribeToReaction();
       subscribeToUnReaction();
+      subscribeNewGroup();
       return () => {
         unsubscribeContact();
         unsubscribeCancelContact();
@@ -76,6 +82,7 @@ const Layout = ({ children }: Props) => {
         unsubscribeFromTyping();
         unsubscribeFromReaction();
         unsubscribeFromUnReaction();
+        unsubscribeNewGroup();
       };
     }
   }, [isAuthenticated, socket]);
