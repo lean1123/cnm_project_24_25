@@ -28,6 +28,10 @@ const Layout = ({ children }: Props) => {
     subscribeCancelCall,
     unsubscribeCancelCall,
   } = useCallStore();
+  const {
+    subscribeActiveUsers,
+    unsubscribeActiveUsers
+  } = useAuthStore();
   const { isAuthenticated, connectSocket, socket } = useAuthStore();
   useEffect(() => {
     if (isAuthenticated) {
@@ -41,12 +45,14 @@ const Layout = ({ children }: Props) => {
       subscribeCancelContact();
       subscribeRejectContact();
       subscribeCall();
+      subscribeActiveUsers();
 
       return () => {
         unsubscribeContact();
         unsubscribeCancelContact();
         unsubscribeRejectContact();
         unsubscribeCall();
+        unsubscribeActiveUsers();
       };
     }
   }, [isAuthenticated, socket]);

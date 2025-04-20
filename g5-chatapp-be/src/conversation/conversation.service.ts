@@ -8,6 +8,7 @@ import { JwtPayload } from './interfaces/jwtPayload.interface';
 import { Convensation } from './schema/convensation.schema';
 import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
 import { ConversationRole } from './schema/conversationRole.enum';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Injectable()
 export class ConversationService {
@@ -18,11 +19,13 @@ export class ConversationService {
     private readonly userService: UserService,
     @Inject(forwardRef(() => MessageService))
     private readonly messageService: MessageService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async createConvensation(
     userPayload: JwtPayload,
     conversation: ConvensationRequest,
+    file: Express.Multer.File,
   ): Promise<Convensation> {
     const adminUser = await this.userService.findById(userPayload._id);
     if (!adminUser) {
@@ -30,7 +33,10 @@ export class ConversationService {
     }
 
     let memberIds = conversation.members;
-    const isExistedAdmin = memberIds.includes(adminUser._id as string);
+
+    const isExistedAdmin = memberIds.some((id) =>
+      new Types.ObjectId(id).equals(adminUser._id as Types.ObjectId),
+    );
 
     if (!isExistedAdmin) {
       memberIds = [...memberIds, adminUser._id as string];
@@ -71,6 +77,11 @@ export class ConversationService {
         conversation.name = name;
       }
 
+      if (file) {
+        const uploadedResult = await this.cloudinaryService.uploadFile(file);
+        conversation.profilePicture = uploadedResult.url;
+      }
+
       const existedGroup = await this.convenstationModel.findOne({
         isGroup: true,
         name: conversation.name,
@@ -87,8 +98,7 @@ export class ConversationService {
     const newConversation = await this.convenstationModel.create({
       name: conversation.name ?? null,
       isGroup,
-      profilePicture: null,
-      admin: adminUser._id,
+      profilePicture: conversation.profilePicture ?? null,
       lastMessage: null,
       members: membersWithRole,
     });
@@ -100,7 +110,6 @@ export class ConversationService {
     return await this.convenstationModel
       .findById(id)
       .populate('members.user', 'firstName lastName email avatar')
-      .populate('admin', 'firstName lastName email avatar')
       .populate({
         path: 'lastMessage',
         select: 'sender content type files',
@@ -116,8 +125,9 @@ export class ConversationService {
     members: Types.ObjectId[],
   ): Promise<Convensation> {
     return await this.convenstationModel.findOne({
-      members: { $all: members },
-      is_group: false,
+      isGroup: false,
+      'members.user': { $all: members },
+      $expr: { $eq: [{ $size: '$members' }, 2] },
     });
   }
 
@@ -125,8 +135,9 @@ export class ConversationService {
     members: Types.ObjectId[],
   ): Promise<Convensation> {
     return await this.convenstationModel.findOne({
-      members: { $all: members },
-      is_group: true,
+      isGroup: true,
+      'members.user': { $all: members },
+      $expr: { $eq: [{ $size: '$members' }, members.length] },
     });
   }
 
@@ -141,11 +152,10 @@ export class ConversationService {
     }
     const conversations = await this.convenstationModel
       .find({
-        members: userPayload._id,
+        'members.user': userPayload._id,
       })
       .sort({ updatedAt: -1 })
-      .populate('members', 'firstName lastName email avatar')
-      .populate('admin', 'firstName lastName email avatar')
+      .populate('members.user', 'firstName lastName email avatar')
       .populate({
         path: 'lastMessage',
         select: 'sender content type files',
@@ -165,7 +175,7 @@ export class ConversationService {
     }
     const conversations = await this.convenstationModel
       .find({
-        members: new Types.ObjectId(userId),
+        'members.user': new Types.ObjectId(userId),
       })
       .exec();
     return (

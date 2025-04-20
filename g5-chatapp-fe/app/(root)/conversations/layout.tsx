@@ -57,17 +57,17 @@ const ConversationsLayout = ({ children }: Props) => {
   }, [user]);
 
   const getMemberName = (conversation: Conversation) => {
-    if (conversation.members[0]._id !== user?.id) {
-      return conversation.members[0].firstName + " " + conversation.members[0].lastName;
+    if (conversation.members[0].user._id !== user?.id) {
+      return conversation.members[0].user.firstName + " " + conversation.members[0].user.lastName;
     }
-    return conversation.members[1].firstName + " " + conversation.members[1].lastName;
+    return conversation.members[1].user.firstName + " " + conversation.members[1].user.lastName;
   }
 
   const getAvatarUrl = (conversation: Conversation) => {
-    if (conversation.members[0]._id !== user?.id) {
-      return conversation.members[0].avatar;
+    if (conversation.members[0].user._id !== user?.id) {
+      return conversation.members[0].user.avatar;
     }
-    return conversation.members[1].avatar;
+    return conversation.members[1].user.avatar;
   }
   return (
     <>

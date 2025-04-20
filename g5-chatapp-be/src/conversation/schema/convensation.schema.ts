@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { User } from 'src/user/schema/user.schema';
 import { ConversationRole } from './conversationRole.enum';
 
 @Schema({
@@ -13,8 +12,6 @@ export class Convensation extends Document {
   profilePicture: string;
   @Prop({ required: true })
   isGroup: boolean;
-  @Prop({ ref: User.name, schema: User, type: Types.ObjectId })
-  admin: Types.ObjectId;
   @Prop({
     type: [
       {
