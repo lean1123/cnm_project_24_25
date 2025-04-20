@@ -118,4 +118,43 @@ export class ConvensationController {
   async getConvensationById(@Param('id') id: string) {
     return await this.convensationService.getConvensationById(id);
   }
+
+  /**
+   * delete Conversation -> hard delete -> remove conversation and all messages in this conversation
+   * * @param userPayload
+   * * @param conversationId
+   */
+  @Delete(':id')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteConvensation(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const deletedConversation =
+      await this.convensationService.deleteConversation(userPayload, id);
+    // this.chatGateWay.handleDeleteConversation(deletedConversation);
+    return deletedConversation;
+  }
+
+  /**
+   * đổi role cho member trong group
+   * @param userPayload
+   * @param conversationId
+   * @param memberId
+   */
+  @Post('change-role/:conversationId/:memberId')
+  @UseGuards(AuthGuard('jwt'))
+  async changeRoleMember(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('conversationId') conversationId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    const updatedConversation = await this.convensationService.changeRoleMember(
+      userPayload,
+      conversationId,
+      memberId,
+    );
+    // this.chatGateWay.handleUpdateConversation(updatedConversation);
+    return updatedConversation;
+  }
 }
