@@ -53,11 +53,12 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
       });
       set({
         isCallActive: true,
+        isCallAccepted: true,
       });
-        socket.emit("joinCall", {
-          conversationId,
-          userId: useAuthStore.getState().user?._id,
-        });
+      socket.emit("joinCall", {
+        conversationId,
+        userId: useAuthStore.getState().user?._id,
+      });
     }
   },
   handleAcceptCall: (conversationId: string) => {
@@ -83,7 +84,7 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     set({ call: conversationId, isCallAccepted: false });
   },
   handleEndCall: (conversationId: string) => {
-    set({ call: conversationId, isCallActive: false });
+    set({ call: conversationId, isCallActive: false, isCallAccepted: false });
   },
   handleCancelCall: (conversationId: string) => {
     set({ call: conversationId, isCallActive: false });

@@ -3,12 +3,13 @@ import React, { useState } from "react";
 import MobileNav from "./nav/MobileNav";
 import DesktopNav from "./nav/DesktopNav";
 import RingCall from "../call/RingCall";
-import CallContainer from "@/app/(root)/_components/CallContainer";
+import VideoCall from "@/app/(root)/_components/VideoCall";
+import VoiceCall from "@/app/(root)/_components/VoiceCall";
 
 type Props = React.PropsWithChildren<{}>;
 
 const SidebarWrapper = ({ children }: Props) => {
-    const [showRingCall, setShowRingCall] = useState(true);
+  const [showRingCall, setShowRingCall] = useState(true);
   return (
     <div className="h-full w-full p-4 flex flex-col lg:flex-row gap-4 relative">
       <MobileNav />
@@ -20,7 +21,10 @@ const SidebarWrapper = ({ children }: Props) => {
           setShowRingCall={setShowRingCall}
         />
       </main>
-      <CallContainer />
+      {/* <CallContainer /> */}
+      <VideoCall />
+      {/* <VoiceCall /> */}
+      {/* <CallContainer /> */}
     </div>
   );
 };
