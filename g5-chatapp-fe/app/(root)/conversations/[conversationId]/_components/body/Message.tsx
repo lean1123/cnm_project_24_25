@@ -20,7 +20,7 @@ import {
   Forward,
   Heart,
   MessageSquareText,
-  Repeat
+  Repeat,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -134,6 +134,28 @@ const Message = ({
     return false;
   };
 
+  const isLocationMessage = (message: Message | null) => {
+    if (!message) return false;
+    if (message.type === "TEXT") {
+      return (message.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(message.content));
+    }
+    return false;
+  }
+
+  const getLocationFromMessage = (message: Message | null) => {
+    if (!message) return null;
+    if (message.type === "TEXT") {
+      const coords = message.content.split(",");
+      if (coords.length === 2) {
+        return {
+          latitude: parseFloat(coords[0]),
+          longitude: parseFloat(coords[1]),
+        };
+      }
+    }
+    return null;
+  }
+
   const isDeleted = checkDeletedMessage(message);
   // const [isHovered, setIsHovered] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -194,17 +216,65 @@ const Message = ({
               "rounded-bl-none": !lastByUser && !fromCurrentUser,
             })}
           >
-            {!message?.isRevoked && type === "TEXT" ? (
+            {!message?.isRevoked && type === "TEXT" && !isLocationMessage(message) ? (
               <p className="text-wrap break-words whitespace-pre-wrap sm:max-w-[2200px] md:max-w-[550px] lg:max-w-[400px] xl:max-w-[600px]">
                 {content}
               </p>
             ) : null}
+            {!message?.isRevoked && isLocationMessage(message) && (
+              <div className="flex flex-col gap-2">
+                <iframe
+                  src={`https://maps.google.com/maps?q=${getLocationFromMessage(
+                    message
+                  )?.latitude},${getLocationFromMessage(
+                    message
+                  )?.longitude}&hl=es;z=14&output=embed`}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
+              </div>
+            )}
+            {!message?.isRevoked && type === "STICKER" && file && (
+              <img
+                src={file[0].url}
+                alt="sticker"
+                className="rounded-lg max-w-[300px] max-h-[300px] object-contain"
+              />
+            )}
+
             {!message?.isRevoked && type === "IMAGE" && file && (
               <ImageGallery
                 images={file}
                 sizes={imageSizes}
                 content={content}
               />
+            )}
+            {!message?.isRevoked && type === "AUDIO" && file && (
+              <div className="flex flex-col gap-2">
+                {file.map((audio, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <audio
+                      key={audio.url}
+                      controls
+                    >
+                      <source
+                        src={audio.url}
+                        type="audio/mp3"
+                      />
+                      Your browser does not support the audio tag.
+                    </audio>
+                  </div>
+                ))}
+                {content && (
+                  <p className="text-wrap break-words whitespace-pre-wrap mt-2">
+                    {content}
+                  </p>
+                )}
+              </div>
             )}
             {!message?.isRevoked && type === "FILE" && file && (
               <div className="flex flex-col gap-2">
