@@ -3,6 +3,7 @@ import Message from "./Message";
 import { useConversationStore } from "@/store/useConversationStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { sub } from "date-fns";
+import { useMessageStore } from "@/store/useMessageStore";
 
 type Props = {};
 
@@ -53,10 +54,10 @@ const Body = (props: Props) => {
       isCurrentUser: false,
     },
   ];
+  const { selectedConversation } = useConversationStore();
   const {
     sendMessage,
     messages,
-    selectedConversation,
     fetchMessages,
     subscribeToNewMessages,
     unsubscribeFromNewMessages,
@@ -71,8 +72,8 @@ const Body = (props: Props) => {
     subscribeToReaction,
     unsubscribeFromReaction,
     subscribeToUnReaction,
-    unsubscribeFromUnReaction
-  } = useConversationStore();
+    unsubscribeFromUnReaction,
+  } = useMessageStore();
   const { user } = useAuthStore();
   useEffect(() => {
     if (selectedConversation) {
@@ -110,7 +111,6 @@ const Body = (props: Props) => {
     unsubscribeFromUnReaction,
   ]);
 
-
   const checkDeletedMessage = (message: Message | null) => {
     if (!message) return false;
     if (message.deletedFor && message.deletedFor.length > 0) {
@@ -122,8 +122,12 @@ const Body = (props: Props) => {
   const checkLastMessage = (message: Message | null) => {
     if (!message || !messages || messages.length === 0) return false;
     const lastMessage = messages[0];
-    return lastMessage._id === message._id && lastMessage.sender._id === user?._id && lastMessage._id !== "temp";
-  }
+    return (
+      lastMessage._id === message._id &&
+      lastMessage.sender._id === user?._id &&
+      lastMessage._id !== "temp"
+    );
+  };
 
   return (
     <div className="h-[calc(100vh-14rem)] w-full flex flex-col">

@@ -11,15 +11,18 @@ import { cn, getInitials, getNameFallBack } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCallStore } from "@/store/useCallStore";
 import { useConversationStore } from "@/store/useConversationStore";
-import { CircleArrowLeft, Settings, User } from "lucide-react";
+import { CircleArrowLeft, Settings, User, User2Icon } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect } from "react";
 
 type Props = {
-  userId: string;
+  isGroup: boolean;
+  name?: string;
+  numMembers?: number;
+  userId?: string;
   imageUrl?: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   options?: {
     label: string;
     icon?: React.ReactNode;
@@ -27,13 +30,22 @@ type Props = {
   }[];
 };
 
-const Header = ({userId, imageUrl, firstName, lastName, options }: Props) => {
+const Header = ({
+  isGroup,
+  name,
+  numMembers,
+  userId,
+  imageUrl,
+  firstName,
+  lastName,
+  options,
+}: Props) => {
   const { activeUsers } = useAuthStore();
-  const {handleCall} = useCallStore();
+  const { handleCall } = useCallStore();
   const [isOnline, setIsOnline] = React.useState(false);
   useEffect(() => {
     console.log("userSelected", userId);
-    if (!userId) return;
+    if (!userId || isGroup) return;
     console.log("activeUsers", activeUsers);
     const isUserOnline = activeUsers.includes(userId);
     console.log("isUserOnline", isUserOnline);
@@ -47,21 +59,36 @@ const Header = ({userId, imageUrl, firstName, lastName, options }: Props) => {
           <CircleArrowLeft />
         </Link>
         <Avatar className="h-8 w-8">
-          <AvatarImage src={imageUrl || "/avatar.png"} alt={firstName} />
+          {isGroup ? (
+            <AvatarImage src={imageUrl || "/group.jpg"} alt={firstName} />
+          ) : (
+            <AvatarImage src={imageUrl || "/avatar.png"} alt={firstName} />
+          )}
           <AvatarFallback>
-            {getNameFallBack(firstName, lastName)}
+            {getNameFallBack(firstName || "", lastName || "")}
           </AvatarFallback>
         </Avatar>
         <div>
-          <h2 className="font-semibold">{firstName + " " + lastName}</h2>
-          <p className="text-sm text-muted-foreground flex items-center gap-1">
-            {isOnline ? (
-              <span className="h-2 w-2 rounded-full bg-green-500" />
-            ) : (
-              <span className="h-2 w-2 rounded-full bg-red-500" />
-            )}
-            {isOnline ? "Online" : "Offline"}
-          </p>
+          {isGroup ? (
+            <h2 className="font-semibold">{name}</h2>
+          ) : (
+            <h2 className="font-semibold">{firstName + " " + lastName}</h2>
+          )}
+          {isGroup && numMembers ? (
+            <div className="flex items-center text-xs text-muted-foreground">
+              <User2Icon size={12} /> 
+              <span className="ml-1">{numMembers} members</span>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground flex items-center gap-1">
+              {isOnline ? (
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+              ) : (
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+              )}
+              {isOnline ? "Online" : "Offline"}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex gap-2">

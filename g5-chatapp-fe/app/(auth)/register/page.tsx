@@ -79,7 +79,7 @@ function Register() {
     },
   });
 
-  const { register, isLoading } = useAuthStore();
+  const { register } = useAuthStore();
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
