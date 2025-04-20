@@ -325,4 +325,80 @@ export class ConversationService {
 
     return this.getConvensationById(conversation._id as string);
   }
+
+  /**
+   * kiểm tra người yêu cầu giải tán có phải là người tạo ra cuộc trò chuyện hay không
+   * @param userPayload
+   * @param conversationId
+   */
+  async deleteConversation(userPayload: JwtPayload, conversationId: string) {
+    // 1. Tìm cuộc trò chuyện
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    // 2. Kiểm tra người dùng có phải là ADMIN không
+    const isAdmin = conversation.members.some(
+      (member) =>
+        member.role === ConversationRole.ADMIN &&
+        member.user.equals(new Types.ObjectId(userPayload._id)),
+    );
+
+    if (!isAdmin) {
+      throw new Error('Only admin can delete this conversation');
+    }
+
+    // 3. Xoá tất cả tin nhắn trong cuộc trò chuyện
+    await this.messageService.deleteMessageByConversationId(conversationId);
+
+    // optional (Gợi ý thêm) Xoá các file media trong Cloudinary nếu có
+
+    // 4. Xoá cuộc trò chuyện
+    await this.convenstationModel.findByIdAndDelete(conversationId);
+  }
+
+  /**
+   * * kiểm tra người yêu cầu có phải là người tạo ra cuộc trò chuyện hay không
+   * * @param userPayload
+   * * @param conversationId
+   * * @param memberId
+   * * @throws Error nếu không tìm thấy người dùng hoặc không có quyền
+   * * @description
+   * * - Nếu người yêu cầulà người tạo ra cuộc trò chuyện, thì có thể thay đổi vai trò của thành viên khác trong nhóm.
+   */
+  async changeRoleMember(
+    userPayload: JwtPayload,
+    conversationId: string,
+    memberId: string,
+  ) {
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    const isAdmin = conversation.members.some(
+      (member) =>
+        member.role === ConversationRole.ADMIN &&
+        member.user.equals(new Types.ObjectId(userPayload._id)),
+    );
+
+    if (!isAdmin) {
+      throw new Error('Only admin can change role of members');
+    }
+
+    const memberToChange = conversation.members.find((member) =>
+      member.user.equals(new Types.ObjectId(memberId)),
+    );
+
+    if (!memberToChange) {
+      throw new Error('Member not found in this conversation');
+    }
+
+    memberToChange.role = ConversationRole.OWNER; // or any other role you want to assign
+
+    await conversation.save();
+
+    return this.getConvensationById(conversation._id as string);
+  }
 }

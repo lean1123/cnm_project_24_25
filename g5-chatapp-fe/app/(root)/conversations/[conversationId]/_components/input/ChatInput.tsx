@@ -33,6 +33,7 @@ import { useConversationStore } from "@/store/useConversationStore";
 import EmojiPicker from "emoji-picker-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { toast } from "sonner";
+import { useMessageStore } from "@/store/useMessageStore";
 
 type Props = {};
 
@@ -61,9 +62,8 @@ const ChatInput = (props: Props) => {
   const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const { user } = useAuthStore();
-  const { selectedConversation, addTempMessage, sendMessage, typing } =
-    useConversationStore();
-
+  const { selectedConversation } = useConversationStore();
+  const { addTempMessage, sendMessage, typing } = useMessageStore();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const generateMessageTemp = (type: string, url: string, fileName: string) => {
@@ -184,7 +184,9 @@ const ChatInput = (props: Props) => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      addFilesWithPreview(Array.from(files)).then(() => typing(selectedConversation?._id || ""));
+      addFilesWithPreview(Array.from(files)).then(() =>
+        typing(selectedConversation?._id || "")
+      );
     }
   };
 
@@ -217,8 +219,7 @@ const ChatInput = (props: Props) => {
           const file = dataURLtoFile(imgSrc, `screenshot-${Date.now()}.png`);
           files.push(file);
         }
-      }
-      else if (item.kind === "string" && item.type === "text/plain") {
+      } else if (item.kind === "string" && item.type === "text/plain") {
         pasteText = await new Promise<string>((resolve) =>
           item.getAsString(resolve)
         );
@@ -280,7 +281,9 @@ const ChatInput = (props: Props) => {
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      addFilesWithPreview(Array.from(files)).then(() => typing(selectedConversation?._id || ""));
+      addFilesWithPreview(Array.from(files)).then(() =>
+        typing(selectedConversation?._id || "")
+      );
     }
   };
 

@@ -380,4 +380,24 @@ export class MessageService {
 
     return updatedMessage.populate('sender', 'firstName lastName email avatar');
   }
+
+  /**
+   * Xóa tất cả các tin nhắn trong cuộc trò chuyện
+   * @param conversationId ID của cuộc trò chuyện 
+   */
+  async deleteMessageByConversationId(conversationId: string) {
+    const messages = await this.messageModel.find({
+      conversation: new Types.ObjectId(conversationId),
+    });
+
+    if (!messages) {
+      throw new NotFoundException('Messages not found');
+    }
+
+    // Xóa tất cả các tin nhắn trong cuộc trò chuyện
+    await this.messageModel.deleteMany({
+      conversation: new Types.ObjectId(conversationId),
+    });
+    return messages;
+  }
 }

@@ -2,6 +2,7 @@ import { Card } from '@/components/ui/card';
 import { Search, UserPlus, Users } from 'lucide-react';
 import React, { useState } from 'react'
 import { AddFriendDialog } from '../dialog/AddFriendDialog';
+import { CreateGroupDialog } from '../dialog/CreateGroupDialog';
 
 type Props = {
     isOpenSearchResult: boolean;
@@ -39,9 +40,10 @@ const SearchNav = ({isOpenSearchResult, setIsOpenSearchResult}: Props) => {
             <UserPlus className="size-4" />
           </div> */}
           <AddFriendDialog />
-          <div className="flex items-center justify-center bg-primary-500 text-base-content rounded-md p-2 cursor-pointer hover:bg-primary/5">
+          {/* <div className="flex items-center justify-center bg-primary-500 text-base-content rounded-md p-2 cursor-pointer hover:bg-primary/5">
             <Users className="size-4" />
-          </div>
+          </div> */}
+          <CreateGroupDialog />
         </>
       )}
     </Card>

@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
+import { useMessageStore } from "@/store/useMessageStore";
 import { Conversation, Message } from "@/types";
 import { Forward } from "lucide-react";
 import React, { useState } from "react";
@@ -22,7 +23,8 @@ type Props = {
 };
 
 const ForwardMessageDialog = ({ messageToForward }: Props) => {
-  const { getConversations, conversations, forwardMessage, selectedConversation } = useConversationStore();
+  const { getConversations, conversations, selectedConversation } = useConversationStore();
+  const { forwardMessage } = useMessageStore();
   const [inputValue, setInputValue] = React.useState("");
   const { user } = useAuthStore();
   const [selectedConversationId, setSelectedConversationId] = useState<
@@ -30,15 +32,15 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
   >([]);
 
   const getMemberName = (conversation: Conversation) => {
-    if (conversation.members[0]._id !== user?.id) {
+    if (conversation.members[0].user._id !== user?.id) {
       return (
-        conversation.members[0].firstName +
+        conversation.members[0].user.firstName +
         " " +
-        conversation.members[0].lastName
+        conversation.members[0].user.lastName
       );
     }
     return (
-      conversation.members[1].firstName + " " + conversation.members[1].lastName
+      conversation.members[1].user.firstName + " " + conversation.members[1].user.lastName
     );
   };
 
@@ -63,10 +65,10 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
   const filteredConversations = filterConversations();
 
   const getAvatarUrl = (conversation: Conversation) => {
-    if (conversation.members[0]._id !== user?.id) {
-      return conversation.members[0].avatar;
+    if (conversation.members[0].user._id !== user?.id) {
+      return conversation.members[0].user.avatar;
     }
-    return conversation.members[1].avatar;
+    return conversation.members[1].user.avatar;
   };
 
   const handleForwardMessage = async () => {
