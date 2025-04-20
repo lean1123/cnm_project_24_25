@@ -117,7 +117,7 @@ const HomeScreen = () => {
           : otherUser ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() : 'Unknown User';  
           
         const avatar = conv.isGroup
-          ? conv.avatar || ''  // Nếu là nhóm thì lấy avatar nhóm
+          ? conv.profilePicture || ''  // Nếu là nhóm thì lấy avatar nhóm
           : otherUser?.avatar || '';  // Nếu là người dùng, lấy avatar của user
           
         return {
@@ -440,6 +440,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: "#f0f2f5",
+    paddingBottom: '20%',
   },
   conversationList: {
     flex: 1,

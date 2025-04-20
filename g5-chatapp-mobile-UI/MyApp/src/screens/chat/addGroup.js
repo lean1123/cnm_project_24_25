@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,36 +8,225 @@ import {
   FlatList,
   Modal,
   SafeAreaView,
+  Image,
+  ActivityIndicator,
+  Alert,
+  Platform,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-
-const friendsList = [
-  { id: "1", name: "Alice" },
-  { id: "2", name: "Bob" },
-  { id: "3", name: "Charlie" },
-  { id: "4", name: "David" },
-  { id: "5", name: "Emma" },
-];
+import { contactService } from "../../services/contact.service";
+import { chatService } from "../../services/chat.service";
+import { getSocket } from "../../services/socket";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import { API_URL } from "../../config/constants";
 
 const AddGroupScreen = ({ navigation }) => {
   const [groupName, setGroupName] = useState("");
   const [selectedFriends, setSelectedFriends] = useState([]);
   const [isModalVisible, setModalVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [friends, setFriends] = useState([]);
+  const [filteredFriends, setFilteredFriends] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [socket, setSocket] = useState(null);
+  const [groupImage, setGroupImage] = useState(null);
 
-  const toggleSelection = (id) => {
-    setSelectedFriends((prev) =>
-      prev.includes(id) ? prev.filter((fid) => fid !== id) : [...prev, id]
-    );
+  useEffect(() => {
+    // Initialize socket and load user data
+    const initializeData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem("userData");
+        if (userData) {
+          const user = JSON.parse(userData);
+          setCurrentUser(user);
+          
+          const socketInstance = getSocket();
+          if (socketInstance) {
+            console.log("[Socket] Setting up socket for AddGroupScreen");
+            setSocket(socketInstance);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing data:", error);
+      }
+    };
+    
+    initializeData();
+    loadFriends();
+  }, []);
+
+  useEffect(() => {
+    // Filter friends based on search text
+    if (friends.length > 0) {
+      filterFriends();
+    }
+  }, [searchText, friends]);
+
+  const loadFriends = async () => {
+    try {
+      setIsLoading(true);
+      const response = await contactService.getMyContacts();
+      if (response.success) {
+        // Transform data to match expected format
+        const friendsList = response.data.map(contact => {
+          const friend = contact.user._id === currentUser?._id 
+            ? contact.contact 
+            : contact.user;
+          return {
+            _id: friend._id,
+            name: `${friend.firstName} ${friend.lastName}`,
+            avatar: friend.avatar,
+            email: friend.email,
+            contactId: contact._id
+          };
+        });
+        setFriends(friendsList);
+        setFilteredFriends(friendsList);
+      } else {
+        Alert.alert("Error", "Failed to load friends");
+      }
+    } catch (error) {
+      console.error("Error loading friends:", error);
+      Alert.alert("Error", "Failed to load friends. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleCreateGroup = () => {
-    console.log("Creating group:", groupName, "with members:", selectedFriends);
+  const filterFriends = () => {
+    if (!searchText.trim()) {
+      setFilteredFriends(friends);
+      return;
+    }
+
+    const filtered = friends.filter(friend => {
+      const name = friend.name.toLowerCase();
+      const email = friend.email?.toLowerCase() || "";
+      const query = searchText.toLowerCase();
+      return name.includes(query) || email.includes(query);
+    });
+
+    setFilteredFriends(filtered);
+  };
+
+  const toggleSelection = (friend) => {
+    setSelectedFriends(prev => {
+      const isSelected = prev.some(f => f._id === friend._id);
+      if (isSelected) {
+        return prev.filter(f => f._id !== friend._id);
+      } else {
+        return [...prev, friend];
+      }
+    });
   };
 
   const handleRemoveFriend = (id) => {
-    setSelectedFriends(selectedFriends.filter((friendId) => friendId !== id));
+    setSelectedFriends(prev => prev.filter(friend => friend._id !== id));
   };
+
+  const handlePickImage = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission Required", "Please allow access to your photos to set a group image.");
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        // Format image for upload
+        const imageFile = {
+          uri: selectedImage.uri,
+          type: 'image/jpeg',
+          name: `group_${Date.now()}.jpg`,
+        };
+        setGroupImage(imageFile);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image");
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim()) {
+      Alert.alert("Error", "Please enter a group name");
+      return;
+    }
+
+    if (selectedFriends.length < 2) {
+      Alert.alert("Error", "Please select at least 2 members for the group");
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      
+      // Prepare group data
+      const groupData = {
+        name: groupName.trim(),
+        members: selectedFriends.map(friend => friend._id),
+      };
+
+      // Create group
+      const response = await chatService.createGroup(groupData, groupImage);
+      
+      if (response.success) {
+        // Emit socket event to notify group members
+        if (socket) {
+          console.log("[Socket] Emitting createGroupConversation event");
+          socket.emit("createGroupConversation", {
+            conversation: response.data,
+            creatorId: currentUser?._id
+          });
+        }
+        
+        Alert.alert(
+          "Success", 
+          "Group created successfully",
+          [{ text: "OK", onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert("Error", response.error || "Failed to create group");
+      }
+    } catch (error) {
+      console.error("Error creating group:", error);
+      Alert.alert("Error", "Failed to create group. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const renderSelectedFriend = ({ item }) => (
+    <View style={styles.selectedFriend}>
+      <View style={styles.selectedFriendInfo}>
+        <Image 
+          source={
+            item.avatar 
+              ? { uri: item.avatar.startsWith('http') ? item.avatar : `${API_URL}/uploads/${item.avatar}` }
+              : require("../../../assets/chat/avatar.png")
+          }
+          style={styles.selectedAvatar}
+        />
+        <Text style={styles.friendName}>{item.name}</Text>
+      </View>
+      <TouchableOpacity onPress={() => handleRemoveFriend(item._id)}>
+        <Icon name="close-circle" size={24} color="red" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -48,50 +237,81 @@ const AddGroupScreen = ({ navigation }) => {
         <Text style={styles.title}>Create Group</Text>
       </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Group Name"
-        placeholderTextColor="#666"
-        value={groupName}
-        onChangeText={setGroupName}
-      />
+      <View style={styles.groupInfoContainer}>
+        <TouchableOpacity 
+          style={styles.avatarContainer}
+          onPress={handlePickImage}
+        >
+          <Image 
+            source={
+              groupImage 
+                ? { uri: groupImage.uri } 
+                : require("../../../assets/chat/avatar.png")
+            }
+            style={styles.groupAvatar}
+          />
+          <View style={styles.cameraIcon}>
+            <Icon name="camera" size={20} color="#fff" />
+          </View>
+        </TouchableOpacity>
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Group Name"
+          placeholderTextColor="#666"
+          value={groupName}
+          onChangeText={setGroupName}
+        />
+      </View>
 
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={styles.addButtonText}>Add Members</Text>
+        <Icon name="account-multiple-plus" size={22} color="#333" style={styles.buttonIcon} />
+        <Text style={styles.addButtonText}>Add Members ({selectedFriends.length})</Text>
       </TouchableOpacity>
 
-      <FlatList
-        data={friendsList.filter((friend) =>
-          selectedFriends.includes(friend.id)
-        )}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.selectedFriend}>
-            <Text style={styles.friendName}>{item.name}</Text>
-            <TouchableOpacity onPress={() => handleRemoveFriend(item.id)}>
-              <Icon name="close-circle" size={24} color="red" />
-            </TouchableOpacity>
-          </View>
-        )}
-      />
+      {selectedFriends.length > 0 ? (
+        <FlatList
+          data={selectedFriends}
+          keyExtractor={(item) => item._id}
+          renderItem={renderSelectedFriend}
+          style={styles.selectedFriendsList}
+        />
+      ) : (
+        <View style={styles.emptySelection}>
+          <Text style={styles.emptyText}>No members selected yet</Text>
+          <Text style={styles.emptySubText}>Select at least 2 friends to create a group</Text>
+        </View>
+      )}
 
-      <TouchableOpacity style={styles.button} onPress={handleCreateGroup}>
-        <Text style={styles.buttonText}>Create Group</Text>
+      <TouchableOpacity 
+        style={[
+          styles.button, 
+          (isCreating || !groupName.trim() || selectedFriends.length < 2) && styles.disabledButton
+        ]}
+        onPress={handleCreateGroup}
+        disabled={isCreating || !groupName.trim() || selectedFriends.length < 2}
+      >
+        {isCreating ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.buttonText}>Create Group</Text>
+        )}
       </TouchableOpacity>
 
       <Modal visible={isModalVisible} animationType="slide" transparent>
-        {/* Lớp phủ đen mờ */}
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Members</Text>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Members</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Icon name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+              
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search friends..."
@@ -99,38 +319,62 @@ const AddGroupScreen = ({ navigation }) => {
                 value={searchText}
                 onChangeText={setSearchText}
               />
-              <FlatList
-                data={friendsList.filter((friend) =>
-                  friend.name.toLowerCase().includes(searchText.toLowerCase())
-                )}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.friendItem}
-                    onPress={() => toggleSelection(item.id)}
-                  >
-                    <Text style={styles.friendName}>{item.name}</Text>
-                    <Icon
-                      name={
-                        selectedFriends.includes(item.id)
-                          ? "checkbox-marked"
-                          : "checkbox-blank-outline"
-                      }
-                      size={24}
-                      color="#135CAF"
-                    />
-                  </TouchableOpacity>
-                )}
-              />
+              
+              {isLoading ? (
+                <ActivityIndicator size="large" color="#135CAF" style={styles.loader} />
+              ) : (
+                <FlatList
+                  data={filteredFriends}
+                  keyExtractor={(item) => item._id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.friendItem}
+                      onPress={() => toggleSelection(item)}
+                    >
+                      <View style={styles.friendInfo}>
+                        <Image 
+                          source={
+                            item.avatar 
+                              ? { uri: item.avatar.startsWith('http') ? item.avatar : `${API_URL}/uploads/${item.avatar}` }
+                              : require("../../../assets/chat/avatar.png")
+                          }
+                          style={styles.avatar}
+                        />
+                        <View>
+                          <Text style={styles.friendName}>{item.name}</Text>
+                          <Text style={styles.friendEmail}>{item.email}</Text>
+                        </View>
+                      </View>
+                      <Icon
+                        name={
+                          selectedFriends.some(f => f._id === item._id)
+                            ? "checkbox-marked"
+                            : "checkbox-blank-outline"
+                        }
+                        size={24}
+                        color="#135CAF"
+                      />
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={
+                    <View style={styles.emptyList}>
+                      <Text style={styles.emptyListText}>
+                        {searchText ? "No matching friends found" : "No friends available"}
+                      </Text>
+                    </View>
+                  }
+                />
+              )}
+              
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Add</Text>
+                <Text style={styles.buttonText}>Done</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -148,96 +392,152 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     alignItems: "center",
   },
-  backButton: {
-    marginRight: 10,
-  },
   title: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#fff",
     flex: 1,
     textAlign: "center",
-    marginRight: 30, // Để căn giữa tiêu đề
+    marginRight: 30,
+  },
+  groupInfoContainer: {
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 15,
+  },
+  groupAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#f0f0f0",
+  },
+  cameraIcon: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#135CAF",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   input: {
-    height: 40,
+    height: 50,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    paddingHorizontal: 10,
-    marginHorizontal: 20,
-    marginTop: 30,
+    paddingHorizontal: 15,
+    width: "100%",
     color: "#000",
     fontSize: 16,
     backgroundColor: "#f9f9f9",
   },
   addButton: {
-    backgroundColor: "#ddd",
+    backgroundColor: "#f0f0f0",
     padding: 12,
     borderRadius: 8,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     marginHorizontal: 20,
-    marginTop: 20,
     marginBottom: 20,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   addButtonText: {
-    color: "#000",
+    color: "#333",
     fontWeight: "bold",
+    fontSize: 16,
   },
-  button: {
-    backgroundColor: "#135CAF",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
+  selectedFriendsList: {
+    flex: 1,
     marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
   },
   selectedFriend: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 15,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    marginHorizontal: 20,
+  },
+  selectedFriendInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  selectedAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
   },
   friendName: {
     fontSize: 16,
     color: "#000",
   },
+  friendEmail: {
+    fontSize: 12,
+    color: "#666",
+  },
+  button: {
+    backgroundColor: "#135CAF",
+    padding: 15,
+    borderRadius:
+    8,
+    alignItems: "center",
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  disabledButton: {
+    backgroundColor: "#ccc",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Lớp phủ đen mờ
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContainer: {
-    width: "80%", // Để modal có kích thước hợp lý
+    width: "90%",
+    maxHeight: "80%",
   },
   modalContent: {
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
     width: "100%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 15,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 10,
   },
   searchInput: {
     height: 40,
-    width: "100%",
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     paddingHorizontal: 10,
-    marginBottom: 10,
+    marginBottom: 15,
     color: "#000",
     backgroundColor: "#f9f9f9",
   },
@@ -245,22 +545,53 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 15,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-    width: "100%",
+  },
+  friendInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
   },
   closeButton: {
     backgroundColor: "#135CAF",
-    padding: 10,
+    padding: 12,
     borderRadius: 8,
     alignItems: "center",
-    width: "100%",
-    marginTop: 10,
+    marginTop: 15,
   },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
+  emptySelection: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: "#666",
+    marginBottom: 5,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+  },
+  emptyList: {
+    padding: 20,
+    alignItems: "center",
+  },
+  emptyListText: {
+    fontSize: 16,
+    color: "#666",
+  },
+  loader: {
+    marginVertical: 20,
   },
 });
 

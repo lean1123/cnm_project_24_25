@@ -19,16 +19,6 @@ const Header = () => {
 
   const modalOptions = [
     {
-      icon: "account-plus-outline",
-      text: "Add Friend",
-      onPress: () => navigation.navigate("AddFriend"),
-    },
-    {
-      icon: "account-clock-outline",
-      text: "Contact Requests",
-      onPress: () => navigation.navigate("ContactRequests"),
-    },
-    {
       icon: "account-group-outline",
       text: "Add Group",
       onPress: () => navigation.navigate("AddGroupScreen"),
