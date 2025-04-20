@@ -37,7 +37,6 @@ import { Audio } from "expo-av";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_URL } from "../../config/constants";
 
-// Thư viện react-native-paper
 import {
   Provider as PaperProvider,
   Surface,
@@ -55,7 +54,6 @@ import {
   Badge,
 } from "react-native-paper";
 
-// Theme tùy chỉnh cho react-native-paper
 const customTheme = {
   colors: {
     primary: "#0099ff",
@@ -67,7 +65,7 @@ const customTheme = {
   },
 };
 
-// AudioMessage Component
+
 const AudioMessage = ({ file, isMyMessage }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -220,16 +218,16 @@ const AudioMessage = ({ file, isMyMessage }) => {
   const progress = duration > 0 ? position / duration : 0;
 
   return (
-    <Card
+    <View
       style={{
         marginVertical: 4,
         backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
         width: 220,
         borderRadius: 12,
-        elevation: 0,
+        padding: 8,
       }}
     >
-      <Card.Content style={{ flexDirection: "row", alignItems: "center", padding: 8 }}>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
         <IconButton
           icon={isLoading ? "loading" : isPlaying ? "pause" : "play"}
           size={20}
@@ -247,11 +245,13 @@ const AudioMessage = ({ file, isMyMessage }) => {
             variant="bodySmall"
             style={{ color: isMyMessage ? "#fff" : "#666", fontSize: 12 }}
           >
-            {error ? error : `${formatTime(position)} / ${formatTime(duration)}`}
+            {error
+              ? error
+              : `${formatTime(position)} / ${formatTime(duration)}`}
           </Text>
         </View>
-      </Card.Content>
-    </Card>
+      </View>
+    </View>
   );
 };
 
@@ -367,7 +367,9 @@ const AudioRecordingModal = ({ visible, onClose, onSend }) => {
           <IconButton icon="close" onPress={onClose} />
         </View>
         <View style={{ alignItems: "center", paddingVertical: 20 }}>
-          <Text variant="displayMedium">{formatDuration(recordingDuration)}</Text>
+          <Text variant="displayMedium">
+            {formatDuration(recordingDuration)}
+          </Text>
           {!recordedUri ? (
             <FAB
               icon={isRecording ? "stop" : "microphone"}
@@ -505,15 +507,87 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
 
           if (conversation) {
-            if (conversation.name) {
-              setOtherUser({
-                _id: conversation._id,
-                firstName: conversation.name.split(" ").slice(0, -1).join(" "),
-                lastName: conversation.name.split(" ").slice(-1)[0],
-                avatar: conversation.avatar,
-              });
-            } else if (conversation.user) {
-              setOtherUser(conversation.user);
+            try {
+              // Handle conversation data based on type (group or individual)
+              if (conversation.isGroup) {
+                // If it's a group conversation, use group data directly
+                setOtherUser(null);
+              } else if (conversation.name) {
+                // Individual conversation with set name
+                setOtherUser({
+                  _id: conversation._id,
+                  firstName: conversation.name.split(" ").slice(0, -1).join(" "),
+                  lastName: conversation.name.split(" ").slice(-1)[0],
+                  avatar: conversation.avatar,
+                });
+              } else if (conversation.user) {
+                // Individual conversation with user data
+                setOtherUser(conversation.user);
+              } else if (conversation.members && conversation.members.length > 0) {
+                // Try to find the other user from members list
+                try {
+                  const otherMember = conversation.members.find(
+                    (member) => member._id !== currentUserData._id
+                  );
+                  if (otherMember) {
+                    setOtherUser(otherMember);
+                  } else {
+                    // If we can't find members, try to get conversation details
+                    const conversationsResponse = await chatService.getMyConversations();
+                    if (conversationsResponse.success && conversationsResponse.data) {
+                      const currentConv = conversationsResponse.data.find(
+                        conv => conv._id === conversation._id
+                      );
+                      
+                      if (currentConv) {
+                        if (currentConv.isGroup) {
+                          // Group conversation
+                          setOtherUser(null);
+                        } else if (currentConv.members && currentConv.members.length > 0) {
+                          // Find the other member in individual chat
+                          const otherMember = currentConv.members.find(
+                            member => member._id !== currentUserData._id
+                          );
+                          if (otherMember) {
+                            setOtherUser(otherMember);
+                          }
+                        }
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error setting other user from members:", error);
+                }
+              } else {
+                // Fallback: If we can't determine the other user, try to fetch conversation details
+                try {
+                  const conversationsResponse = await chatService.getMyConversations();
+                  if (conversationsResponse.success && conversationsResponse.data) {
+                    const currentConv = conversationsResponse.data.find(
+                      conv => conv._id === conversation._id
+                    );
+                    
+                    if (currentConv) {
+                      if (currentConv.isGroup) {
+                        // Group conversation
+                        setOtherUser(null);
+                      } else if (currentConv.members && currentConv.members.length > 0) {
+                        // Find the other member in individual chat
+                        const otherMember = currentConv.members.find(
+                          member => member._id !== currentUserData._id
+                        );
+                        if (otherMember) {
+                          setOtherUser(otherMember);
+                        }
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error fetching conversation details:", error);
+                }
+              }
+            } catch (error) {
+              console.error("Error processing conversation data:", error);
             }
           }
 
@@ -530,6 +604,21 @@ const ChatDetailScreen = ({ navigation, route }) => {
               conversationId: conversation._id,
               userId: currentUserData._id,
             });
+
+            // For individual chats, setup user status events
+            if (!conversation.isGroup) {
+              socketInstance.on("userStatusUpdate", (data) => {
+                if (otherUser && data.userId === otherUser._id) {
+                  setIsOnline(data.isOnline);
+                }
+              });
+              
+              socketInstance.on("activeUsers", (data) => {
+                if (otherUser && data.activeUsers && data.activeUsers.includes(otherUser._id)) {
+                  setIsOnline(true);
+                }
+              });
+            }
 
             const handleNewMessage = (data) => {
               const messageData = data.message || data;
@@ -1043,12 +1132,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
         : [0, 0];
 
       return (
-        <Card
+        <View
           style={{
             width: 200,
             backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
             borderRadius: 12,
-            elevation: 0,
+            overflow: "hidden",
           }}
           onPress={() =>
             navigation.navigate("Location", {
@@ -1057,11 +1146,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
             })
           }
         >
-          <Card.Cover
-            source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=200x150&markers=color:red|${latitude},${longitude}&key=YOUR_API_KEY` }}
-            style={{ height: 120, borderRadius: 12 }}
+          <Image
+            source={{
+              uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=200x150&markers=color:red|${latitude},${longitude}&key=YOUR_API_KEY`,
+            }}
+            style={{ width: "100%", height: 120 }}
           />
-          <Card.Content style={{ flexDirection: "row", alignItems: "center", padding: 8 }}>
+          <View
+            style={{ flexDirection: "row", alignItems: "center", padding: 8 }}
+          >
             <Avatar.Icon
               size={24}
               icon="map-marker"
@@ -1074,13 +1167,17 @@ const ChatDetailScreen = ({ navigation, route }) => {
             />
             <Text
               variant="bodySmall"
-              style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 14 }}
+              style={{
+                color: isMyMessage ? "#fff" : "#333",
+                fontSize: 14,
+                flex: 1,
+              }}
               numberOfLines={2}
             >
               {item.address || "Đã chia sẻ vị trí"}
             </Text>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
       );
     }
 
@@ -1091,50 +1188,64 @@ const ChatDetailScreen = ({ navigation, route }) => {
         }
 
         if (item.files.length > 1) {
-          const numColumns = 2; // Số cột trong lưới
-          const imageSize = 100; // Kích thước mỗi ảnh (100x100)
-          const spacing = 4; // Khoảng cách giữa các ảnh
+          const numColumns = 2;
+          const imageSize = 110; // Adjusted for better fit
+          const spacing = 4;
+
+          // Determine layout based on number of images
+          const layout =
+            item.files.length === 2
+              ? { columns: 2, rows: 1 }
+              : { columns: 2, rows: Math.ceil(item.files.length / 2) };
 
           return (
             <View
               style={{
                 flexDirection: "row",
                 flexWrap: "wrap",
-                width: numColumns * (imageSize + spacing) - spacing, // Tổng chiều rộng của lưới
-                backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
-                borderRadius: 16,
-                padding: spacing,
+                width: layout.columns * (imageSize + spacing) + spacing,
+                borderRadius: 12,
+                overflow: "hidden",
               }}
             >
               {item.files.map((file, index) => (
-                <Card
+                <TouchableOpacity
                   key={file._id || index}
                   style={{
                     width: imageSize,
                     height: imageSize,
-                    margin: spacing / 2, // Khoảng cách đều giữa các ảnh
-                    borderRadius: 12,
-                    elevation: 0,
+                    margin: spacing / 2,
                   }}
                   onPress={() =>
                     navigation.navigate("ImageViewer", { uri: file.url })
                   }
                 >
-                  <Card.Cover
+                  <Image
                     source={{ uri: file.url }}
-                    style={{ width: "100%", height: "100%", borderRadius: 12 }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      borderRadius: 8,
+                    }}
                   />
                   {item.files.length > 4 && index === 3 && (
-                    <Badge
+                    <View
                       style={{
                         position: "absolute",
-                        bottom: 8,
-                        right: 8,
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
                         backgroundColor: "rgba(0,0,0,0.6)",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderRadius: 8,
                       }}
                     >
-                      +{item.files.length - 4}
-                    </Badge>
+                      <Text style={{ color: "#fff", fontSize: 24 }}>
+                        +{item.files.length - 4}
+                      </Text>
+                    </View>
                   )}
                   {isTemp && item.status === "sending" && (
                     <View
@@ -1147,32 +1258,33 @@ const ChatDetailScreen = ({ navigation, route }) => {
                         backgroundColor: "rgba(0,0,0,0.5)",
                         justifyContent: "center",
                         alignItems: "center",
-                        borderRadius: 12,
+                        borderRadius: 8,
                       }}
                     >
                       <ActivityIndicator color="#fff" />
                     </View>
                   )}
-                </Card>
+                </TouchableOpacity>
               ))}
             </View>
           );
         }
 
         return (
-          <Card
+          <TouchableOpacity
             style={{
               width: 200,
+              height: 200,
               borderRadius: 12,
-              elevation: 0,
+              overflow: "hidden",
             }}
             onPress={() =>
               navigation.navigate("ImageViewer", { uri: item.files[0].url })
             }
           >
-            <Card.Cover
+            <Image
               source={{ uri: item.files[0].url }}
-              style={{ height: 150, borderRadius: 12 }}
+              style={{ width: "100%", height: "100%" }}
             />
             {isTemp && item.status === "sending" && (
               <View
@@ -1185,109 +1297,124 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   backgroundColor: "rgba(0,0,0,0.5)",
                   justifyContent: "center",
                   alignItems: "center",
-                  borderRadius: 12,
                 }}
               >
                 <ActivityIndicator color="#fff" />
               </View>
             )}
-          </Card>
+          </TouchableOpacity>
         );
       case "VIDEO":
         return (
-          <Card
+          <TouchableOpacity
             style={{
-              width: 200,
+              width: 280,
+              height: 200,
               borderRadius: 12,
-              elevation: 0,
+              overflow: "hidden",
             }}
             onPress={() =>
               navigation.navigate("VideoPlayer", { uri: item.files[0]?.url })
             }
           >
-            <Card.Content style={{ padding: 0 }}>
-              <Video
-                source={{ uri: item.files[0]?.url }}
-                style={{ width: "100%", height: 150, borderRadius: 12 }}
-                useNativeControls
-                resizeMode="cover"
-                shouldPlay={false}
-              />
-              <IconButton
-                icon="play"
-                size={24}
+            <Video
+              source={{ uri: item.files[0]?.url }}
+              style={{ width: "100%", height: "100%" }}
+              useNativeControls
+              resizeMode="cover"
+              shouldPlay={false}
+            />
+            <IconButton
+              icon="play"
+              size={24}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: [{ translateX: -12 }, { translateY: -12 }],
+                backgroundColor: "rgba(0,0,0,0.5)",
+              }}
+              iconColor="#fff"
+            />
+            {isTemp && item.status === "sending" && (
+              <View
                 style={{
                   position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: [{ translateX: -12 }, { translateY: -12 }],
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
                   backgroundColor: "rgba(0,0,0,0.5)",
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
-                iconColor="#fff"
-              />
-              {isTemp && item.status === "sending" && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: "rgba(0,0,0,0.5)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderRadius: 12,
-                  }}
-                >
-                  <ActivityIndicator color="#fff" />
-                </View>
-              )}
-            </Card.Content>
-          </Card>
+              >
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
         );
       case "AUDIO":
-        return (
-          <AudioMessage
-            file={item.files[0]}
-            isMyMessage={isMyMessage}
-          />
-        );
+        return <AudioMessage file={item.files[0]} isMyMessage={isMyMessage} />;
       case "FILE":
         const file = item.files && item.files[0];
-        const fileName = file?.fileName || "File";
+        const fileName =
+          file?.fileName || file?.url?.split("/").pop() || "Unknown File";
         const fileUrl = file?.url || "";
         const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
           fileUrl
         )}&embedded=true`;
 
+        // Debugging log to confirm fileName
+        // console.log(`Rendering file message - fileName: ${fileName}`);
+
         return (
-          <Card
+          <TouchableOpacity
             style={{
               marginVertical: 4,
               backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
               borderRadius: 12,
-              elevation: 0,
+              padding: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              maxWidth: 280,
+              minWidth: 200,
             }}
             onPress={() => Linking.openURL(viewerUrl)}
           >
-            <Card.Content style={{ flexDirection: "row", alignItems: "center", padding: 8 }}>
-              <Avatar.Icon
-                size={24}
-                icon={getFileIcon(fileName)}
-                style={{ backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(102,102,102,0.1)" }}
-              />
+            <Avatar.Icon
+              size={28}
+              icon={getFileIcon(fileName)}
+              style={{
+                backgroundColor: isMyMessage
+                  ? "rgba(255,255,255,0.2)"
+                  : "rgba(102,102,102,0.1)",
+                marginRight: 10,
+              }}
+            />
+            <View style={{ flex: 1, justifyContent: "center" }}>
               <Text
-                variant="bodySmall"
-                style={{ marginLeft: 8, color: isMyMessage ? "#fff" : "#333", fontSize: 14 }}
-                numberOfLines={1}
+                variant="bodyMedium"
+                style={{
+                  color: isMyMessage ? "#fff" : "#333",
+                  fontSize: 15,
+                  fontWeight: "500",
+                  lineHeight: 20,
+                }}
+                numberOfLines={2}
+                ellipsizeMode="tail"
               >
-                {fileName}
+                {decodeURIComponent(fileName)}
               </Text>
-              {isTemp && item.status === "sending" && (
-                <ActivityIndicator size="small" color={isMyMessage ? "#fff" : "#666"} style={{ marginLeft: 8 }} />
-              )}
-            </Card.Content>
-          </Card>
+            </View>
+            {isTemp && item.status === "sending" && (
+              <ActivityIndicator
+                size="small"
+                color={isMyMessage ? "#fff" : "#666"}
+                style={{ marginLeft: 10 }}
+              />
+            )}
+          </TouchableOpacity>
         );
       default:
         if (item.isRevoked) {
@@ -1330,54 +1457,71 @@ const ChatDetailScreen = ({ navigation, route }) => {
       return null;
     }
 
-    // Logic to determine if we should show the avatar
-    let showAvatar = true;
-    if (index > 0) {
-      const previousMessage = combinedMessages[index - 1];
-      if (
-        previousMessage &&
-        previousMessage.sender?._id === item.sender?._id &&
-        new Date(item.createdAt) - new Date(previousMessage.createdAt) < 60000 // Within 1 minute
-      ) {
-        showAvatar = false;
-      }
+    // Determine if avatar should be shown (only for the last message in a sequence)
+    let showAvatar = false;
+    const isLastMessage =
+      index === combinedMessages.length - 1 ||
+      combinedMessages[index + 1]?.sender?._id !== item.sender._id ||
+      new Date(combinedMessages[index + 1]?.createdAt) -
+        new Date(item.createdAt) >
+        60000;
+
+    if (isLastMessage) {
+      showAvatar = true;
     }
 
     return (
       <View
         style={{
           flexDirection: "row",
-          marginVertical: 4,
-          marginHorizontal: 12,
+          marginVertical: 2,
+          marginHorizontal: 8,
           alignItems: "flex-end",
           justifyContent: isMyMessage ? "flex-end" : "flex-start",
         }}
       >
         {!isMyMessage && (
-          <Avatar.Image
-            size={28}
-            source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
-            style={{
-              marginRight: 8,
-              opacity: showAvatar ? 1 : 0,
-            }}
-          />
+          <View style={{ width: 28, height: 28, marginRight: 8 }}>
+            {showAvatar && (
+              <Avatar.Image
+                size={28}
+                source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+              />
+            )}
+            {!isMyMessage && showAvatar && isOnline && (
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: -2,
+                  right: -2,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: "#00ff00",
+                  borderWidth: 1,
+                  borderColor: "#fff",
+                }}
+              />
+            )}
+          </View>
         )}
         <View
           style={{
             maxWidth: "75%",
           }}
         >
-          <Card
-            style={{
-              backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
-              borderRadius: 16,
-              elevation: 0,
-              borderTopLeftRadius: isMyMessage ? 16 : showAvatar ? 4 : 16,
-              borderBottomLeftRadius: isMyMessage ? 16 : 16,
-              borderTopRightRadius: isMyMessage ? showAvatar ? 4 : 16 : 16,
-              borderBottomRightRadius: isMyMessage ? 16 : 16,
-            }}
+          <TouchableOpacity
+          style={{
+            backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            borderBottomLeftRadius: isMyMessage ? 16 : showAvatar ? 4 : 16,
+            borderBottomRightRadius: 16,
+            padding: item.type === "TEXT" ? 10 : 0,
+            overflow: "hidden",
+            alignSelf: isMyMessage ? "flex-end" : "flex-start",
+            marginLeft: isMyMessage ? 50 : 0, 
+          }}
             onLongPress={() => {
               if (!isTemp) {
                 setSelectedMessage(item);
@@ -1385,28 +1529,40 @@ const ChatDetailScreen = ({ navigation, route }) => {
               }
             }}
           >
-            <Card.Content style={{ padding: 8 }}>
-              {renderMessageContent(item)}
-            </Card.Content>
-          </Card>
-          <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 2 }}>
-            <Text variant="labelSmall" style={{ color: isMyMessage ? "rgba(255,255,255,0.7)" : "#666", fontSize: 12 }}>
-              {item.createdAt ? format(new Date(item.createdAt), "HH:mm") : ""}
-            </Text>
-            {isTemp && item.status === "sending" && (
-              <ActivityIndicator size="small" color={isMyMessage ? "rgba(255,255,255,0.7)" : "#999"} style={{ marginLeft: 4 }} />
+            {renderMessageContent(item)}
+            {item.type === "TEXT" && !item.isRevoked && (
+              <Text
+                variant="labelSmall"
+                style={{
+                  color: isMyMessage ? "rgba(255,255,255,0.7)" : "#666",
+                  fontSize: 10,
+                  marginTop: 4,
+                  textAlign: "right",
+                }}
+              >
+                {item.createdAt
+                  ? format(new Date(item.createdAt), "HH:mm")
+                  : ""}
+                {isTemp && item.status === "sending" && (
+                  <ActivityIndicator
+                    size="small"
+                    color={isMyMessage ? "rgba(255,255,255,0.7)" : "#666"}
+                    style={{ marginLeft: 4, display: "inline" }}
+                  />
+                )}
+              </Text>
             )}
-          </View>
+          </TouchableOpacity>
         </View>
         {isMyMessage && (
-          <Avatar.Image
-            size={28}
-            source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
-            style={{
-              marginLeft: 8,
-              opacity: showAvatar ? 1 : 0,
-            }}
-          />
+          <View style={{ width: 28, height: 28, marginLeft: 8 }}>
+            {showAvatar && (
+              <Avatar.Image
+                size={28}
+                source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
+              />
+            )}
+          </View>
         )}
       </View>
     );
@@ -1417,7 +1573,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
     const ext = fileName.split(".").pop().toLowerCase();
     switch (ext) {
       case "pdf":
-        return "file-pdf";
+        return "file-pdf-box"; // Updated to valid Material Community Icon
       case "doc":
       case "docx":
         return "file-word";
@@ -1515,7 +1671,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
       >
         <Avatar.Icon size={16} icon="pin" style={{ marginRight: 8 }} />
         <View style={{ flex: 1 }}>{renderPinnedContent()}</View>
-        <IconButton icon="close" size={20} onPress={() => handleMessagePin(pinnedMessage)} />
+        <IconButton
+          icon="close"
+          size={20}
+          onPress={() => handleMessagePin(pinnedMessage)}
+        />
       </Surface>
     );
   };
@@ -1757,7 +1917,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   }
                   onPress={() => toggleSelectFriend(item)}
                   style={{
-                    backgroundColor: selectedFriends.some((f) => f._id === item._id)
+                    backgroundColor: selectedFriends.some(
+                      (f) => f._id === item._id
+                    )
                       ? "#f0f8ff"
                       : "transparent",
                   }}
@@ -1765,7 +1927,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
               )}
             />
           ) : (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Text variant="bodyMedium">Không có cuộc trò chuyện nào</Text>
             </View>
           )}
@@ -1794,12 +1962,18 @@ const ChatDetailScreen = ({ navigation, route }) => {
             elevation: 0,
           }}
         >
-          <IconButton icon="chevron-left" iconColor="#fff" onPress={handleReturn} />
+          <IconButton
+            icon="chevron-left"
+            iconColor="#fff"
+            onPress={handleReturn}
+          />
           <Text variant="titleMedium" style={{ color: "#fff" }}>
             Loading...
           </Text>
         </Surface>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
           <ActivityIndicator size="large" color="#0099ff" />
         </View>
       </SafeAreaView>
@@ -1831,16 +2005,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
             />
             <TouchableOpacity
               onPress={() => {
-                if (otherUser && conversation) {
+                if (conversation) {
                   navigation.navigate("UserInfo", {
                     conversation: {
                       _id: conversation._id,
-                      name:
-                        otherUser.name ||
-                        `${otherUser.firstName} ${otherUser.lastName}`,
+                      name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
                       members: conversation.members || [],
-                      avatar: otherUser.avatar,
-                      isGroup: false,
+                      avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                      isGroup: conversation.isGroup || false,
                       isOnline: isOnline,
                       user: otherUser,
                     },
@@ -1848,29 +2020,48 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 }
               }}
             >
-              <Avatar.Image
-                size={36}
-                source={
-                  otherUser?.avatar
-                    ? { uri: otherUser.avatar }
-                    : require("../../../assets/chat/avatar.png")
-                }
-                style={{ marginHorizontal: 8 }}
-              />
+              <View style={{ position: "relative" }}>
+                <Avatar.Image
+                  size={36}
+                  source={
+                    conversation?.isGroup
+                      ? (conversation.avatar
+                          ? { uri: conversation.avatar }
+                          : require("../../../assets/chat/avatar.png"))
+                      : (otherUser?.avatar
+                          ? { uri: otherUser.avatar }
+                          : require("../../../assets/chat/avatar.png"))
+                  }
+                  style={{ marginHorizontal: 8 }}
+                />
+                {!conversation?.isGroup && isOnline && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      right: 8,
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: "#00ff00",
+                      borderWidth: 1,
+                      borderColor: "#fff",
+                    }}
+                  />
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={{ flex: 1 }}
               onPress={() => {
-                if (otherUser && conversation) {
+                if (conversation) {
                   navigation.navigate("UserInfo", {
                     conversation: {
                       _id: conversation._id,
-                      name:
-                        otherUser.name ||
-                        `${otherUser.firstName} ${otherUser.lastName}`,
+                      name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
                       members: conversation.members || [],
-                      avatar: otherUser.avatar,
-                      isGroup: false,
+                      avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                      isGroup: conversation.isGroup || false,
                       isOnline: isOnline,
                       user: otherUser,
                     },
@@ -1878,28 +2069,58 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 }
               }}
             >
-              <Text variant="titleMedium" style={{ color: "#fff", fontSize: 18 }}>
-                {otherUser
-                  ? otherUser.name ||
-                    `${otherUser.firstName} ${otherUser.lastName}`
-                  : "Chat"}
+              <Text
+                variant="titleMedium"
+                style={{ color: "#fff", fontSize: 18 }}
+              >
+                {conversation?.isGroup
+                  ? conversation.name || "Group Chat"
+                  : (otherUser
+                      ? otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`
+                      : "Chat")}
               </Text>
               <Text variant="bodySmall" style={{ color: "#fff", fontSize: 12 }}>
-                {isOnline ? "Online" : "Offline"}
+                {conversation?.isGroup 
+                  ? (conversation.members ? `${conversation.members.length} members` : "Group chat")
+                  : (isOnline ? "Online" : "Offline")}
               </Text>
             </TouchableOpacity>
             <View style={{ flexDirection: "row" }}>
+              {!conversation?.isGroup && (
+                <>
+                  <IconButton
+                    icon="phone"
+                    iconColor="#fff"
+                    size={24}
+                    onPress={() => Alert.alert("Audio call")}
+                  />
+                  <IconButton
+                    icon="video"
+                    iconColor="#fff"
+                    size={24}
+                    onPress={() => Alert.alert("Video call")}
+                  />
+                </>
+              )}
               <IconButton
-                icon="phone"
+                icon="dots-vertical"
                 iconColor="#fff"
                 size={24}
-                onPress={() => Alert.alert("Audio call")}
-              />
-              <IconButton
-                icon="video"
-                iconColor="#fff"
-                size={24}
-                onPress={() => Alert.alert("Video call")}
+                onPress={() => {
+                  if (conversation) {
+                    navigation.navigate("UserInfo", {
+                      conversation: {
+                        _id: conversation._id,
+                        name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
+                        members: conversation.members || [],
+                        avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                        isGroup: conversation.isGroup || false,
+                        isOnline: isOnline,
+                        user: otherUser,
+                      },
+                    });
+                  }
+                }}
               />
             </View>
           </Surface>
@@ -1907,7 +2128,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
           <PinnedMessageBar />
 
           <ImageBackground
-            source={{ uri: "https://i.pinimg.com/736x/3b/bd/5b/3bbd5b86fc13eae5e5d6ce40f1575a55.jpg" }} // Hình nền messenger
+            source={{
+              uri: "https://i.pinimg.com/474x/d1/df/71/d1df71180f6604a205baa38b4dd231b4.jpg",
+            }}
             style={{ flex: 1 }}
             resizeMode="cover"
           >
@@ -1918,7 +2141,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
               style={{ flex: 1 }}
               contentContainerStyle={{
                 paddingTop: pinnedMessage ? 40 : 8,
-                paddingBottom: 8,
+                paddingBottom: 80,
               }}
               refreshing={refreshing}
               onRefresh={onRefresh}
@@ -1939,30 +2162,44 @@ const ChatDetailScreen = ({ navigation, route }) => {
           <Surface
             style={{
               flexDirection: "row",
+              alignItems: "center",
+              alignSelf: "center",
               width: "100%",
-              backgroundColor: "rgba(255,255,255,0.9)",
-              borderRadius: 20,
-              marginBottom: 0,
-              paddingVertical: 8,
-              elevation: 1,
+              position: "absolute",
+              bottom: 0,
+              backgroundColor: "#fff",
+              borderTopWidth: 1,
+              borderTopColor: "#e4e4e4",
+              paddingHorizontal: 4,
+              paddingVertical: 6,
+              borderRadiusTopLeft: 20,
+              borderRadiusTopRight: 20,
+              elevation: 2,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
             }}
           >
             <IconButton
               icon="plus-circle"
               iconColor="#0099ff"
-              size={24}
+              size={26}
+              style={{ marginRight: 4 }}
               onPress={() => setShowOptions(true)}
             />
             <TextInput
               style={{
                 flex: 1,
-                marginHorizontal: 8,
-                paddingVertical: 8,
-                paddingHorizontal: 8,
-                backgroundColor: "transparent",
-                fontSize: 18,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                backgroundColor: "#f5f5f5",
+                borderRadius: 20,
+                fontSize: 16,
+                color: "#333",
               }}
               placeholder="Type a message..."
+              placeholderTextColor="#888"
               value={newMessage}
               onChangeText={(text) => setNewMessage(text)}
               onSubmitEditing={handleSubmitEditing}
@@ -1971,15 +2208,21 @@ const ChatDetailScreen = ({ navigation, route }) => {
             {newMessage.trim().length > 0 ? (
               <IconButton
                 icon="send"
-                iconColor="#0099ff"
-                size={24}
+                iconColor="#fff"
+                size={26}
+                style={{
+                  backgroundColor: "#0099ff",
+                  borderRadius: 20,
+                  marginLeft: 8,
+                }}
                 onPress={handlePressSend}
               />
             ) : (
               <IconButton
                 icon="thumb-up"
                 iconColor="#0099ff"
-                size={24}
+                size={26}
+                style={{ marginLeft: 8 }}
                 onPress={handlePressLike}
               />
             )}

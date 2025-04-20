@@ -160,3 +160,76 @@ export const emitLeaveConversation = (conversationId) => {
     socket.emit('leave', { conversationId });
   }
 };
+
+// Group-related socket events
+export const emitCreateGroupConversation = (conversation, creatorId) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Emitting createGroupConversation event with conversation: ${conversation._id}`);
+    socket.emit('createGroupConversation', {
+      conversation,
+      creatorId
+    });
+  } else {
+    console.log(`[Socket] Cannot emit createGroupConversation: socket ${socket ? 'not connected' : 'is null'}`);
+  }
+};
+
+export const subscribeToNewGroupConversation = (callback) => {
+  const socket = getSocket();
+  if (socket) {
+    console.log('[Socket] Subscribing to newGroupConversation events');
+    socket.on('newGroupConversation', callback);
+  }
+};
+
+export const unsubscribeFromNewGroupConversation = () => {
+  const socket = getSocket();
+  if (socket) {
+    console.log('[Socket] Unsubscribing from newGroupConversation events');
+    socket.off('newGroupConversation');
+  }
+};
+
+export const subscribeToChatEvents = (callbacks) => {
+  const socket = getSocket();
+  if (socket) {
+    console.log('[Socket] Setting up all chat-related event listeners');
+    
+    // Messages
+    if (callbacks.onNewMessage) {
+      socket.on('newMessage', callbacks.onNewMessage);
+    }
+    
+    // Group conversations
+    if (callbacks.onNewGroupConversation) {
+      socket.on('newGroupConversation', callbacks.onNewGroupConversation);
+    }
+    
+    // User status
+    if (callbacks.onActiveUsers) {
+      socket.on('activeUsers', callbacks.onActiveUsers);
+    }
+    
+    // Typing indicators
+    if (callbacks.onTyping) {
+      socket.on('typing', callbacks.onTyping);
+    }
+    
+    if (callbacks.onStopTyping) {
+      socket.on('stopTyping', callbacks.onStopTyping);
+    }
+  }
+};
+
+export const unsubscribeFromChatEvents = () => {
+  const socket = getSocket();
+  if (socket) {
+    console.log('[Socket] Removing all chat-related event listeners');
+    socket.off('newMessage');
+    socket.off('newGroupConversation');
+    socket.off('activeUsers');
+    socket.off('typing');
+    socket.off('stopTyping');
+  }
+};
