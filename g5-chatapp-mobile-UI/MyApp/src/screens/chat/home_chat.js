@@ -99,44 +99,53 @@ const HomeScreen = () => {
   const fetchConversations = async () => {
     try {
       const response = await axiosInstance.get("/conversation/my-conversation");
-      
+  
       if (!response.data || !response.data.data) {
         throw new Error('Invalid response format');
       }
-
+  
       const userData = await AsyncStorage.getItem('userData');
       const currentUser = userData ? JSON.parse(userData) : null;
       const currentUserId = currentUser?._id || currentUser?.id;
-
+  
       const processedConversations = response.data.data.map((conv) => {
-        const otherUser = conv.members.find(member => member._id !== currentUserId);
-        
+        // Tìm người dùng khác trong mảng members
+        const otherUser = conv.members.find(member => member.user._id !== currentUserId)?.user;
+  
+        const name = conv.isGroup
+          ? conv.name || 'Untitled Group'  // Nếu là nhóm thì lấy tên nhóm
+          : otherUser ? `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() : 'Unknown User';  
+          
+        const avatar = conv.isGroup
+          ? conv.avatar || ''  // Nếu là nhóm thì lấy avatar nhóm
+          : otherUser?.avatar || '';  // Nếu là người dùng, lấy avatar của user
+          
         return {
           _id: conv._id,
-          name: conv.isGroup ? conv.name : (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'Unknown User'),
-          avatar: conv.isGroup ? conv.avatar : otherUser?.avatar,
+          name: name,
+          avatar: avatar,
           lastMessage: conv.lastMessage,
           lastMessageTime: conv.lastMessage?.createdAt,
           unreadCount: conv.unreadCount || 0,
           members: conv.members,
           isGroup: conv.isGroup || false,
           isOnline: otherUser?.isOnline || false,
-          otherUserId: otherUser?._id
+          otherUserId: otherUser?._id || null
         };
       });
-
-      // Sort conversations by last message time and unread count
+  
+      // Sắp xếp các cuộc trò chuyện theo tin nhắn chưa đọc và thời gian tin nhắn cuối cùng
       const sortedConversations = processedConversations.sort((a, b) => {
-        // First sort by unread count
+        // Sắp xếp theo số lượng tin nhắn chưa đọc
         if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
         if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
         
-        // Then sort by last message time
+        // Sắp xếp theo thời gian tin nhắn cuối cùng
         const timeA = a.lastMessageTime ? new Date(a.lastMessageTime) : new Date(0);
         const timeB = b.lastMessageTime ? new Date(b.lastMessageTime) : new Date(0);
         return timeB - timeA;
       });
-
+  
       setConversations(sortedConversations);
       setLoading(false);
       setRefreshing(false);
@@ -147,6 +156,7 @@ const HomeScreen = () => {
       setRefreshing(false);
     }
   };
+  
 
   useEffect(() => {
     // Socket connection management - simplified approach

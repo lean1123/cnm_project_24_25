@@ -115,12 +115,23 @@ const FriendsListScreen = ({ navigation }) => {
     try {
       setIsLoading(true);
       const response = await contactService.getMyContacts();
+      console.log('fetchFriends response:', response);
       if (response.success) {
-        setFriends(response.data || []);
-        setFilteredFriends(response.data || []);
+        // Transform data to ensure consistent structure
+        const formattedFriends = (response.data || []).map(friend => ({
+          ...friend,
+          user: friend.user || friend.contact || {}, // Handle both user and contact
+        }));
+        console.log('Formatted friends:', formattedFriends);
+        setFriends(formattedFriends);
+        setFilteredFriends(formattedFriends);
+      } else {
+        console.error('fetchFriends failed:', response.message);
+        Alert.alert("Error", response.message || "Failed to fetch friends");
       }
     } catch (error) {
       console.error('Error fetching friends:', error);
+      Alert.alert("Error", "Failed to fetch friends");
     } finally {
       setIsLoading(false);
     }
@@ -175,18 +186,22 @@ const FriendsListScreen = ({ navigation }) => {
   };
 
   const filterFriends = useCallback((searchText) => {
+    console.log('Filtering friends with searchText:', searchText);
     if (!searchText.trim()) {
       setFilteredFriends(friends);
       return;
     }
 
     const filtered = friends.filter(friend => {
-      const fullName = `${friend.user?.firstName} ${friend.user?.lastName}`.toLowerCase();
+      const fullName = friend.user 
+        ? `${friend.user.firstName || ''} ${friend.user.lastName || ''}`.toLowerCase()
+        : '';
       const email = friend.user?.email?.toLowerCase() || '';
       const search = searchText.toLowerCase();
       return fullName.includes(search) || email.includes(search);
     });
 
+    console.log('Filtered friends:', filtered);
     setFilteredFriends(filtered);
   }, [friends]);
 
@@ -371,40 +386,44 @@ const FriendsListScreen = ({ navigation }) => {
     }
   };
 
-  const renderFriendItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.friendItem}
-      onPress={() => navigation.navigate("ChatDetail", { conversation: item })}
-    >
-      <View style={styles.avatarContainer}>
-        <Image 
-          source={
-            item.user?.avatar 
-              ? { uri: item.user.avatar }
-              : require("../../../assets/chat/man.png")
-          }
-          style={styles.avatar}
-        />
-        {item.user?.isOnline && <View style={styles.onlineIndicator} />}
-      </View>
-      <View style={styles.friendInfo}>
-        <View style={styles.nameContainer}>
-          <Text style={styles.name}>
-            {item.user ? `${item.user.firstName} ${item.user.lastName}` : 'Unknown User'}
-          </Text>
-          <TouchableOpacity 
-            style={styles.moreButton}
-            onPress={() => handleUnfriend(item._id)}
-          >
-            <Icon name="dots-horizontal" size={20} color="#666" />
-          </TouchableOpacity>
+  const renderFriendItem = ({ item }) => {
+    console.log('Rendering friend item:', item);
+    const user = item.user || item.contact || {}; // Handle both user and contact
+    return (
+      <TouchableOpacity 
+        style={styles.friendItem}
+        onPress={() => navigation.navigate("ChatDetail", { conversation: item })}
+      >
+        <View style={styles.avatarContainer}>
+          <Image 
+            source={
+              user.avatar 
+                ? { uri: user.avatar.startsWith('http') ? user.avatar : `${API_URL}/uploads/${user.avatar}` }
+                : require("../../../assets/chat/avatar.png")
+            }
+            style={styles.avatar}
+          />
+          {user.isOnline && <View style={styles.onlineIndicator} />}
         </View>
-        <Text style={styles.lastSeen}>
-          {item.user?.isOnline ? 'Active now' : 'Offline'}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.friendInfo}>
+          <View style={styles.nameContainer}>
+            <Text style={styles.name}>
+              {user.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Unknown User'}
+            </Text>
+            <TouchableOpacity 
+              style={styles.moreButton}
+              onPress={() => handleUnfriend(item._id)}
+            >
+              <Icon name="dots-horizontal" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.lastSeen}>
+            {user.isOnline ? 'Active now' : 'Offline'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderRequestItem = ({ item }) => (
     <View style={styles.requestItem}>
@@ -413,7 +432,7 @@ const FriendsListScreen = ({ navigation }) => {
           source={
             item.user?.avatar 
               ? { uri: item.user.avatar }
-              : require("../../../assets/chat/man.png")
+              : require("../../../assets/chat/avatar.png")
           }
           style={styles.avatar}
         />
@@ -448,7 +467,7 @@ const FriendsListScreen = ({ navigation }) => {
           source={
             item.contact?.avatar 
               ? { uri: item.contact.avatar }
-              : require("../../../assets/chat/man.png")
+              : require("../../../assets/chat/avatar.png")
           }
           style={styles.avatar}
         />
@@ -475,15 +494,18 @@ const FriendsListScreen = ({ navigation }) => {
       friend.user?._id === item._id || 
       friend.contact?._id === item._id
     );
+    console.log('Existing friend:', existingFriend);
+    console.log('avatar:', item.avatar);
+    console.log('name:', item.firstName, item.lastName);
     
     return (
       <View style={styles.searchItem}>
         <View style={styles.avatarContainer}>
           <Image 
             source={
-              item.avatar 
-                ? { uri: `${API_URL}/uploads/${item.avatar}` }
-                : require("../../../assets/chat/man.png")
+              item.avatar
+              ? { uri: item.avatar.startsWith('http') ? item.avatar : `${API_URL}/Uploads/${item.avatar}` }
+              : require("../../../assets/chat/avatar.png")
             }
             style={styles.avatar}
           />
@@ -890,4 +912,3 @@ const styles = StyleSheet.create({
 });
 
 export default FriendsListScreen;
-
