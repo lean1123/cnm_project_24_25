@@ -20,6 +20,11 @@ import { UserService } from 'src/user/user.service';
 import { ContactService } from '../../contact/contact.service';
 import { User } from 'src/user/schema/user.schema';
 import { Convensation } from 'src/conversation/schema/convensation.schema';
+import { HandleConversation } from './handleConvsersation';
+import { HandleConnection } from './handleConnection';
+import { HandleMessage } from './handleMessage';
+import { HandleContact } from './handleContact';
+import { HandleCall } from './handleCall';
 
 @WebSocketGateway({
   cors: {
@@ -46,6 +51,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly userService: UserService,
     @Inject(forwardRef(() => ContactService))
     private readonly contactService: ContactService,
+    private conversationHandler: HandleConversation,
+    private handleConnectionService: HandleConnection,
+    private handleMessageService: HandleMessage,
+    private handleContact: HandleContact,
+    private handleCallService: HandleCall,
   ) {}
 
   private activeUsers = new Map<string, string>();
@@ -77,25 +87,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() { userId }: { userId: string },
     @ConnectedSocket() client: Socket,
   ) {
-    this.logger.log(`User ${userId} logged in with socket ${client.id}`);
-    this.activeUsers.set(userId, client.id);
-
-    const conversations =
-      await this.conversationService.getMyConversationId(userId);
-
-    await client.join(userId.toString());
-    this.logger.log(
-      `User ${userId} joined to room ${userId} send notification with socket ${client.id}`,
+    await this.handleConnectionService.handleLogin(
+      { userId },
+      client,
+      this.logger,
+      this.activeUsers,
+      this.server,
     );
-    for (const conversationId of conversations) {
-      await client.join(conversationId.toString());
-      this.logger.log(
-        `User ${userId} joined room ${conversationId.toString()} with socket ${client.id}`,
-      );
-    }
-    this.server.emit('activeUsers', {
-      activeUsers: Array.from(this.activeUsers.keys()),
-    });
   }
 
   @SubscribeMessage('join')
@@ -110,9 +108,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
     @ConnectedSocket() client: Socket,
   ) {
-    await client.join(conversationId);
-    this.activeUsers.set(userId, client.id);
-    this.logger.log(`User ${userId} connected with socket ${client.id}`);
+    await this.handleConnectionService.handleJoin(
+      { userId, conversationId },
+      client,
+      this.logger,
+      this.activeUsers,
+    );
   }
 
   async handleMessage(
@@ -129,39 +130,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       files: Express.Multer.File[];
     },
   ) {
-    const message = await this.chatService.createMessage(
-      conversationId,
-      user,
-      messageDto,
-      files,
+    await this.handleMessageService.handleMessage(
+      {
+        conversationId,
+        user,
+        messageDto,
+        files,
+      },
+      this.server,
     );
-
-    // console.log('Message return: ', message);
-
-    this.server.to(conversationId).emit('newMessage', message);
   }
 
   handleForwardMessage(@MessageBody() messageForwarded: Message[]) {
-    for (const message of messageForwarded) {
-      const conversationId = message.conversation?.toString();
-      if (conversationId) {
-        this.server.to(conversationId).emit('newMessage', message);
-      }
-    }
+    this.handleMessageService.handleForwardMessage(
+      messageForwarded,
+      this.server,
+    );
   }
 
   handleDeleteMessage(@MessageBody() message: Message) {
-    const conversationId = message.conversation?.toString();
-    if (conversationId) {
-      this.server.to(conversationId).emit('deleteMessage', message);
-    }
+    this.handleMessageService.handleDeleteMessage(message, this.server);
   }
 
   handleRevokeMessage(@MessageBody() message: Message) {
-    const conversationId = message.conversation?.toString();
-    if (conversationId) {
-      this.server.to(conversationId).emit('revokeMessage', message);
-    }
+    this.handleMessageService.handleRevokeMessage(message, this.server);
   }
 
   @SubscribeMessage('typing')
@@ -198,24 +190,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       contact: ContactResponseDto;
     },
   ) {
-    // Log receiverId và kiểm tra activeUsers
-    this.logger.log(
-      `[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`,
+    this.handleContact.handleRequestContact(
+      { receiverId, contact },
+      this.logger,
+      this.activeUsers,
+      this.server,
     );
-
-    // Kiểm tra người nhận có online không
-    if (!this.activeUsers.has(receiverId)) {
-      this.logger.error(`[Contact] User ${receiverId} is offline`);
-      return;
-    }
-
-    // Kiểm tra phòng receiverId có tồn tại không
-    const receiverRoom = this.server.sockets.adapter.rooms.get(receiverId);
-    this.logger.log(`[Contact] Receiver room exists: ${!!receiverRoom}`);
-
-    // Gửi sự kiện
-    this.server.to(receiverId).emit('newRequestContact', contact);
-    this.logger.log(`[Contact] Event sent to ${receiverId}`);
   }
 
   @SubscribeMessage('cancelRequestContact')
@@ -223,12 +203,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     { receiverId, contactId }: { receiverId: string; contactId: string },
   ) {
-    // Log receiverId và kiểm tra activeUsers
-    this.logger.log(
-      `[Contact] Receiver ID: ${receiverId}, Active Users: ${JSON.stringify(Array.from(this.activeUsers))}`,
+    this.handleContact.handleCancelRequestContact(
+      { receiverId, contactId },
+      this.logger,
+      this.server,
+      this.activeUsers,
     );
-    this.server.to(receiverId).emit('cancelRequestContact', contactId);
   }
+
   @SubscribeMessage('rejectRequestContact')
   handleRejectRequestContact(
     @MessageBody()
@@ -242,10 +224,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       contactId: string;
     },
   ) {
-    this.server.to(receiverId).emit('rejectRequestContact', {
-      contactId,
-      name,
-    });
+    this.handleContact.handleRejectRequestContact(
+      { receiverId, name, contactId },
+      this.server,
+    );
   }
 
   // call
@@ -254,9 +236,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     { sender, conversationId }: { sender: User; conversationId: string },
   ) {
-    this.server.to(conversationId).emit('goingCall', {
-      sender,
-    });
+    this.handleCallService.handleCall({ sender, conversationId }, this.server);
   }
 
   @SubscribeMessage('joinCall')
@@ -264,9 +244,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     { userId, conversationId }: { userId: string; conversationId: string },
   ) {
-    this.server.to(conversationId).emit('newUser', {
-      userId: userId,
-    });
+    this.handleCallService.handleJoinCall(
+      { userId, conversationId },
+      this.server,
+    );
   }
 
   @SubscribeMessage('acceptCall')
@@ -274,9 +255,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody()
     { userId, conversationId }: { userId: string; conversationId: string },
   ) {
-    this.server.to(conversationId).emit('newUserJoinCall', {
-      sender: userId,
-    });
+    this.handleCallService.handleAcceptCall(
+      { userId, conversationId },
+      this.server,
+    );
   }
   @SubscribeMessage('rejectCall')
   handleRejectCall(
@@ -291,10 +273,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       callData: any;
     },
   ) {
-    this.server.to(userId).emit('rejectCall', {
-      conversationId,
-      callData,
-    });
+    this.handleCallService.handleRejectCall(
+      { userId, conversationId, callData },
+      this.server,
+    );
   }
   @SubscribeMessage('endCall')
   handleEndCall(
@@ -309,10 +291,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       callData: any;
     },
   ) {
-    this.server.to(userId).emit('endCall', {
-      conversationId,
-      callData,
-    });
+    this.handleCallService.handleEndCall(
+      { userId, conversationId, callData },
+      this.server,
+    );
   }
   @SubscribeMessage('cancelCall')
   handleCancelCall(
@@ -327,10 +309,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       callData: any;
     },
   ) {
-    this.server.to(userId).emit('cancelCall', {
-      conversationId,
-      callData,
-    });
+    this.handleCallService.handleCancelCall(
+      { userId, conversationId, callData },
+      this.server,
+    );
   }
 
   @SubscribeMessage('newUserJoinCall')
@@ -341,9 +323,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       sender: string;
     },
   ) {
-    this.server.to(data.to).emit('newUserJoinCall', {
-      sender: data.sender,
-    });
+    this.handleCallService.handleNewUserStartCall(data, this.server);
   }
   @SubscribeMessage('sdp')
   handleSdp(
@@ -375,40 +355,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleReactToMessage(@MessageBody() message: Message) {
-    // const conversationId = message.conversation?.toString();
-    // if (conversationId) {
-    //   this.server.to(conversationId).emit('reactToMessage', message);
-    // }
-    this.server
-      .to(message.conversation.toString())
-      .emit('reactToMessage', message);
+    this.handleMessageService.handleReactToMessage(message, this.server);
   }
 
   handleUnReactToMessage(@MessageBody() message: Message) {
-    const conversationId = message.conversation?.toString();
-    if (conversationId) {
-      this.server.to(conversationId).emit('unReactToMessage', message);
-    }
-    this.server
-      .to(message.conversation.toString())
-      .emit('unReactToMessage', message);
+    this.handleMessageService.handleUnReactToMessage(message, this.server);
   }
 
   handleCreateConversationForGroup(@MessageBody() conversation: Convensation) {
-    const conversationId = conversation._id as string;
-    if (conversationId) {
-      this.server.to(conversationId).emit('createConversationForGroup', {
-        conversation: conversation,
-      });
-    }
+    this.conversationHandler.handleCreateConversationForGroup(
+      conversation,
+      this.server,
+    );
   }
 
   handleUpdateConversation(@MessageBody() conversation: Convensation) {
-    const conversationId = conversation._id as string;
-    if (conversationId) {
-      this.server.to(conversationId).emit('updateConversation', {
-        conversation: conversation,
-      });
-    }
+    this.conversationHandler.handleUpdateConversation(
+      this.server,
+      conversation,
+    );
   }
 }
