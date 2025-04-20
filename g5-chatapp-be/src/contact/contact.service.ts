@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { UserService } from 'src/user/user.service';
+import { ContactDto } from './dto/contact.dto';
 import { Status } from './enum/status.enum';
 import { Contact } from './schema/contact.schema';
-import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
-import { ContactDto } from './dto/contact.dto';
 
 @Injectable()
 export class ContactService {
@@ -104,6 +104,7 @@ export class ContactService {
       ]);
 
     // Nếu chưa có cuộc trò chuyện, tạo mới
+
     if (!existingConversation) {
       try {
         await this.conversationService.createConvensation(
