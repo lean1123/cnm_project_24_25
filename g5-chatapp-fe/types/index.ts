@@ -121,3 +121,9 @@ export type Reactions = {
     user: string
     reaction: string;
 }
+
+export type CreateGroupRequest = {
+    name: string;
+    members: string[];
+    profilePicture?: string | null;
+}

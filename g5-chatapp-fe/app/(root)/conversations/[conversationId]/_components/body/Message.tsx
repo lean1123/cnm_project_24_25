@@ -1,33 +1,31 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getInitials } from "@/lib/utils";
-import type { Message, MessageFile } from "@/types";
-import { timeStamp } from "console";
-import React, { useEffect, useState } from "react";
-import {
-  File,
-  FileText,
-  FileArchive,
-  FileSpreadsheet,
-  FileCode,
-  FileAudio,
-  FileVideo,
-  FileImage,
-  FileType,
-  Download,
-  Repeat,
-  MessageSquareText,
-  Forward,
-  CheckCheck,
-  Heart,
-} from "lucide-react";
-import axios from "axios";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import ImageGallery from "./ImageGallery";
 import ForwardMessageDialog from "@/components/common/dialog/ForwardMessageDialog";
-import { MessageOption } from "./MessageOption";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { cn, getInitials } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useConversationStore } from "@/store/useConversationStore";
+import { useMessageStore } from "@/store/useMessageStore";
+import type { Message, MessageFile } from "@/types";
+import axios from "axios";
+import {
+  CheckCheck,
+  Download,
+  File,
+  FileArchive,
+  FileAudio,
+  FileCode,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  FileVideo,
+  Forward,
+  Heart,
+  MessageSquareText,
+  Repeat
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import ImageGallery from "./ImageGallery";
+import { MessageOption } from "./MessageOption";
 
 type Props = {
   message: Message | null;
@@ -145,7 +143,7 @@ const Message = ({
     if (!isDropdownOpen) setIsHovered(false);
   };
 
-  const { reactionMessage, unReactionMessage } = useConversationStore();
+  const { reactionMessage, unReactionMessage } = useMessageStore();
 
   return (
     <div
