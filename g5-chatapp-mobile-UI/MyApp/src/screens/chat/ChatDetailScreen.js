@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
-  Text,
-  StyleSheet,
-  Image,
   TextInput,
   TouchableOpacity,
   FlatList,
@@ -17,9 +14,10 @@ import {
   Alert,
   Animated,
   KeyboardAvoidingView,
+  Image,
+  ImageBackground,
 } from "react-native";
 import WebView from "react-native-webview";
-
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -30,7 +28,6 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getSocket } from "../../services/socket";
-import axiosInstance from "../../config/axiosInstance";
 import { format } from "date-fns";
 import ChatOptions from "../chat/components/ChatOptions";
 import { chatService } from "../../services/chat.service";
@@ -40,6 +37,37 @@ import { Audio } from "expo-av";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_URL } from "../../config/constants";
 
+// Thư viện react-native-paper
+import {
+  Provider as PaperProvider,
+  Surface,
+  Card,
+  Avatar,
+  Text,
+  Button,
+  IconButton,
+  FAB,
+  Modal as PaperModal,
+  Portal,
+  ProgressBar,
+  Divider,
+  List,
+  Badge,
+} from "react-native-paper";
+
+// Theme tùy chỉnh cho react-native-paper
+const customTheme = {
+  colors: {
+    primary: "#0099ff",
+    background: "transparent",
+    surface: "#ffffff",
+    text: "#333",
+    secondary: "#666",
+    error: "#e74c3c",
+  },
+};
+
+// AudioMessage Component
 const AudioMessage = ({ file, isMyMessage }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -53,13 +81,11 @@ const AudioMessage = ({ file, isMyMessage }) => {
 
     const initAudio = async () => {
       try {
-        // First unload any existing sound
         if (soundRef.current) {
           await soundRef.current.unloadAsync();
           soundRef.current = null;
         }
 
-        // Configure audio mode
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
           playsInSilentModeIOS: true,
@@ -68,7 +94,6 @@ const AudioMessage = ({ file, isMyMessage }) => {
           playThroughEarpieceAndroid: false,
         });
 
-        console.log("Creating sound object...");
         const { sound: newSound, status } = await Audio.Sound.createAsync(
           { uri: file.url },
           {
@@ -78,9 +103,6 @@ const AudioMessage = ({ file, isMyMessage }) => {
           },
           onPlaybackStatusUpdate
         );
-
-        console.log("Sound created:", newSound);
-        console.log("Initial status:", status);
 
         if (isMounted) {
           soundRef.current = newSound;
@@ -109,7 +131,6 @@ const AudioMessage = ({ file, isMyMessage }) => {
       const cleanup = async () => {
         try {
           if (soundRef.current) {
-            console.log("Unloading sound...");
             await soundRef.current.unloadAsync();
             soundRef.current = null;
           }
@@ -137,29 +158,21 @@ const AudioMessage = ({ file, isMyMessage }) => {
   const handlePlayPause = async () => {
     try {
       const sound = soundRef.current;
-      console.log("Current sound object:", sound);
-
       if (!sound) {
-        console.error("No sound object available");
         setError("Audio not ready");
         return;
       }
 
       const status = await sound.getStatusAsync();
-      console.log("Current status:", status);
-
       if (!status.isLoaded) {
-        console.error("Sound not loaded");
         setError("Audio not ready");
         return;
       }
 
-      console.log("Attempting to play/pause...");
       if (status.isPlaying) {
-        await soundRef.current.setStatusAsync({ shouldPlay: false });
-        console.log("Paused successfully");
+        await sound.setStatusAsync({ shouldPlay: false });
       } else {
-        if (!soundRef.current._loaded) {
+        if (!sound._loaded) {
           const { sound: newSound } = await Audio.Sound.createAsync(
             { uri: file.url },
             { shouldPlay: true },
@@ -167,7 +180,7 @@ const AudioMessage = ({ file, isMyMessage }) => {
           );
           soundRef.current = newSound;
         } else {
-          await soundRef.current.setStatusAsync({
+          await sound.setStatusAsync({
             shouldPlay: true,
             positionMillis: position,
             isLooping: false,
@@ -175,12 +188,10 @@ const AudioMessage = ({ file, isMyMessage }) => {
             rate: 1.0,
           });
         }
-        console.log("Playing successfully");
       }
     } catch (err) {
       console.error("Playback error:", err);
       setError("Playback failed");
-
       try {
         if (soundRef.current) {
           await soundRef.current.unloadAsync();
@@ -206,59 +217,45 @@ const AudioMessage = ({ file, isMyMessage }) => {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const progress = duration > 0 ? (position / duration) * 100 : 0;
+  const progress = duration > 0 ? position / duration : 0;
 
   return (
-    <View
-      style={[
-        styles.audioContainer,
-        isMyMessage ? styles.userMessage : styles.friendMessage,
-      ]}
+    <Card
+      style={{
+        marginVertical: 4,
+        backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+        width: 220,
+        borderRadius: 12,
+        elevation: 0,
+      }}
     >
-      <TouchableOpacity
-        onPress={handlePlayPause}
-        style={styles.audioPlayButton}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator
-            color={isMyMessage ? "#fff" : "#666"}
-            size="small"
+      <Card.Content style={{ flexDirection: "row", alignItems: "center", padding: 8 }}>
+        <IconButton
+          icon={isLoading ? "loading" : isPlaying ? "pause" : "play"}
+          size={20}
+          iconColor={isMyMessage ? "#fff" : "#666"}
+          onPress={handlePlayPause}
+          disabled={isLoading}
+        />
+        <View style={{ flex: 1 }}>
+          <ProgressBar
+            progress={progress}
+            color={isMyMessage ? "#fff" : "#135CAF"}
+            style={{ height: 2, marginBottom: 4 }}
           />
-        ) : (
-          <Ionicons
-            name={isPlaying ? "pause" : "play"}
-            size={24}
-            color={isMyMessage ? "#fff" : "#666"}
-          />
-        )}
-      </TouchableOpacity>
-
-      <View style={styles.audioContent}>
-        <View style={styles.audioProgressBar}>
-          <View
-            style={[
-              styles.audioProgress,
-              { width: `${progress}%` },
-              isMyMessage
-                ? { backgroundColor: "#fff" }
-                : { backgroundColor: "#135CAF" },
-            ]}
-          />
+          <Text
+            variant="bodySmall"
+            style={{ color: isMyMessage ? "#fff" : "#666", fontSize: 12 }}
+          >
+            {error ? error : `${formatTime(position)} / ${formatTime(duration)}`}
+          </Text>
         </View>
-        <Text
-          style={[
-            styles.audioDuration,
-            isMyMessage ? styles.userMessageText : styles.friendMessageText,
-          ]}
-        >
-          {error ? error : `${formatTime(position)} / ${formatTime(duration)}`}
-        </Text>
-      </View>
-    </View>
+      </Card.Content>
+    </Card>
   );
 };
 
+// AudioRecordingModal Component
 const AudioRecordingModal = ({ visible, onClose, onSend }) => {
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -349,82 +346,78 @@ const AudioRecordingModal = ({ visible, onClose, onSend }) => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  if (!visible) return null;
-
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.audioRecordingContainer}>
-          <View style={styles.audioRecordingHeader}>
-            <Text style={styles.audioRecordingTitle}>Ghi âm tin nhắn</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.audioRecordingContent}>
-            <Text style={styles.recordingDuration}>
-              {formatDuration(recordingDuration)}
-            </Text>
-
-            <View style={styles.recordingControls}>
-              {!recordedUri ? (
-                <TouchableOpacity
-                  onPress={isRecording ? stopRecording : startRecording}
-                  style={[
-                    styles.recordButton,
-                    isRecording && styles.recordingActive,
-                  ]}
-                >
-                  <Ionicons
-                    name={isRecording ? "stop" : "mic"}
-                    size={32}
-                    color={isRecording ? "#fff" : "#ff4444"}
-                  />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.recordingActions}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setRecordedUri(null);
-                      setRecordingDuration(0);
-                    }}
-                    style={styles.recordingActionButton}
-                  >
-                    <Ionicons name="refresh" size={24} color="#666" />
-                    <Text style={styles.recordingActionText}>Ghi lại</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleSend}
-                    style={[styles.recordingActionButton, styles.sendButton]}
-                  >
-                    <Ionicons name="send" size={24} color="#fff" />
-                    <Text
-                      style={[styles.recordingActionText, { color: "#fff" }]}
-                    >
-                      Gửi
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </View>
+    <Portal>
+      <PaperModal
+        visible={visible}
+        onDismiss={onClose}
+        contentContainerStyle={{
+          backgroundColor: "white",
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          padding: 20,
+          margin: 0,
+          position: "absolute",
+          bottom: 0,
+          width: "100%",
+        }}
+      >
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          <Text variant="titleLarge">Ghi âm tin nhắn</Text>
+          <IconButton icon="close" onPress={onClose} />
         </View>
-      </View>
-    </Modal>
+        <View style={{ alignItems: "center", paddingVertical: 20 }}>
+          <Text variant="displayMedium">{formatDuration(recordingDuration)}</Text>
+          {!recordedUri ? (
+            <FAB
+              icon={isRecording ? "stop" : "microphone"}
+              style={{
+                marginTop: 20,
+                backgroundColor: isRecording ? "#ff4444" : "#fff",
+                borderWidth: 2,
+                borderColor: "#ff4444",
+              }}
+              color={isRecording ? "#fff" : "#ff4444"}
+              onPress={isRecording ? stopRecording : startRecording}
+            />
+          ) : (
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-around",
+                width: "100%",
+                marginTop: 20,
+              }}
+            >
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setRecordedUri(null);
+                  setRecordingDuration(0);
+                }}
+                icon="refresh"
+              >
+                Ghi lại
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleSend}
+                icon="send"
+                buttonColor="#0099ff"
+              >
+                Gửi
+              </Button>
+            </View>
+          )}
+        </View>
+      </PaperModal>
+    </Portal>
   );
 };
 
+// ChatDetailScreen Component
 const ChatDetailScreen = ({ navigation, route }) => {
-  // console.log("ChatDetailScreen mounted with route params:", route.params);
   const { conversation } = route.params || {};
-  console.log("Extracted conversation:", conversation);
   const insets = useSafeAreaInsets();
 
   const [showOptions, setShowOptions] = useState(false);
@@ -445,13 +438,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [friends, setFriends] = useState([]);
   const [selectedFriends, setSelectedFriends] = useState([]);
-
   const [authenticated, setAuthenticated] = useState("");
   const video = useRef(null);
-
   const [showAudioRecording, setShowAudioRecording] = useState(false);
 
-  // hàm cuộn flatlist xuống dưới khi nhập input
   const scrollToBottom = () => {
     if (flatListRef.current) {
       flatListRef.current.scrollToEnd({ animated: true });
@@ -479,13 +469,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
   useEffect(() => {
     const initializeChat = async () => {
       try {
-        console.log("Initializing chat with conversation:", conversation);
-
         if (!conversation || !conversation._id) {
-          console.error(
-            "Invalid or missing conversation object:",
-            conversation
-          );
           alert("Error: Invalid conversation data. Please try again.");
           navigation.goBack();
           return;
@@ -519,8 +503,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
               dob: userData.dob || null,
             });
           }
-          // setCurrentUser(currentUserData);
-          console.log("Current user:", currentUserData);
 
           if (conversation) {
             if (conversation.name) {
@@ -536,21 +518,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
 
           const socketInstance = getSocket();
-          console.log("Got existing socket:", socketInstance ? "yes" : "no");
-
           if (socketInstance) {
-            console.log(
-              "Socket connection status:",
-              socketInstance.connected ? "connected" : "disconnected"
-            );
-
             setSocket(socketInstance);
             setIsOnline(socketInstance.connected);
 
-            console.log(
-              "[Socket] Joining conversation room:",
-              conversation._id
-            );
             socketInstance.emit("join", {
               conversationId: conversation._id,
               userId: currentUserData._id,
@@ -561,14 +532,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
             });
 
             const handleNewMessage = (data) => {
-              console.log("[Socket] New message received:", data);
-
               const messageData = data.message || data;
               const messageConvId =
                 messageData.conversation?._id || messageData.conversation;
-
-              console.log("[Socket] Message conversation:", messageConvId);
-              console.log("[Socket] Current conversation:", conversation._id);
 
               if (messageConvId === conversation._id) {
                 setMessages((prevMessages) => {
@@ -576,17 +542,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     (msg) => msg._id === messageData._id
                   );
                   if (!messageExists) {
-                    console.log("[Socket] Adding new message to state");
                     const updatedMessages = [...prevMessages, messageData].sort(
                       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
                     );
-
                     requestAnimationFrame(() => {
                       if (flatListRef.current) {
                         flatListRef.current.scrollToEnd({ animated: true });
                       }
                     });
-
                     return updatedMessages;
                   }
                   return prevMessages;
@@ -594,22 +557,18 @@ const ChatDetailScreen = ({ navigation, route }) => {
               }
             };
 
-            // Remove old event listeners
             socketInstance.off("messageReceived");
             socketInstance.off("newMessage");
             socketInstance.off("receiveMessage");
             socketInstance.off("receiveMessageGroup");
 
-            // Use all possible event names for receiving messages to ensure compatibility
             socketInstance.on("newMessage", handleNewMessage);
             socketInstance.on("messageReceived", handleNewMessage);
             socketInstance.on("receiveMessage", handleNewMessage);
             socketInstance.on("receiveMessageGroup", handleNewMessage);
 
             socketInstance.on("connect", () => {
-              console.log("[Socket] Socket reconnected in chat detail");
               setIsOnline(true);
-              // Support both old and new format for joining a conversation room
               socketInstance.emit("join", {
                 conversationId: conversation._id,
                 userId: currentUserData._id,
@@ -621,16 +580,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
             });
 
             socketInstance.on("disconnect", () => {
-              console.log("[Socket] Socket disconnected in chat detail");
               setIsOnline(false);
             });
-          } else {
-            console.error("[Socket] No socket connection available");
           }
 
           await fetchMessages();
           const userId = await AsyncStorage.getItem("userId");
-
           setAuthenticated(userId);
         }
       } catch (error) {
@@ -645,8 +600,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
     return () => {
       const socketInstance = getSocket();
       if (socketInstance && conversation?._id && currentUser?._id) {
-        console.log("[Socket] Leaving conversation room:", conversation._id);
-        // Support both old and new format for leaving a conversation room
         socketInstance.emit("leave", {
           conversationId: conversation._id,
           userId: currentUser._id,
@@ -667,7 +620,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
   }, [conversation]);
 
   useEffect(() => {
-    console.log("Messages changed, checking if scroll needed");
     if (flatListRef.current && messages.length > 0) {
       flatListRef.current.scrollToEnd({ animated: true });
     }
@@ -676,14 +628,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const fetchMessages = async () => {
     try {
       if (!conversation?._id) {
-        console.log("No conversation ID available");
         return;
       }
 
-      console.log("Fetching messages for conversation:", conversation._id);
       const response = await chatService.getMessages(conversation._id);
-      console.log("Messages response:", response);
-
       if (response && response.data) {
         let messagesData = response.data;
 
@@ -692,7 +640,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
         }
         const validMessages = messagesData.filter((msg) => {
           if (!msg || !msg.sender || !msg._id) {
-            console.log("Invalid message format:", msg);
             return false;
           }
           return true;
@@ -702,7 +649,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
           (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
         );
 
-        console.log("Valid messages count:", validMessages.length);
         setMessages(sortedMessages);
 
         requestAnimationFrame(() => {
@@ -710,8 +656,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
             flatListRef.current.scrollToEnd({ animated: true });
           }
         });
-      } else {
-        console.log("Invalid response format:", response);
       }
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -720,7 +664,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const combinedMessages = useMemo(() => {
     const allMessages = [...messages];
-
     tempMessages.forEach((tempMsg) => {
       if (!allMessages.find((msg) => msg._id === tempMsg._id)) {
         allMessages.push(tempMsg);
@@ -741,12 +684,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
   };
 
   const removeTempMessage = (messageId) => {
-    console.log("Removing temp message with ID:", messageId);
-    setTempMessages((prev) => {
-      const updatedMessages = prev.filter((msg) => msg._id !== messageId);
-      console.log("Updated temp messages:", updatedMessages);
-      return updatedMessages;
-    });
+    setTempMessages((prev) => prev.filter((msg) => msg._id !== messageId));
   };
 
   const handleLocation = () => {
@@ -756,28 +694,21 @@ const ChatDetailScreen = ({ navigation, route }) => {
     });
   };
 
-  // Add this useEffect to handle location messages
   useEffect(() => {
     if (route.params?.locationMessage) {
-      console.log("Received location message:", route.params.locationMessage);
       const locationData = route.params.locationMessage;
-
-      // Clear the params first to prevent duplicate sends
       navigation.setParams({ locationMessage: undefined });
 
       if (locationData.isLocation) {
         sendMessage({
           ...locationData,
-          type: "TEXT", // Keep as TEXT type for location messages
+          type: "TEXT",
         });
       }
     }
   }, [route.params?.locationMessage]);
 
   const sendMessage = async (messageData = null) => {
-    console.log("SendMessage called with data:", messageData);
-
-    // Special handling for location messages
     const isLocationMessage =
       messageData?.isLocation &&
       messageData.content &&
@@ -792,7 +723,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       !currentUser ||
       !conversation?._id
     ) {
-      console.log("Invalid data, aborting message send.");
       return;
     }
 
@@ -802,9 +732,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
     let messageType = "TEXT";
     if (files.length > 0) {
       const mimetype = files[0]?.type;
-
-      console.log("File type:", mimetype);
-
       if (mimetype.startsWith("image/") || mimetype === "image") {
         messageType = "IMAGE";
       } else if (mimetype.startsWith("video/") || mimetype === "video") {
@@ -841,7 +768,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       })),
     };
 
-    // console.log("Creating temp message:", tempMessage);
     setTempMessages((prev) => [...prev, tempMessage]);
     setNewMessage("");
 
@@ -902,8 +828,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
         );
       }
 
-      // console.log("Send message response:", response);
-
       if (response.success) {
         setTempMessages((prev) => prev.filter((msg) => msg._id !== tempId));
 
@@ -923,7 +847,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
           senderId: currentUser._id,
         });
 
-        // Also emit with original event name to ensure compatibility
         socket.emit("sendMessage", {
           message: newMessage,
           conversationId: conversation._id,
@@ -982,8 +905,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
           size: asset.fileSize || asset.size || 0,
         };
 
-        // console.log("Captured image for sending:", preparedFile);
-
         await sendMessage({ files: [preparedFile] });
       }
     } catch (err) {
@@ -1019,7 +940,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
           size: asset.fileSize || asset.size || 0,
         }));
 
-        // console.log("Prepared files for sending:", preparedFiles);
         await sendMessage({ files: preparedFiles });
       }
     } catch (error) {
@@ -1036,8 +956,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
         multiple: false,
       });
 
-      console.log("Document picker result:", result);
-
       if (
         result.assets &&
         Array.isArray(result.assets) &&
@@ -1045,19 +963,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
       ) {
         const file = result.assets[0];
 
-        // Validate file
         if (!file.uri || !file.mimeType) {
           throw new Error("Invalid file selected");
         }
 
-        // Check file size (limit to 10MB)
-        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
         if (file.size > MAX_FILE_SIZE) {
           alert("File size must be less than 10MB");
           return;
         }
 
-        // Create a valid file object
         const validFile = {
           uri: file.uri,
           type: file.mimeType,
@@ -1066,8 +981,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
         };
 
         await sendMessage({ files: [validFile] });
-      } else {
-        console.warn("No documents selected or invalid document format");
       }
     } catch (error) {
       console.error("Error picking documents:", error);
@@ -1092,9 +1005,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const videoAsset = result.assets[0];
-        // console.log("Selected video:", videoAsset);
 
-        // Create a video message
         const videoMessage = {
           files: [
             {
@@ -1114,357 +1025,276 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleVideoPick = async () => {
-    try {
-      const permissionResult =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permissionResult.granted) {
-        alert("Permission to access media library was denied");
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos, // ✅ Sửa lại chỗ này
-        allowsEditing: false,
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets?.length > 0) {
-        const videoAsset = result.assets[0];
-        const { uri, fileName, type } = videoAsset;
-
-        const file = {
-          uri,
-          name: fileName || uri.split("/").pop() || "video.mp4",
-          type: type || "video/mp4", // ✅ MIME type phù hợp
-        };
-
-        const messageData = {
-          content: "", // hoặc chú thích nếu muốn
-          files: [file],
-        };
-
-        await sendMessage(messageData); // ✅ truyền đúng định dạng mà sendMessage yêu cầu
-      }
-    } catch (error) {
-      console.error("Error picking video:", error);
-      alert("Error picking video");
-    }
-  };
-
   const renderMessageContent = (item) => {
     if (!item || !item.sender) {
-      console.log("Invalid message item:", item);
       return null;
     }
 
     const isMyMessage = currentUser && item.sender._id === currentUser._id;
     const isTemp = item._id && item._id.startsWith("temp-");
 
-    // Check if it's a location message either by content format or isLocation flag
     const isLocationMessage =
       (item.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.content)) ||
       item.isLocation;
 
-    // If it's a location message, handle it
     if (isLocationMessage) {
       const [latitude, longitude] = item.content
         ? item.content.split(",").map(Number)
         : [0, 0];
 
       return (
-        <TouchableOpacity
+        <Card
+          style={{
+            width: 200,
+            backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+            borderRadius: 12,
+            elevation: 0,
+          }}
           onPress={() =>
             navigation.navigate("Location", {
               conversation: conversation,
               initialLocation: { latitude, longitude },
             })
           }
-          style={[
-            styles.locationMessageContainer,
-            isMyMessage ? styles.userMessage : styles.friendMessage,
-          ]}
         >
-          <View style={styles.mapPreviewContainer}>
-            <WebView
-              source={{
-                html: `
-                <!DOCTYPE html>
-                <html>
-                  <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-                    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-                    <style>
-                      html, body {
-                        margin: 0;
-                        padding: 0;
-                        width: 100%;
-                        height: 100%;
-                        overflow: hidden;
-                      }
-                      #map {
-                        width: 100%;
-                        height: 100%;
-                        background: #f0f0f0;
-                      }
-                      .leaflet-control-container {
-                        display: none;
-                      }
-                    </style>
-                  </head>
-                  <body>
-                    <div id="map"></div>
-                    <script>
-                      try {
-                        const map = L.map('map', {
-                          zoomControl: false,
-                          attributionControl: false,
-                          dragging: false,
-                          touchZoom: false,
-                          scrollWheelZoom: false,
-                          doubleClickZoom: false
-                        }).setView([${latitude}, ${longitude}], 15);
-
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                          maxZoom: 19,
-                        }).addTo(map);
-
-                        const marker = L.marker([${latitude}, ${longitude}]).addTo(map);
-                      } catch (e) {
-                        document.body.innerHTML = 'Error loading map: ' + e.message;
-                      }
-                    </script>
-                  </body>
-                </html>
-              `,
+          <Card.Cover
+            source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=200x150&markers=color:red|${latitude},${longitude}&key=YOUR_API_KEY` }}
+            style={{ height: 120, borderRadius: 12 }}
+          />
+          <Card.Content style={{ flexDirection: "row", alignItems: "center", padding: 8 }}>
+            <Avatar.Icon
+              size={24}
+              icon="map-marker"
+              style={{
+                backgroundColor: isMyMessage
+                  ? "rgba(255,255,255,0.2)"
+                  : "rgba(102,102,102,0.1)",
+                marginRight: 8,
               }}
-              style={styles.locationMapPreview}
-              scrollEnabled={false}
-              bounces={false}
-              showsHorizontalScrollIndicator={false}
-              showsVerticalScrollIndicator={false}
-              onError={(error) => console.error("Error loading map:", error)}
-              androidHardwareAccelerationDisabled={true}
-              onNavigationStateChange={(event) => {
-                if (event.url !== "about:blank") {
-                  return false;
-                }
-              }}
-              javaScriptEnabled={true}
-              domStorageEnabled={true}
-              startInLoadingState={true}
-              renderLoading={() => (
-                <View style={styles.mapOverlay}>
-                  <ActivityIndicator size="small" color="#666" />
-                </View>
-              )}
             />
-          </View>
-          <View
-            style={[
-              styles.locationDetailsContainer,
-              isMyMessage
-                ? styles.userLocationDetails
-                : styles.friendLocationDetails,
-            ]}
-          >
-            <View
-              style={[
-                styles.locationIconContainer,
-                isMyMessage
-                  ? styles.userLocationIcon
-                  : styles.friendLocationIcon,
-              ]}
-            >
-              <Ionicons
-                name="location"
-                size={20}
-                color={isMyMessage ? "#fff" : "#666"}
-              />
-            </View>
             <Text
-              style={[
-                styles.locationAddressText,
-                isMyMessage ? styles.userMessageText : styles.friendMessageText,
-              ]}
+              variant="bodySmall"
+              style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 14 }}
               numberOfLines={2}
             >
               {item.address || "Đã chia sẻ vị trí"}
             </Text>
-          </View>
-        </TouchableOpacity>
+          </Card.Content>
+        </Card>
       );
     }
 
     switch (item.type) {
       case "IMAGE":
         if (!item.files || item.files.length === 0) {
-          console.warn("No image files found");
           return null;
         }
 
         if (item.files.length > 1) {
+          const numColumns = 2; // Số cột trong lưới
+          const imageSize = 100; // Kích thước mỗi ảnh (100x100)
+          const spacing = 4; // Khoảng cách giữa các ảnh
+
           return (
-            <View style={styles.imageGrid}>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                width: numColumns * (imageSize + spacing) - spacing, // Tổng chiều rộng của lưới
+                backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+                borderRadius: 16,
+                padding: spacing,
+              }}
+            >
               {item.files.map((file, index) => (
-                <TouchableOpacity
+                <Card
                   key={file._id || index}
+                  style={{
+                    width: imageSize,
+                    height: imageSize,
+                    margin: spacing / 2, // Khoảng cách đều giữa các ảnh
+                    borderRadius: 12,
+                    elevation: 0,
+                  }}
                   onPress={() =>
                     navigation.navigate("ImageViewer", { uri: file.url })
                   }
-                  style={[
-                    styles.gridImageContainer,
-                    item.files.length === 3 &&
-                      index === 2 &&
-                      styles.gridImageLast,
-                    item.files.length >= 4 &&
-                      index === 3 &&
-                      styles.gridImageLast,
-                    item.files.length === 2 && { width: "50%" },
-                    item.files.length === 3 && { width: "33.33%" },
-                    item.files.length >= 4 && { width: "50%" },
-                  ]}
                 >
-                  <Image
+                  <Card.Cover
                     source={{ uri: file.url }}
-                    style={styles.gridImage}
-                    resizeMode="cover"
+                    style={{ width: "100%", height: "100%", borderRadius: 12 }}
                   />
                   {item.files.length > 4 && index === 3 && (
-                    <View style={styles.remainingCount}>
-                      <Text style={styles.remainingCountText}>
-                        +{item.files.length - 4}
-                      </Text>
+                    <Badge
+                      style={{
+                        position: "absolute",
+                        bottom: 8,
+                        right: 8,
+                        backgroundColor: "rgba(0,0,0,0.6)",
+                      }}
+                    >
+                      +{item.files.length - 4}
+                    </Badge>
+                  )}
+                  {isTemp && item.status === "sending" && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0,0,0,0.5)",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <ActivityIndicator color="#fff" />
                     </View>
                   )}
-                </TouchableOpacity>
+                </Card>
               ))}
             </View>
           );
         }
 
         return (
-          <TouchableOpacity
+          <Card
+            style={{
+              width: 200,
+              borderRadius: 12,
+              elevation: 0,
+            }}
             onPress={() =>
               navigation.navigate("ImageViewer", { uri: item.files[0].url })
             }
-            style={styles.mediaContainer}
           >
-            <Image
+            <Card.Cover
               source={{ uri: item.files[0].url }}
-              style={styles.messageImage}
-              resizeMode="cover"
+              style={{ height: 150, borderRadius: 12 }}
             />
             {isTemp && item.status === "sending" && (
-              <View style={styles.uploadingOverlay}>
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderRadius: 12,
+                }}
+              >
                 <ActivityIndicator color="#fff" />
               </View>
             )}
-          </TouchableOpacity>
+          </Card>
         );
       case "VIDEO":
         return (
-          // <TouchableOpacity style={styles.mediaContainer}>
-          //   <Video
-          //     ref={video}
-          //     source={{
-          //       uri: item.files[0].url,
-          //     }}
-          //     style={{
-          //       width: "100%",
-          //       height: 200,
-          //     }}
-          //     useNativeControls
-          //     resizeMode="cover"
-          //     isLooping={false}
-          //     shouldPlay={false}
-          //   />
-          // </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.videoContainer}
+          <Card
+            style={{
+              width: 200,
+              borderRadius: 12,
+              elevation: 0,
+            }}
             onPress={() =>
               navigation.navigate("VideoPlayer", { uri: item.files[0]?.url })
             }
           >
-            <Video
-              source={{ uri: item.files[0]?.url }}
-              style={styles.videoMessage}
-              useNativeControls
-              resizeMode="contain"
-              shouldPlay={false}
-            />
-            <View style={styles.playButton}>
-              <Ionicons name="play" size={24} color="white" />
-            </View>
-            {isTemp && item.status === "sending" && (
-              <View style={styles.uploadingOverlay}>
-                <ActivityIndicator color="#fff" />
-              </View>
-            )}
-          </TouchableOpacity>
+            <Card.Content style={{ padding: 0 }}>
+              <Video
+                source={{ uri: item.files[0]?.url }}
+                style={{ width: "100%", height: 150, borderRadius: 12 }}
+                useNativeControls
+                resizeMode="cover"
+                shouldPlay={false}
+              />
+              <IconButton
+                icon="play"
+                size={24}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: [{ translateX: -12 }, { translateY: -12 }],
+                  backgroundColor: "rgba(0,0,0,0.5)",
+                }}
+                iconColor="#fff"
+              />
+              {isTemp && item.status === "sending" && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    borderRadius: 12,
+                  }}
+                >
+                  <ActivityIndicator color="#fff" />
+                </View>
+              )}
+            </Card.Content>
+          </Card>
         );
       case "AUDIO":
         return (
           <AudioMessage
             file={item.files[0]}
-            isMyMessage={currentUser && item.sender._id === currentUser._id}
+            isMyMessage={isMyMessage}
           />
-          // >>>>>>> baa7bf156d484bb1b8161122c4e8a8c081047262
         );
       case "FILE":
         const file = item.files && item.files[0];
         const fileName = file?.fileName || "File";
         const fileUrl = file?.url || "";
-
-        if (!fileUrl) {
-          console.warn("No file URL found");
-          return null;
-        }
-
         const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
           fileUrl
         )}&embedded=true`;
+
         return (
-          <TouchableOpacity
-            style={styles.fileContainer}
+          <Card
+            style={{
+              marginVertical: 4,
+              backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+              borderRadius: 12,
+              elevation: 0,
+            }}
             onPress={() => Linking.openURL(viewerUrl)}
           >
-            <View style={styles.rowContainer}>
-              <Ionicons
-                name={getFileIcon(fileName)}
-                size={27}
-                color={isMyMessage ? "white" : "#666"}
+            <Card.Content style={{ flexDirection: "row", alignItems: "center", padding: 8 }}>
+              <Avatar.Icon
+                size={24}
+                icon={getFileIcon(fileName)}
+                style={{ backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(102,102,102,0.1)" }}
               />
               <Text
-                style={[styles.fileName, isMyMessage && styles.userMessageText]}
+                variant="bodySmall"
+                style={{ marginLeft: 8, color: isMyMessage ? "#fff" : "#333", fontSize: 14 }}
                 numberOfLines={1}
               >
-                {fileName || "Unnamed File"}
+                {fileName}
               </Text>
-            </View>
-
-            {isTemp && item.status === "sending" && (
-              <ActivityIndicator
-                size="small"
-                color={isMyMessage ? "#fff" : "#666"}
-                style={{ marginTop: 5 }}
-              />
-            )}
-          </TouchableOpacity>
+              {isTemp && item.status === "sending" && (
+                <ActivityIndicator size="small" color={isMyMessage ? "#fff" : "#666"} style={{ marginLeft: 8 }} />
+              )}
+            </Card.Content>
+          </Card>
         );
-
       default:
         if (item.isRevoked) {
           return (
             <Text
-              style={[
-                styles.messageText,
-                isMyMessage ? styles.userMessageText : styles.friendMessageText,
-                { fontStyle: "italic", color: "#888" }, // ví dụ: style cho tin bị thu hồi
-              ]}
+              variant="bodySmall"
+              style={{ color: "#888", fontStyle: "italic", fontSize: 14 }}
             >
               Tin nhắn đã được thu hồi
             </Text>
@@ -1472,15 +1302,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
         }
 
         if (item.deletedFor && item.deletedFor.includes(authenticated)) {
-          return <></>;
+          return null;
         }
 
         return (
           <Text
-            style={[
-              styles.messageText,
-              isMyMessage ? styles.userMessageText : styles.friendMessageText,
-            ]}
+            variant="bodyMedium"
+            style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 16 }}
           >
             {item.content || ""}
           </Text>
@@ -1488,135 +1316,96 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
-  const renderMessage = ({ item }) => {
+  const renderMessage = ({ item, index }) => {
     if (!item || !item.sender) {
-      console.log("Invalid message item:", item);
       return null;
     }
 
     const isMyMessage = currentUser && item.sender._id === currentUser._id;
-
     const isTemp = item._id && item._id.startsWith("temp-");
-
     const messageAvatar = isMyMessage ? currentUser.avatar : item.sender.avatar;
     const defaultAvatar = require("../../../assets/chat/avatar.png");
 
-    // Ẩn tin nhắn nếu user hiện tại đã xóa
     if (item.deletedFor?.includes(authenticated)) {
       return null;
     }
 
-    if (item.isRevoked) {
-      return (
-        <View
-          style={[
-            styles.messageRow,
-            isMyMessage ? styles.userMessageRow : styles.friendMessageRow,
-          ]}
-        >
-          {!isMyMessage && (
-            <Image
-              source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
-              style={styles.messageAvatar}
-            />
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.messageContainer,
-              isMyMessage ? styles.userMessage : styles.friendMessage,
-            ]}
-          >
-            <View style={styles.messageContent}>
-              <Text
-                style={[
-                  styles.messageText,
-                  isMyMessage
-                    ? styles.userMessageText
-                    : styles.friendMessageText,
-                  { fontStyle: "italic", color: "#888" }, // ví dụ: style cho tin bị thu hồi
-                ]}
-              >
-                Tin nhắn đã được xóa
-              </Text>
-
-              <View style={styles.messageFooter}>
-                <Text style={styles.messageTime}>
-                  {item.createdAt
-                    ? format(new Date(item.createdAt), "HH:mm")
-                    : ""}
-                </Text>
-                {isTemp && (
-                  <View style={styles.messageStatus}>
-                    {item.status === "sending" && (
-                      <ActivityIndicator size="small" color="#999" />
-                    )}
-                  </View>
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {isMyMessage && (
-            <Image
-              source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
-              style={styles.messageAvatar}
-            />
-          )}
-        </View>
-      );
+    // Logic to determine if we should show the avatar
+    let showAvatar = true;
+    if (index > 0) {
+      const previousMessage = combinedMessages[index - 1];
+      if (
+        previousMessage &&
+        previousMessage.sender?._id === item.sender?._id &&
+        new Date(item.createdAt) - new Date(previousMessage.createdAt) < 60000 // Within 1 minute
+      ) {
+        showAvatar = false;
+      }
     }
 
     return (
       <View
-        style={[
-          styles.messageRow,
-          isMyMessage ? styles.userMessageRow : styles.friendMessageRow,
-        ]}
+        style={{
+          flexDirection: "row",
+          marginVertical: 4,
+          marginHorizontal: 12,
+          alignItems: "flex-end",
+          justifyContent: isMyMessage ? "flex-end" : "flex-start",
+        }}
       >
         {!isMyMessage && (
-          <Image
+          <Avatar.Image
+            size={28}
             source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
-            style={styles.messageAvatar}
+            style={{
+              marginRight: 8,
+              opacity: showAvatar ? 1 : 0,
+            }}
           />
         )}
-
-        <TouchableOpacity
-          style={[
-            styles.messageContainer,
-            isMyMessage ? styles.userMessage : styles.friendMessage,
-          ]}
-          onLongPress={() => {
-            if (!isTemp) {
-              setSelectedMessage(item);
-              setShowMessageOptions(true);
-            }
+        <View
+          style={{
+            maxWidth: "75%",
           }}
         >
-          <View style={styles.messageContent}>
-            {renderMessageContent(item)}
-
-            <View style={styles.messageFooter}>
-              <Text style={styles.messageTime}>
-                {item.createdAt
-                  ? format(new Date(item.createdAt), "HH:mm")
-                  : ""}
-              </Text>
-              {isTemp && (
-                <View style={styles.messageStatus}>
-                  {item.status === "sending" && (
-                    <ActivityIndicator size="small" color="#999" />
-                  )}
-                </View>
-              )}
-            </View>
+          <Card
+            style={{
+              backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+              borderRadius: 16,
+              elevation: 0,
+              borderTopLeftRadius: isMyMessage ? 16 : showAvatar ? 4 : 16,
+              borderBottomLeftRadius: isMyMessage ? 16 : 16,
+              borderTopRightRadius: isMyMessage ? showAvatar ? 4 : 16 : 16,
+              borderBottomRightRadius: isMyMessage ? 16 : 16,
+            }}
+            onLongPress={() => {
+              if (!isTemp) {
+                setSelectedMessage(item);
+                setShowMessageOptions(true);
+              }
+            }}
+          >
+            <Card.Content style={{ padding: 8 }}>
+              {renderMessageContent(item)}
+            </Card.Content>
+          </Card>
+          <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 2 }}>
+            <Text variant="labelSmall" style={{ color: isMyMessage ? "rgba(255,255,255,0.7)" : "#666", fontSize: 12 }}>
+              {item.createdAt ? format(new Date(item.createdAt), "HH:mm") : ""}
+            </Text>
+            {isTemp && item.status === "sending" && (
+              <ActivityIndicator size="small" color={isMyMessage ? "rgba(255,255,255,0.7)" : "#999"} style={{ marginLeft: 4 }} />
+            )}
           </View>
-        </TouchableOpacity>
-
+        </View>
         {isMyMessage && (
-          <Image
+          <Avatar.Image
+            size={28}
             source={messageAvatar ? { uri: messageAvatar } : defaultAvatar}
-            style={styles.messageAvatar}
+            style={{
+              marginLeft: 8,
+              opacity: showAvatar ? 1 : 0,
+            }}
           />
         )}
       </View>
@@ -1624,31 +1413,23 @@ const ChatDetailScreen = ({ navigation, route }) => {
   };
 
   const getFileIcon = (fileName) => {
-    if (!fileName) return "document-outline";
+    if (!fileName) return "file-document-outline";
     const ext = fileName.split(".").pop().toLowerCase();
     switch (ext) {
       case "pdf":
-        return "document-text-outline";
+        return "file-pdf";
       case "doc":
       case "docx":
-        return "document-text-outline";
+        return "file-word";
       case "xls":
       case "xlsx":
-        return "document-text-outline";
+        return "file-excel";
       case "zip":
       case "rar":
-        return "archive-outline";
+        return "file-archive";
       default:
-        return "document-outline";
+        return "file-document-outline";
     }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (!bytes) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   };
 
   const [refreshing, setRefreshing] = useState(false);
@@ -1683,27 +1464,36 @@ const ChatDetailScreen = ({ navigation, route }) => {
       switch (pinnedMessage.type) {
         case "IMAGE":
           return (
-            <Image
+            <Avatar.Image
+              size={24}
               source={{ uri: pinnedMessage.files[0]?.url }}
-              style={styles.pinnedImage}
+              style={{ marginRight: 8 }}
             />
           );
         case "FILE":
           return (
-            <View style={styles.pinnedFileContainer}>
-              <Ionicons
-                name={getFileIcon(pinnedMessage.files[0]?.fileName)}
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Avatar.Icon
                 size={16}
-                color="#666"
+                icon={getFileIcon(pinnedMessage.files[0]?.fileName)}
+                style={{ backgroundColor: "#e4e4e4" }}
               />
-              <Text style={styles.pinnedFileName} numberOfLines={1}>
+              <Text
+                variant="bodySmall"
+                style={{ marginLeft: 8, color: "#666", fontSize: 14 }}
+                numberOfLines={1}
+              >
                 {pinnedMessage.files[0]?.fileName || "File"}
               </Text>
             </View>
           );
         default:
           return (
-            <Text style={styles.pinnedText} numberOfLines={1}>
+            <Text
+              variant="bodySmall"
+              style={{ color: "#666", fontSize: 14 }}
+              numberOfLines={1}
+            >
               {pinnedMessage.content}
             </Text>
           );
@@ -1711,52 +1501,36 @@ const ChatDetailScreen = ({ navigation, route }) => {
     };
 
     return (
-      <View style={styles.pinnedMessageContainer}>
-        <View style={styles.pinnedMessageContent}>
-          <Ionicons
-            name="pin"
-            size={16}
-            color="#666"
-            style={styles.pinnedIcon}
-          />
-          {renderPinnedContent()}
-        </View>
-        <TouchableOpacity
-          onPress={() => handleMessagePin(pinnedMessage)}
-          style={styles.unpinButton}
-        >
-          <Ionicons name="close" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
+      <Surface
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          padding: 8,
+          backgroundColor: "rgba(255,255,255,0.9)",
+          borderRadius: 12,
+          marginHorizontal: 12,
+          marginVertical: 4,
+          elevation: 1,
+        }}
+      >
+        <Avatar.Icon size={16} icon="pin" style={{ marginRight: 8 }} />
+        <View style={{ flex: 1 }}>{renderPinnedContent()}</View>
+        <IconButton icon="close" size={20} onPress={() => handleMessagePin(pinnedMessage)} />
+      </Surface>
     );
-  };
-
-  const fetchFriends = async () => {
-    try {
-      const response = await chatService.getMyConversations();
-      setFriends(response.data || []);
-    } catch (error) {
-      console.error("Error fetching friends:", error);
-    }
   };
 
   const handleMessageForward = async (message) => {
     try {
-      console.log("Selected message for forwarding:", message);
       setSelectedMessage(message);
-
       const response = await chatService.getMyConversations();
-      console.log("Conversations response:", response);
-
       if (response.data) {
-        // Filter out current conversation and ensure conversation has required data
         const availableConversations = response.data
           .filter((conv) => conv._id !== conversation._id)
           .map((conv) => {
             let name = conv.name;
             let avatar = conv.avatar;
 
-            // If no name/avatar, try to get from members
             if ((!name || !avatar) && conv.members && conv.members.length > 0) {
               const otherMember = conv.members.find(
                 (m) => m._id !== currentUser._id
@@ -1774,16 +1548,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
             };
           })
           .filter((conv) => conv.name !== "Người dùng");
-
-        console.log(
-          "Available conversations for forwarding:",
-          availableConversations
-        );
-
-        if (availableConversations.length === 0) {
-          alert("Không có cuộc trò chuyện nào để chuyển tiếp");
-          return;
-        }
 
         setFriends(availableConversations);
         setShowForwardModal(true);
@@ -1803,18 +1567,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
 
       if (!selectedMessage || !selectedMessage._id) {
-        console.error("No message selected for forwarding");
         alert("Không thể chuyển tiếp tin nhắn. Vui lòng thử lại.");
         return;
       }
 
       if (!currentUser || !currentUser._id) {
-        console.error("No current user");
         alert("Vui lòng đăng nhập lại.");
         return;
       }
 
-      // Format dữ liệu theo cấu trúc CSDL
       const forwardData = {
         originalMessageId: selectedMessage._id,
         conversationIds: selectedFriends.map((f) => f._id),
@@ -1824,11 +1585,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         files: selectedMessage.files || [],
       };
 
-      console.log("Sending forward request with data:", forwardData);
-
       const response = await chatService.forwardMessage(forwardData);
-      console.log("Forward response:", response);
-
       if (response.success) {
         setShowForwardModal(false);
         setSelectedFriends([]);
@@ -1941,103 +1698,108 @@ const ChatDetailScreen = ({ navigation, route }) => {
     if (!showForwardModal) return null;
 
     return (
-      <Modal
-        visible={true}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => {
-          setShowForwardModal(false);
-          setSelectedFriends([]);
-        }}
-      >
-        <View style={styles.forwardModalContainer}>
-          <View style={styles.forwardModalContent}>
-            <View style={styles.forwardModalHeader}>
-              <Text style={styles.forwardModalTitle}>Chuyển tiếp tin nhắn</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowForwardModal(false);
-                  setSelectedFriends([]);
-                }}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {friends.length > 0 ? (
-              <FlatList
-                data={friends}
-                keyExtractor={(item) => item._id.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.friendItem,
-                      selectedFriends.some((f) => f._id === item._id) &&
-                        styles.friendItemSelected,
-                    ]}
-                    onPress={() => toggleSelectFriend(item)}
-                  >
-                    <Image
+      <Portal>
+        <PaperModal
+          visible={showForwardModal}
+          onDismiss={() => {
+            setShowForwardModal(false);
+            setSelectedFriends([]);
+          }}
+          contentContainerStyle={{
+            backgroundColor: "white",
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            maxHeight: "80%",
+            minHeight: "50%",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              padding: 16,
+            }}
+          >
+            <Text variant="titleLarge">Chuyển tiếp tin nhắn</Text>
+            <IconButton
+              icon="close"
+              onPress={() => {
+                setShowForwardModal(false);
+                setSelectedFriends([]);
+              }}
+            />
+          </View>
+          {friends.length > 0 ? (
+            <FlatList
+              data={friends}
+              keyExtractor={(item) => item._id.toString()}
+              renderItem={({ item }) => (
+                <List.Item
+                  title={item.name || "Người dùng"}
+                  left={() => (
+                    <Avatar.Image
+                      size={40}
                       source={
                         item.avatar
                           ? { uri: item.avatar }
                           : require("../../../assets/chat/avatar.png")
                       }
-                      style={styles.friendAvatar}
                     />
-                    <Text style={styles.friendName}>
-                      {item.name || "Người dùng"}
-                    </Text>
-                    {selectedFriends.some((f) => f._id === item._id) && (
-                      <Ionicons
-                        name="checkmark-circle"
+                  )}
+                  right={() =>
+                    selectedFriends.some((f) => f._id === item._id) && (
+                      <Avatar.Icon
                         size={24}
-                        color="#0099ff"
+                        icon="check-circle"
+                        style={{ backgroundColor: "#0099ff" }}
                       />
-                    )}
-                  </TouchableOpacity>
-                )}
-                style={styles.friendsList}
-              />
-            ) : (
-              <View style={styles.noFriendsContainer}>
-                <Text style={styles.noFriendsText}>
-                  Không có cuộc trò chuyện nào
-                </Text>
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={[
-                styles.forwardButton,
-                selectedFriends.length === 0 && styles.forwardButtonDisabled,
-              ]}
-              onPress={handleSendForward}
-              disabled={selectedFriends.length === 0}
-            >
-              <Text style={styles.forwardButtonText}>
-                Chuyển tiếp ({selectedFriends.length})
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+                    )
+                  }
+                  onPress={() => toggleSelectFriend(item)}
+                  style={{
+                    backgroundColor: selectedFriends.some((f) => f._id === item._id)
+                      ? "#f0f8ff"
+                      : "transparent",
+                  }}
+                />
+              )}
+            />
+          ) : (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+              <Text variant="bodyMedium">Không có cuộc trò chuyện nào</Text>
+            </View>
+          )}
+          <Button
+            mode="contained"
+            onPress={handleSendForward}
+            disabled={selectedFriends.length === 0}
+            style={{ margin: 16 }}
+          >
+            Chuyển tiếp ({selectedFriends.length})
+          </Button>
+        </PaperModal>
+      </Portal>
     );
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleReturn}>
-            <Icon name="chevron-left" size={30} color="white" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.friendName}>Loading...</Text>
-          </View>
-        </View>
-        <View style={styles.loadingContainer}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
+        <Surface
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            padding: 8,
+            backgroundColor: "#135CAF",
+            elevation: 0,
+          }}
+        >
+          <IconButton icon="chevron-left" iconColor="#fff" onPress={handleReturn} />
+          <Text variant="titleMedium" style={{ color: "#fff" }}>
+            Loading...
+          </Text>
+        </Surface>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator size="large" color="#0099ff" />
         </View>
       </SafeAreaView>
@@ -2045,799 +1807,245 @@ const ChatDetailScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 0 : 0}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleReturn}>
-            <Icon name="chevron-left" size={30} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              if (otherUser && conversation) {
-                navigation.navigate("UserInfo", {
-                  conversation: {
-                    _id: conversation._id,
-                    name:
-                      otherUser.name ||
-                      `${otherUser.firstName} ${otherUser.lastName}`,
-                    members: conversation.members || [],
-                    avatar: otherUser.avatar,
-                    isGroup: false,
-                    isOnline: isOnline,
-                    user: otherUser,
-                  },
-                });
-              }
+    <PaperProvider theme={customTheme}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 0 : 0}
+        >
+          <Surface
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 8,
+              backgroundColor: "#135CAF",
+              elevation: 0,
             }}
           >
-            <Image
-              source={
-                otherUser?.avatar
-                  ? { uri: otherUser.avatar }
-                  : require("../../../assets/chat/avatar.png")
-              }
-              style={styles.avatar}
+            <IconButton
+              icon="chevron-left"
+              iconColor="#fff"
+              size={24}
+              onPress={handleReturn}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            onPress={() => {
-              if (otherUser && conversation) {
-                navigation.navigate("UserInfo", {
-                  conversation: {
-                    _id: conversation._id,
-                    name:
-                      otherUser.name ||
-                      `${otherUser.firstName} ${otherUser.lastName}`,
-                    members: conversation.members || [],
-                    avatar: otherUser.avatar,
-                    isGroup: false,
-                    isOnline: isOnline,
-                    user: otherUser,
-                  },
-                });
-              }
-            }}
-          >
-            <Text style={styles.friendName}>
-              {otherUser
-                ? otherUser.name ||
-                  `${otherUser.firstName} ${otherUser.lastName}`
-                : "Chat"}
-            </Text>
-            <Text style={styles.statusUser}>
-              {isOnline ? "Online" : "Offline"}
-            </Text>
-          </TouchableOpacity>
-          <View style={styles.actionIcons}>
             <TouchableOpacity
-              style={styles.iconButton}
               onPress={() => {
-                Alert.alert("Audio call");
+                if (otherUser && conversation) {
+                  navigation.navigate("UserInfo", {
+                    conversation: {
+                      _id: conversation._id,
+                      name:
+                        otherUser.name ||
+                        `${otherUser.firstName} ${otherUser.lastName}`,
+                      members: conversation.members || [],
+                      avatar: otherUser.avatar,
+                      isGroup: false,
+                      isOnline: isOnline,
+                      user: otherUser,
+                    },
+                  });
+                }
               }}
             >
-              <Ionicons name="call-outline" size={24} color="white" />
+              <Avatar.Image
+                size={36}
+                source={
+                  otherUser?.avatar
+                    ? { uri: otherUser.avatar }
+                    : require("../../../assets/chat/avatar.png")
+                }
+                style={{ marginHorizontal: 8 }}
+              />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.iconButton}
+              style={{ flex: 1 }}
               onPress={() => {
-                Alert.alert("Video call");
+                if (otherUser && conversation) {
+                  navigation.navigate("UserInfo", {
+                    conversation: {
+                      _id: conversation._id,
+                      name:
+                        otherUser.name ||
+                        `${otherUser.firstName} ${otherUser.lastName}`,
+                      members: conversation.members || [],
+                      avatar: otherUser.avatar,
+                      isGroup: false,
+                      isOnline: isOnline,
+                      user: otherUser,
+                    },
+                  });
+                }
               }}
             >
-              <AntDesign name="videocamera" size={24} color="white" />
+              <Text variant="titleMedium" style={{ color: "#fff", fontSize: 18 }}>
+                {otherUser
+                  ? otherUser.name ||
+                    `${otherUser.firstName} ${otherUser.lastName}`
+                  : "Chat"}
+              </Text>
+              <Text variant="bodySmall" style={{ color: "#fff", fontSize: 12 }}>
+                {isOnline ? "Online" : "Offline"}
+              </Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        <PinnedMessageBar />
-
-        <FlatList
-          data={combinedMessages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item._id}
-          style={[styles.messageList, pinnedMessage && { marginTop: 50 }]}
-          contentContainerStyle={pinnedMessage ? { paddingTop: 50 } : null}
-          inverted={false}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          onContentSizeChange={() => {
-            if (flatListRef.current) {
-              flatListRef.current.scrollToEnd({ animated: true });
-            }
-          }}
-          onLayout={() => {
-            if (flatListRef.current) {
-              flatListRef.current.scrollToEnd({ animated: true });
-            }
-          }}
-          ref={flatListRef}
-        />
-
-        <View style={styles.inputContainer}>
-          <TouchableOpacity onPress={() => setShowOptions(true)}>
-            <View style={styles.addButton}>
-              <Ionicons name="add-circle" size={32} color="#0099ff" />
-              <Ionicons
-                name="add"
-                size={20}
-                color="white"
-                style={{ position: "absolute" }}
+            <View style={{ flexDirection: "row" }}>
+              <IconButton
+                icon="phone"
+                iconColor="#fff"
+                size={24}
+                onPress={() => Alert.alert("Audio call")}
+              />
+              <IconButton
+                icon="video"
+                iconColor="#fff"
+                size={24}
+                onPress={() => Alert.alert("Video call")}
               />
             </View>
-          </TouchableOpacity>
+          </Surface>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            value={newMessage}
-            onChangeText={(text) => setNewMessage(text)}
-            onSubmitEditing={handleSubmitEditing}
-            onFocus={scrollToBottom}
-          />
+          <PinnedMessageBar />
 
-          {newMessage.trim().length > 0 ? (
-            <TouchableOpacity onPress={handlePressSend}>
-              <Ionicons name="send" size={28} color="#0099ff" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={handlePressLike}>
-              <Ionicons name="thumbs-up" size={28} color="#0099ff" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </KeyboardAvoidingView>
+          <ImageBackground
+            source={{ uri: "https://i.pinimg.com/736x/3b/bd/5b/3bbd5b86fc13eae5e5d6ce40f1575a55.jpg" }} // Hình nền messenger
+            style={{ flex: 1 }}
+            resizeMode="cover"
+          >
+            <FlatList
+              data={combinedMessages}
+              renderItem={renderMessage}
+              keyExtractor={(item) => item._id}
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                paddingTop: pinnedMessage ? 40 : 8,
+                paddingBottom: 8,
+              }}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              onContentSizeChange={() => {
+                if (flatListRef.current) {
+                  flatListRef.current.scrollToEnd({ animated: true });
+                }
+              }}
+              onLayout={() => {
+                if (flatListRef.current) {
+                  flatListRef.current.scrollToEnd({ animated: true });
+                }
+              }}
+              ref={flatListRef}
+            />
+          </ImageBackground>
 
-      <ChatOptions
-        visible={showOptions}
-        onClose={() => setShowOptions(false)}
-        onCamera={handleCamera}
-        onGallery={handleGallery}
-        onLocation={handleLocation}
-        onDocument={handleDocument}
-        onVideo={handleVideo}
-        onAudio={() => {
-          setShowOptions(false);
-          setShowAudioRecording(true);
-        }}
-      />
+          <Surface
+            style={{
+              flexDirection: "row",
+              width: "100%",
+              backgroundColor: "rgba(255,255,255,0.9)",
+              borderRadius: 20,
+              marginBottom: 0,
+              paddingVertical: 8,
+              elevation: 1,
+            }}
+          >
+            <IconButton
+              icon="plus-circle"
+              iconColor="#0099ff"
+              size={24}
+              onPress={() => setShowOptions(true)}
+            />
+            <TextInput
+              style={{
+                flex: 1,
+                marginHorizontal: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 8,
+                backgroundColor: "transparent",
+                fontSize: 18,
+              }}
+              placeholder="Type a message..."
+              value={newMessage}
+              onChangeText={(text) => setNewMessage(text)}
+              onSubmitEditing={handleSubmitEditing}
+              onFocus={scrollToBottom}
+            />
+            {newMessage.trim().length > 0 ? (
+              <IconButton
+                icon="send"
+                iconColor="#0099ff"
+                size={24}
+                onPress={handlePressSend}
+              />
+            ) : (
+              <IconButton
+                icon="thumb-up"
+                iconColor="#0099ff"
+                size={24}
+                onPress={handlePressLike}
+              />
+            )}
+          </Surface>
+        </KeyboardAvoidingView>
 
-      <AudioRecordingModal
-        visible={showAudioRecording}
-        onClose={() => setShowAudioRecording(false)}
-        onSend={sendMessage}
-      />
+        <ChatOptions
+          visible={showOptions}
+          onClose={() => setShowOptions(false)}
+          onCamera={handleCamera}
+          onGallery={handleGallery}
+          onLocation={handleLocation}
+          onDocument={handleDocument}
+          onVideo={handleVideo}
+          onAudio={() => {
+            setShowOptions(false);
+            setShowAudioRecording(true);
+          }}
+        />
 
-      <Modal
-        visible={showMessageOptions}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowMessageOptions(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowMessageOptions(false)}
-        >
-          <View style={styles.messageOptionsContainer}>
-            <TouchableOpacity
-              style={styles.messageOptionItem}
+        <AudioRecordingModal
+          visible={showAudioRecording}
+          onClose={() => setShowAudioRecording(false)}
+          onSend={sendMessage}
+        />
+
+        <Portal>
+          <PaperModal
+            visible={showMessageOptions}
+            onDismiss={() => setShowMessageOptions(false)}
+            contentContainerStyle={{
+              backgroundColor: "white",
+              borderRadius: 12,
+              padding: 16,
+              margin: 16,
+            }}
+          >
+            <List.Item
+              title="Ghim tin nhắn"
+              left={() => <List.Icon icon="pin" />}
               onPress={() => handleMessagePin(selectedMessage)}
-            >
-              <Ionicons name="pin" size={22} color="#333" />
-              <Text style={styles.messageOptionText}>Ghim tin nhắn</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.messageOptionItem}
+            />
+            <List.Item
+              title="Chuyển tiếp"
+              left={() => <List.Icon icon="arrow-right" />}
               onPress={() => handleMessageForward(selectedMessage)}
-            >
-              <Ionicons name="arrow-redo" size={22} color="#333" />
-              <Text style={styles.messageOptionText}>Chuyển tiếp</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.messageOptionItem}
+            />
+            <List.Item
+              title="Thu hồi tin nhắn ở phía bạn"
+              left={() => <List.Icon icon="trash-can" color="#e74c3c" />}
+              titleStyle={{ color: "#e74c3c" }}
               onPress={() => handleDeleteForMe(selectedMessage)}
-            >
-              <Ionicons name="trash" size={22} color="#e74c3c" />
-              <Text style={[styles.messageOptionText, { color: "#e74c3c" }]}>
-                Thu hồi tin nhắn ở phía bạn
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.messageOptionItem}
+            />
+            <List.Item
+              title="Xóa tin nhắn"
+              left={() => <List.Icon icon="trash-can" color="#e74c3c" />}
+              titleStyle={{ color: "#e74c3c" }}
               onPress={() => handleMessageDelete(selectedMessage)}
-            >
-              <Ionicons name="trash" size={22} color="#e74c3c" />
-              <Text style={[styles.messageOptionText, { color: "#e74c3c" }]}>
-                Xóa tin nhắn
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+            />
+          </PaperModal>
+        </Portal>
 
-      <ForwardModal />
-    </SafeAreaView>
+        <ForwardModal />
+      </SafeAreaView>
+    </PaperProvider>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f9f9f9",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    backgroundColor: "#135CAF",
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginHorizontal: 10,
-  },
-  messageAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  userAvatar: {
-    order: 2,
-  },
-  friendAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  friendName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "white",
-  },
-  statusUser: {
-    fontSize: 12,
-    color: "white",
-  },
-  actionIcons: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  iconButton: {
-    padding: 8,
-  },
-  messageList: {
-    flex: 1,
-    // padding: 4,
-    backgroundColor: "#FFFFFF",
-  },
-  messageRow: {
-    flexDirection: "row",
-    marginVertical: 8,
-    alignItems: "flex-end",
-    paddingHorizontal: 8,
-  },
-  userMessageRow: {
-    justifyContent: "flex-end",
-  },
-  friendMessageRow: {
-    justifyContent: "flex-start",
-  },
-  messageContainer: {
-    maxWidth: "70%",
-    marginHorizontal: 8,
-    borderRadius: 15,
-  },
-  messageContent: {
-    padding: 8,
-    borderRadius: 15,
-    maxWidth: "100%",
-    minWidth: 0,
-  },
-  userMessage: {
-    alignSelf: "flex-end",
-    backgroundColor: "#0099ff",
-    marginLeft: 8,
-  },
-  friendMessage: {
-    alignSelf: "flex-start",
-    backgroundColor: "#e4e4e4",
-    marginRight: 8,
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 20,
-    flexWrap: "wrap",
-    flexShrink: 1,
-  },
-  userMessageText: {
-    color: "white",
-  },
-  friendMessageText: {
-    color: "#333",
-  },
-  messageTime: {
-    fontSize: 10,
-    color: "#666",
-    marginTop: 4,
-    alignSelf: "flex-end",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    backgroundColor: "white",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-  },
-  addButton: {
-    position: "relative",
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  input: {
-    flex: 1,
-    marginHorizontal: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 20,
-    fontSize: 16,
-  },
-  messageImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-    marginVertical: 5,
-  },
-  videoContainer: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-    overflow: "hidden",
-    position: "relative",
-    backgroundColor: "#000",
-    marginVertical: 5,
-  },
-  videoMessage: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 10,
-  },
-  playButton: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: [{ translateX: -12 }, { translateY: -12 }],
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 20,
-    padding: 8,
-    zIndex: 1,
-  },
-  fileContainer: {
-    padding: 10,
-    marginVertical: 5,
-    backgroundColor: "transparent",
-    maxWidth: "100%",
-    borderRadius: 8,
-  },
-  rowContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  fileName: {
-    fontSize: 14,
-    color: "#000",
-    marginLeft: 10,
-    flexShrink: 1,
-    overflow: "hidden",
-  },
-  messageFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    marginTop: 4,
-  },
-  messageStatus: {
-    marginLeft: 4,
-  },
-  mediaContainer: {
-    position: "relative",
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  uploadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  messageOptionsContainer: {
-    width: "80%",
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  messageOptionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  messageOptionText: {
-    fontSize: 16,
-    marginLeft: 16,
-    color: "#333",
-  },
-  pinnedMessageContainer: {
-    position: "absolute",
-    top: 60,
-    left: 0,
-    right: 0,
-    backgroundColor: "#f8f8f8",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    zIndex: 999,
-    elevation: 3,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  pinnedMessageContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  pinnedIcon: {
-    marginRight: 8,
-    transform: [{ rotate: "45deg" }],
-  },
-  pinnedText: {
-    fontSize: 14,
-    color: "#666",
-    flex: 1,
-  },
-  pinnedImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  pinnedFileContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  pinnedFileName: {
-    fontSize: 14,
-    color: "#666",
-    marginLeft: 8,
-    flex: 1,
-  },
-  unpinButton: {
-    padding: 4,
-  },
-  forwardModalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  forwardModalContent: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "80%",
-    minHeight: "50%",
-  },
-  forwardModalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  forwardModalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  closeButton: {
-    padding: 8,
-  },
-  friendsList: {
-    flex: 1,
-  },
-  friendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  friendItemSelected: {
-    backgroundColor: "#f0f8ff",
-  },
-  audioContainer: {
-    minWidth: 150,
-    maxWidth: 250,
-    borderRadius: 15,
-    padding: 10,
-    marginVertical: 5,
-  },
-  audioContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 5,
-  },
-  audioInfo: {
-    marginLeft: 10,
-    flex: 1,
-  },
-  audioText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  audioPlayButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    marginRight: 10,
-  },
-  audioProgressBar: {
-    height: 3,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 2,
-    flex: 1,
-    marginRight: 10,
-  },
-  audioProgress: {
-    height: "100%",
-    backgroundColor: "#0099ff",
-    borderRadius: 2,
-  },
-  audioDuration: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-    minWidth: 80,
-    textAlign: "right",
-  },
-  imageGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    margin: -2,
-  },
-  gridImageContainer: {
-    padding: 2,
-  },
-  gridImage: {
-    width: "100%",
-    height: 150,
-    borderRadius: 8,
-  },
-  gridImageLast: {
-    position: "relative",
-  },
-  remainingCount: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 8,
-  },
-  remainingCountText: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  forwardButton: {
-    backgroundColor: "#0099ff",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  forwardButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  forwardButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  noFriendsContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  noFriendsText: {
-    fontSize: 16,
-    color: "#666",
-    textAlign: "center",
-  },
-  audioRecordingContainer: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    width: "100%",
-    position: "absolute",
-    bottom: 0,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  audioRecordingHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  audioRecordingTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  audioRecordingContent: {
-    alignItems: "center",
-    paddingVertical: 20,
-  },
-  recordingDuration: {
-    fontSize: 48,
-    fontWeight: "200",
-    color: "#000",
-    marginBottom: 30,
-  },
-  recordingControls: {
-    alignItems: "center",
-  },
-  recordButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#ff4444",
-  },
-  recordingActive: {
-    backgroundColor: "#ff4444",
-    borderColor: "#ff4444",
-  },
-  recordingActions: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-    gap: 20,
-  },
-  recordingActionButton: {
-    alignItems: "center",
-    padding: 10,
-  },
-  recordingActionText: {
-    marginTop: 5,
-    color: "#666",
-  },
-  sendButton: {
-    backgroundColor: "#0099ff",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  locationMessageContainer: {
-    width: 220,
-    borderRadius: 15,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-  },
-  mapPreviewContainer: {
-    height: 150,
-    width: "100%",
-    backgroundColor: "#f0f0f0",
-  },
-  locationMapPreview: {
-    flex: 1,
-  },
-  mapOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  locationDetailsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    backgroundColor: "#fff",
-  },
-  locationIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  userLocationIcon: {
-    backgroundColor: "rgba(0,153,255,0.1)",
-    width: 32,
-    height: 32,
-  },
-  friendLocationIcon: {
-    backgroundColor: "rgba(102,102,102,0.1)",
-    width: 32,
-    height: 32,
-  },
-  locationAddressText: {
-    flex: 1,
-    fontSize: 14,
-    lineHeight: 18,
-    color: "#333",
-    fontWeight: "bold",
-  },
-  userLocationDetails: {
-    backgroundColor: "#0099ff",
-  },
-  friendLocationDetails: {
-    backgroundColor: "#e4e4e4",
-  },
-});
 
 export default ChatDetailScreen;

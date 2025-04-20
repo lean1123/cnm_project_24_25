@@ -163,7 +163,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           source={
             otherUser.avatar 
               ? { uri: otherUser.avatar }
-              : require("../../../../assets/chat/man.png")
+              : require("../../../../assets/chat/avatar.png")
           } 
           style={styles.avatarLarge} 
         />
