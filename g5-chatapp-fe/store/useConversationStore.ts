@@ -7,6 +7,7 @@ import { useAuthStore } from "./useAuthStore";
 
 interface iConversationStore {
   conversations: Conversation[];
+  updateConversations: (conversations: Conversation []) => void;
   selectedConversation: Conversation | null;
   userSelected: User | null;
   fetchingUser: (userId: string) => Promise<void>;
@@ -28,6 +29,10 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   error: null,
   userSelected: null,
   membersCreateGroup: [],
+  updateConversations: (conversations: Conversation[]) => {
+    console.log("Update conversations:", conversations);
+    set({ conversations });
+  },
   addMemberCreateGroup: (member: User) => {
     set((state) => ({
       membersCreateGroup: [...state.membersCreateGroup, member],
