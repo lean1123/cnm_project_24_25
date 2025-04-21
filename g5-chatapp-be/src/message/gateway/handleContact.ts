@@ -91,7 +91,7 @@ export class HandleContact {
       conversation,
     });
     console.log(
-      `[Contact] Contact ${contact._id} accepted by ${contact.user.toString()}`,
+      `[Contact] Contact ${contact._id as string} accepted by ${contact.user.toString()}`,
     );
   }
 

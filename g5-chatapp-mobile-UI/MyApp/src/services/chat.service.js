@@ -806,6 +806,28 @@ const chatService = {
     }
   },
 
+  // Change admin role (assign new admin when leaving group)
+  changeAdmin: async (conversationId, adminId) => {
+    try {
+      console.log(`Changing admin for conversation ${conversationId} to user ${adminId}`);
+      const response = await axiosInstance.put(`/conversation/change-admin/${conversationId}`, {
+        adminId
+      });
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error("Error changing admin:", error);
+      throw new Error(error.response?.data?.message || "Failed to change admin");
+    }
+  },
+
   // Update group information
   updateGroupInfo: async (conversationId, updateData) => {
     try {

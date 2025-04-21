@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,19 +12,19 @@ import {
   Alert,
   Dimensions,
   StatusBar,
-} from 'react-native';
+} from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { contactService } from "../../services/contact.service";
 import { searchUsers } from "../../services/user/userService";
 import { getSocket } from "../../services/socket";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../config/constants";
 import Footer from "../../components/Footer";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 const FriendsListScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('friends');
+  const [activeTab, setActiveTab] = useState("friends");
   const [friends, setFriends] = useState([]);
   const [filteredFriends, setFilteredFriends] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -36,57 +36,62 @@ const FriendsListScreen = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [socket, setSocket] = useState(null);
   const [outgoingRequests, setOutgoingRequests] = useState([]);
+  const [isUnfriendModalVisible, setIsUnfriendModalVisible] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState(null);
+
 
   useEffect(() => {
     const initializeSocket = async () => {
-      const userData = await AsyncStorage.getItem('userData');
+      const userData = await AsyncStorage.getItem("userData");
       if (userData) {
         const user = JSON.parse(userData);
         setCurrentUser(user);
         const socketInstance = getSocket();
-        
+
         if (socketInstance) {
-          console.log('[Socket] Setting up socket event listeners for FriendsListScreen');
+          console.log(
+            "[Socket] Setting up socket event listeners for FriendsListScreen"
+          );
           setSocket(socketInstance);
 
-          socketInstance.on('newRequestContact', (data) => {
-            console.log('[Socket] Received newRequestContact event:', data);
+          socketInstance.on("newRequestContact", (data) => {
+            console.log("[Socket] Received newRequestContact event:", data);
             fetchPendingRequests();
             Alert.alert(
-              "New Friend Request", 
+              "New Friend Request",
               `${data.user?.firstName} ${data.user?.lastName} sent you a friend request`
             );
           });
-          
-          socketInstance.on('acceptRequestContact', (data) => {
-            console.log('[Socket] Received acceptRequestContact event:', data);
+
+          socketInstance.on("acceptRequestContact", (data) => {
+            console.log("[Socket] Received acceptRequestContact event:", data);
             fetchFriends();
             fetchOutgoingRequests();
             Alert.alert(
-              "Friend Request Accepted", 
-              `${data.name || 'Someone'} accepted your friend request`
+              "Friend Request Accepted",
+              `${data.name || "Someone"} accepted your friend request`
             );
           });
-          
-          socketInstance.on('cancelRequestContact', (data) => {
-            console.log('[Socket] Received cancelRequestContact event:', data);
+
+          socketInstance.on("cancelRequestContact", (data) => {
+            console.log("[Socket] Received cancelRequestContact event:", data);
             fetchPendingRequests();
             Alert.alert(
-              "Friend Request Cancelled", 
-              `${data.name || 'Someone'} cancelled their friend request`
+              "Friend Request Cancelled",
+              `${data.name || "Someone"} cancelled their friend request`
             );
           });
-          
-          socketInstance.on('rejectRequestContact', (data) => {
-            console.log('[Socket] Received rejectRequestContact event:', data);
+
+          socketInstance.on("rejectRequestContact", (data) => {
+            console.log("[Socket] Received rejectRequestContact event:", data);
             fetchOutgoingRequests();
             Alert.alert(
-              "Friend Request Rejected", 
-              `${data.name || 'Someone'} rejected your friend request`
+              "Friend Request Rejected",
+              `${data.name || "Someone"} rejected your friend request`
             );
           });
         } else {
-          console.log('[Socket] Socket instance not available');
+          console.log("[Socket] Socket instance not available");
         }
       }
     };
@@ -98,11 +103,13 @@ const FriendsListScreen = ({ navigation }) => {
 
     return () => {
       if (socket) {
-        console.log('[Socket] Removing socket event listeners from FriendsListScreen');
-        socket.off('newRequestContact');
-        socket.off('acceptRequestContact');
-        socket.off('cancelRequestContact');
-        socket.off('rejectRequestContact');
+        console.log(
+          "[Socket] Removing socket event listeners from FriendsListScreen"
+        );
+        socket.off("newRequestContact");
+        socket.off("acceptRequestContact");
+        socket.off("cancelRequestContact");
+        socket.off("rejectRequestContact");
       }
     };
   }, []);
@@ -112,40 +119,39 @@ const FriendsListScreen = ({ navigation }) => {
   }, [friends, friendSearchText]);
 
   const fetchFriends = async () => {
-  try {
-    setIsLoading(true);
-    const response = await contactService.getMyContacts();
-    const userDataStr = await AsyncStorage.getItem('userData');
-    const currentUser = JSON.parse(userDataStr);
-    
-    console.log('fetchFriends response:', response);
+    try {
+      setIsLoading(true);
+      const response = await contactService.getMyContacts();
+      const userDataStr = await AsyncStorage.getItem("userData");
+      const currentUser = JSON.parse(userDataStr);
 
-    if (response.success) {
-      const formattedFriends = (response.data || []).map(friend => {
-        const isCurrentUser = friend.user._id === currentUser._id;
-        const friendData = isCurrentUser ? friend.contact : friend.user;
+      console.log("fetchFriends response:", response);
 
-        return {
-          ...friend,
-          user: friendData || {},  // user ở đây luôn là bạn bè
-        };
-      });
+      if (response.success) {
+        const formattedFriends = (response.data || []).map((friend) => {
+          const isCurrentUser = friend.user._id === currentUser._id;
+          const friendData = isCurrentUser ? friend.contact : friend.user;
 
-      console.log('Formatted friends:', formattedFriends);
-      setFriends(formattedFriends);
-      setFilteredFriends(formattedFriends);
-    } else {
-      console.error('fetchFriends failed:', response.message);
-      Alert.alert("Error", response.message || "Failed to fetch friends");
+          return {
+            ...friend,
+            user: friendData || {}, // user ở đây luôn là bạn bè
+          };
+        });
+
+        console.log("Formatted friends:", formattedFriends);
+        setFriends(formattedFriends);
+        setFilteredFriends(formattedFriends);
+      } else {
+        console.error("fetchFriends failed:", response.message);
+        Alert.alert("Error", response.message || "Failed to fetch friends");
+      }
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+      Alert.alert("Error", "Failed to fetch friends");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching friends:', error);
-    Alert.alert("Error", "Failed to fetch friends");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   const fetchPendingRequests = async () => {
     try {
@@ -154,7 +160,7 @@ const FriendsListScreen = ({ navigation }) => {
         setPendingRequests(response.data);
       }
     } catch (error) {
-      console.error('Error fetching requests:', error);
+      console.error("Error fetching requests:", error);
     }
   };
 
@@ -165,55 +171,62 @@ const FriendsListScreen = ({ navigation }) => {
         setOutgoingRequests(response.data);
       }
     } catch (error) {
-      console.error('Error fetching outgoing requests:', error);
+      console.error("Error fetching outgoing requests:", error);
     }
   };
 
   const handleNewFriendRequest = (data) => {
-    console.log('New friend request received:', data);
+    console.log("New friend request received:", data);
     fetchPendingRequests();
   };
 
   const handleFriendRequestAccepted = (data) => {
-    console.log('Friend request accepted:', data);
+    console.log("Friend request accepted:", data);
     fetchFriends();
   };
 
   const handleFriendRequestCancelled = (data) => {
-    console.log('[Socket] Friend request cancelled event received:', data);
-    
+    console.log("[Socket] Friend request cancelled event received:", data);
+
     if (data && data.contactId) {
-      setPendingRequests(prev => prev.filter(req => req._id !== data.contactId));
+      setPendingRequests((prev) =>
+        prev.filter((req) => req._id !== data.contactId)
+      );
     }
-    
+
     Alert.alert("Notification", "A friend request has been cancelled");
-    
+
     fetchPendingRequests();
   };
 
   const handleFriendRequestRejected = (data) => {
-    console.log('[Socket] Friend request rejected:', data);
+    console.log("[Socket] Friend request rejected:", data);
   };
 
-  const filterFriends = useCallback((searchText) => {
-    console.log('Filtering friends with searchText:', searchText);
-    if (!searchText.trim()) {
-      setFilteredFriends(friends);
-      return;
-    }
+  const filterFriends = useCallback(
+    (searchText) => {
+      console.log("Filtering friends with searchText:", searchText);
+      if (!searchText.trim()) {
+        setFilteredFriends(friends);
+        return;
+      }
 
-    const filtered = friends.filter(friend => {
-      const fullName = friend.user 
-        ? `${friend.user.firstName || ''} ${friend.user.lastName || ''}`.toLowerCase()
-        : '';
-      const email = friend.user?.email?.toLowerCase() || '';
-      const search = searchText.toLowerCase();
-      return fullName.includes(search) || email.includes(search);
-    });
+      const filtered = friends.filter((friend) => {
+        const fullName = friend.user
+          ? `${friend.user.firstName || ""} ${
+              friend.user.lastName || ""
+            }`.toLowerCase()
+          : "";
+        const email = friend.user?.email?.toLowerCase() || "";
+        const search = searchText.toLowerCase();
+        return fullName.includes(search) || email.includes(search);
+      });
 
-    console.log('Filtered friends:', filtered);
-    setFilteredFriends(filtered);
-  }, [friends]);
+      console.log("Filtered friends:", filtered);
+      setFilteredFriends(filtered);
+    },
+    [friends]
+  );
 
   const handleSearch = async () => {
     if (!searchText.trim()) {
@@ -230,7 +243,7 @@ const FriendsListScreen = ({ navigation }) => {
         Alert.alert("Error", response.message || "Failed to search users");
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error("Search error:", error);
     } finally {
       setIsSearching(false);
     }
@@ -238,28 +251,33 @@ const FriendsListScreen = ({ navigation }) => {
 
   const handleAddFriend = async (userId) => {
     try {
-      const userToAdd = searchResults.find(user => user._id === userId);
-      const userName = userToAdd ? `${userToAdd.firstName} ${userToAdd.lastName}` : '';
-      
+      const userToAdd = searchResults.find((user) => user._id === userId);
+      const userName = userToAdd
+        ? `${userToAdd.firstName} ${userToAdd.lastName}`
+        : "";
+
       console.log(`[Socket] Sending request to user: ${userId} (${userName})`);
-      
+
       const response = await contactService.createContact(userId);
       if (response.success) {
         Alert.alert("Success", "Friend request sent successfully");
-        
+
         if (socket && socket.connected) {
-          socket.emit('sendRequestContact', { 
+          socket.emit("sendRequestContact", {
             receiverId: userId,
-            contact: response.data
+            contact: response.data,
           });
         }
-        
+
         fetchOutgoingRequests();
       } else {
-        Alert.alert("Error", response.message || "Failed to send friend request");
+        Alert.alert(
+          "Error",
+          response.message || "Failed to send friend request"
+        );
       }
     } catch (error) {
-      console.error('Error sending friend request:', error);
+      console.error("Error sending friend request:", error);
       Alert.alert("Error", "Failed to send friend request");
     }
   };
@@ -269,52 +287,56 @@ const FriendsListScreen = ({ navigation }) => {
       const response = await contactService.acceptContact(contactId);
       if (response.success) {
         if (socket) {
-          socket.emit('acceptFriendRequest', {
+          socket.emit("acceptFriendRequest", {
             contactId,
-            accepterId: currentUser._id
+            accepterId: currentUser._id,
           });
         }
         fetchPendingRequests();
         fetchFriends();
       }
     } catch (error) {
-      console.error('Error accepting request:', error);
+      console.error("Error accepting request:", error);
       Alert.alert("Error", "Failed to accept request");
     }
   };
 
   const handleRejectRequest = async (contactId) => {
     try {
-      const requestToReject = pendingRequests.find(req => req._id === contactId);
+      const requestToReject = pendingRequests.find(
+        (req) => req._id === contactId
+      );
       const senderId = requestToReject?.user?._id;
-      const senderName = requestToReject?.user 
-        ? `${requestToReject.user.firstName} ${requestToReject.user.lastName}` 
-        : '';
-      
+      const senderName = requestToReject?.user
+        ? `${requestToReject.user.firstName} ${requestToReject.user.lastName}`
+        : "";
+
       if (!senderId) {
-        console.error('[Socket] Cannot find sender for contact ID:', contactId);
+        console.error("[Socket] Cannot find sender for contact ID:", contactId);
       } else {
-        console.log(`[Socket] Sending rejectRequestContact to sender: ${senderId} (${senderName})`);
+        console.log(
+          `[Socket] Sending rejectRequestContact to sender: ${senderId} (${senderName})`
+        );
       }
-      
+
       if (socket && socket.connected && senderId) {
-        socket.emit('rejectRequestContact', {
+        socket.emit("rejectRequestContact", {
           receiverId: senderId,
           contactId: contactId,
-          name: senderName
+          name: senderName,
         });
       }
-      
-      setPendingRequests(prev => prev.filter(req => req._id !== contactId));
-      
+
+      setPendingRequests((prev) => prev.filter((req) => req._id !== contactId));
+
       const response = await contactService.rejectContact(contactId);
-      
+
       if (!response.success) {
         Alert.alert("Error", "Failed to reject request, please try again");
         fetchPendingRequests();
       }
     } catch (error) {
-      console.error('Error rejecting request:', error);
+      console.error("Error rejecting request:", error);
       Alert.alert("Error", "Failed to reject request");
       fetchPendingRequests();
     }
@@ -322,30 +344,39 @@ const FriendsListScreen = ({ navigation }) => {
 
   const handleCancelRequest = async (contactId) => {
     try {
-      const requestToCancel = outgoingRequests.find(req => req._id === contactId);
+      const requestToCancel = outgoingRequests.find(
+        (req) => req._id === contactId
+      );
       const recipientId = requestToCancel?.contact?._id;
-      const recipientName = requestToCancel?.contact 
-        ? `${requestToCancel.contact.firstName} ${requestToCancel.contact.lastName}` 
-        : '';
-      
+      const recipientName = requestToCancel?.contact
+        ? `${requestToCancel.contact.firstName} ${requestToCancel.contact.lastName}`
+        : "";
+
       if (!recipientId) {
-        console.error('[Socket] Cannot find recipient for contact ID:', contactId);
+        console.error(
+          "[Socket] Cannot find recipient for contact ID:",
+          contactId
+        );
       } else {
-        console.log(`[Socket] Sending cancelRequestContact to recipient: ${recipientId} (${recipientName})`);
+        console.log(
+          `[Socket] Sending cancelRequestContact to recipient: ${recipientId} (${recipientName})`
+        );
       }
-      
+
       if (socket && socket.connected && recipientId) {
-        socket.emit('cancelRequestContact', {
+        socket.emit("cancelRequestContact", {
           receiverId: recipientId,
           contactId: contactId,
-          name: recipientName
+          name: recipientName,
         });
       }
-      
-      setOutgoingRequests(prev => prev.filter(req => req._id !== contactId));
-      
+
+      setOutgoingRequests((prev) =>
+        prev.filter((req) => req._id !== contactId)
+      );
+
       const response = await contactService.cancelContact(contactId);
-      
+
       if (response.success) {
         Alert.alert("Success", "Friend request cancelled");
         fetchOutgoingRequests();
@@ -354,7 +385,7 @@ const FriendsListScreen = ({ navigation }) => {
         fetchOutgoingRequests();
       }
     } catch (error) {
-      console.error('Error cancelling request:', error);
+      console.error("Error cancelling request:", error);
       Alert.alert("Error", "Failed to cancel request");
       fetchOutgoingRequests();
     }
@@ -368,7 +399,7 @@ const FriendsListScreen = ({ navigation }) => {
         [
           {
             text: "Cancel",
-            style: "cancel"
+            style: "cancel",
           },
           {
             text: "Unfriend",
@@ -378,37 +409,43 @@ const FriendsListScreen = ({ navigation }) => {
               if (response.success) {
                 fetchFriends();
                 if (socket) {
-                  socket.emit('unfriend', {
+                  socket.emit("unfriend", {
                     contactId,
-                    userId: currentUser._id
+                    userId: currentUser._id,
                   });
                 }
               } else {
                 Alert.alert("Error", "Failed to remove friend");
               }
-            }
-          }
+            },
+          },
         ]
       );
     } catch (error) {
-      console.error('Error removing friend:', error);
+      console.error("Error removing friend:", error);
       Alert.alert("Error", "Failed to remove friend");
     }
   };
 
   const renderFriendItem = ({ item }) => {
-    console.log('Rendering friend item:', item);
+    console.log("Rendering friend item:", item);
     const user = item.user || item.contact || {}; // Handle both user and contact
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.friendItem}
-        onPress={() => navigation.navigate("ChatDetail", { conversation: item })}
+        onPress={() =>
+          navigation.navigate("ChatDetail", { conversation: item })
+        }
       >
         <View style={styles.avatarContainer}>
-          <Image 
+          <Image
             source={
-              user.avatar 
-                ? { uri: user.avatar.startsWith('http') ? user.avatar : `${API_URL}/uploads/${user.avatar}` }
+              user.avatar
+                ? {
+                    uri: user.avatar.startsWith("http")
+                      ? user.avatar
+                      : `${API_URL}/uploads/${user.avatar}`,
+                  }
                 : require("../../../assets/chat/avatar.png")
             }
             style={styles.avatar}
@@ -418,9 +455,11 @@ const FriendsListScreen = ({ navigation }) => {
         <View style={styles.friendInfo}>
           <View style={styles.nameContainer}>
             <Text style={styles.name}>
-              {user.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Unknown User'}
+              {user.firstName
+                ? `${user.firstName} ${user.lastName || ""}`
+                : "Unknown User"}
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.moreButton}
               onPress={() => handleUnfriend(item._id)}
             >
@@ -428,7 +467,7 @@ const FriendsListScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           <Text style={styles.lastSeen}>
-            {user.isOnline ? 'Active now' : 'Offline'}
+            {user.isOnline ? "Active now" : "Offline"}
           </Text>
         </View>
       </TouchableOpacity>
@@ -438,9 +477,9 @@ const FriendsListScreen = ({ navigation }) => {
   const renderRequestItem = ({ item }) => (
     <View style={styles.requestItem}>
       <View style={styles.avatarContainer}>
-        <Image 
+        <Image
           source={
-            item.user?.avatar 
+            item.user?.avatar
               ? { uri: item.user.avatar }
               : require("../../../assets/chat/avatar.png")
           }
@@ -449,17 +488,21 @@ const FriendsListScreen = ({ navigation }) => {
       </View>
       <View style={styles.requestInfo}>
         <Text style={styles.requestName}>
-          {item.user ? `${item.user.firstName} ${item.user.lastName}` : 'Unknown User'}
+          {item.user
+            ? `${item.user.firstName} ${item.user.lastName}`
+            : "Unknown User"}
         </Text>
-        <Text style={styles.requestEmail}>{item.user?.email || 'No email'}</Text>
+        <Text style={styles.requestEmail}>
+          {item.user?.email || "No email"}
+        </Text>
         <View style={styles.requestActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.requestButton, styles.acceptButton]}
             onPress={() => handleAcceptRequest(item._id)}
           >
             <Text style={styles.buttonText}>Accept</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.requestButton, styles.declineButton]}
             onPress={() => handleRejectRequest(item._id)}
           >
@@ -473,9 +516,9 @@ const FriendsListScreen = ({ navigation }) => {
   const renderOutgoingRequestItem = ({ item }) => (
     <View style={styles.requestItem}>
       <View style={styles.avatarContainer}>
-        <Image 
+        <Image
           source={
-            item.contact?.avatar 
+            item.contact?.avatar
               ? { uri: item.contact.avatar }
               : require("../../../assets/chat/avatar.png")
           }
@@ -484,15 +527,21 @@ const FriendsListScreen = ({ navigation }) => {
       </View>
       <View style={styles.requestInfo}>
         <Text style={styles.requestName}>
-          {item.contact ? `${item.contact.firstName} ${item.contact.lastName}` : 'Unknown User'}
+          {item.contact
+            ? `${item.contact.firstName} ${item.contact.lastName}`
+            : "Unknown User"}
         </Text>
-        <Text style={styles.requestEmail}>{item.contact?.email || 'No email'}</Text>
+        <Text style={styles.requestEmail}>
+          {item.contact?.email || "No email"}
+        </Text>
         <View style={styles.requestActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.requestButton, styles.declineButton]}
             onPress={() => handleCancelRequest(item._id)}
           >
-            <Text style={[styles.buttonText, styles.declineText]}>Cancel Request</Text>
+            <Text style={[styles.buttonText, styles.declineText]}>
+              Cancel Request
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -500,39 +549,49 @@ const FriendsListScreen = ({ navigation }) => {
   );
 
   const renderSearchItem = ({ item }) => {
-    const existingFriend = friends.find(friend => 
-      friend.user?._id === item._id || 
-      friend.contact?._id === item._id
+    const existingFriend = friends.find(
+      (friend) =>
+        friend.user?._id === item._id || friend.contact?._id === item._id
     );
-    console.log('Existing friend:', existingFriend);
-    console.log('avatar:', item.avatar);
-    console.log('name:', item.firstName, item.lastName);
-    
+    console.log("Existing friend:", existingFriend);
+    console.log("avatar:", item.avatar);
+    console.log("name:", item.firstName, item.lastName);
+
     return (
       <View style={styles.searchItem}>
         <View style={styles.avatarContainer}>
-          <Image 
+          <Image
             source={
               item.avatar
-              ? { uri: item.avatar.startsWith('http') ? item.avatar : `${API_URL}/Uploads/${item.avatar}` }
-              : require("../../../assets/chat/avatar.png")
+                ? {
+                    uri: item.avatar.startsWith("http")
+                      ? item.avatar
+                      : `${API_URL}/Uploads/${item.avatar}`,
+                  }
+                : require("../../../assets/chat/avatar.png")
             }
             style={styles.avatar}
           />
         </View>
         <View style={styles.searchInfo}>
-          <Text style={styles.searchName}>{item.firstName} {item.lastName}</Text>
+          <Text style={styles.searchName}>
+            {item.firstName} {item.lastName}
+          </Text>
           <Text style={styles.searchEmail}>{item.email}</Text>
         </View>
         {existingFriend ? (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.messageButton]}
-            onPress={() => navigation.navigate("ChatDetail", { conversation: existingFriend })}
+            onPress={() =>
+              navigation.navigate("ChatDetail", {
+                conversation: existingFriend,
+              })
+            }
           >
             <Icon name="message-text" size={20} color="#fff" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.addButton]}
             onPress={() => handleAddFriend(item._id)}
           >
@@ -543,30 +602,60 @@ const FriendsListScreen = ({ navigation }) => {
     );
   };
 
+  
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
       <View style={styles.mainContainer}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Contacts</Text>
-          <TouchableOpacity style={styles.headerButton}>
-            <Icon name="account-plus" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => {
+                if (activeTab === "search") {
+                  handleSearch();
+                } else {
+                  setActiveTab("search");
+                }
+              }}
+            >
+              <Icon name="account-plus" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => navigation.navigate("AddGroupScreen")}
+            >
+              <Icon name="account-group" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.searchContainer}>
-          <Icon name="magnify" size={20} color="#666" style={styles.searchIcon} />
+          <Icon
+            name="magnify"
+            size={20}
+            color="#666"
+            style={styles.searchIcon}
+          />
           <TextInput
             style={styles.searchInput}
-            placeholder={activeTab === 'friends' ? "Search friends..." : "Search by email or name"}
-            value={activeTab === 'friends' ? friendSearchText : searchText}
-            onChangeText={activeTab === 'friends' ? setFriendSearchText : setSearchText}
-            onSubmitEditing={activeTab === 'search' ? handleSearch : null}
+            placeholder={
+              activeTab === "friends"
+                ? "Search friends..."
+                : "Search by email or name"
+            }
+            value={activeTab === "friends" ? friendSearchText : searchText}
+            onChangeText={
+              activeTab === "friends" ? setFriendSearchText : setSearchText
+            }
+            onSubmitEditing={activeTab === "search" ? handleSearch : null}
             placeholderTextColor="#999"
           />
-          {activeTab === 'search' && (
-            <TouchableOpacity 
-              style={styles.searchButton} 
+          {activeTab === "search" && (
+            <TouchableOpacity
+              style={styles.searchButton}
               onPress={handleSearch}
               disabled={isSearching}
             >
@@ -580,35 +669,59 @@ const FriendsListScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.tabContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-            onPress={() => setActiveTab('friends')}
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "friends" && styles.activeTab]}
+            onPress={() => setActiveTab("friends")}
           >
-            <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "friends" && styles.activeTabText,
+              ]}
+            >
               Friends
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
-            onPress={() => setActiveTab('requests')}
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "requests" && styles.activeTab]}
+            onPress={() => setActiveTab("requests")}
           >
-            <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
-              Requests {pendingRequests.length > 0 ? `(${pendingRequests.length})` : ''}
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "requests" && styles.activeTabText,
+              ]}
+            >
+              Requests{" "}
+              {pendingRequests.length > 0 ? `(${pendingRequests.length})` : ""}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'outgoing' && styles.activeTab]}
-            onPress={() => setActiveTab('outgoing')}
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "outgoing" && styles.activeTab]}
+            onPress={() => setActiveTab("outgoing")}
           >
-            <Text style={[styles.tabText, activeTab === 'outgoing' && styles.activeTabText]}>
-              Sent {outgoingRequests.length > 0 ? `(${outgoingRequests.length})` : ''}
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "outgoing" && styles.activeTabText,
+              ]}
+            >
+              Sent{" "}
+              {outgoingRequests.length > 0
+                ? `(${outgoingRequests.length})`
+                : ""}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'search' && styles.activeTab]}
-            onPress={() => setActiveTab('search')}
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "search" && styles.activeTab]}
+            onPress={() => setActiveTab("search")}
           >
-            <Text style={[styles.tabText, activeTab === 'search' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "search" && styles.activeTabText,
+              ]}
+            >
               Find
             </Text>
           </TouchableOpacity>
@@ -621,52 +734,52 @@ const FriendsListScreen = ({ navigation }) => {
         ) : (
           <FlatList
             data={
-              activeTab === 'friends' 
-                ? filteredFriends 
-                : activeTab === 'requests'
-                  ? pendingRequests
-                  : activeTab === 'outgoing'
-                    ? outgoingRequests
-                    : searchResults
+              activeTab === "friends"
+                ? filteredFriends
+                : activeTab === "requests"
+                ? pendingRequests
+                : activeTab === "outgoing"
+                ? outgoingRequests
+                : searchResults
             }
             renderItem={
-              activeTab === 'friends'
+              activeTab === "friends"
                 ? renderFriendItem
-                : activeTab === 'requests'
-                  ? renderRequestItem
-                  : activeTab === 'outgoing'
-                    ? renderOutgoingRequestItem
-                    : renderSearchItem
+                : activeTab === "requests"
+                ? renderRequestItem
+                : activeTab === "outgoing"
+                ? renderOutgoingRequestItem
+                : renderSearchItem
             }
             keyExtractor={(item) => item._id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
-                <Icon 
+                <Icon
                   name={
-                    activeTab === 'friends'
+                    activeTab === "friends"
                       ? "account-group"
-                      : activeTab === 'requests'
-                        ? "account-clock"
-                        : activeTab === 'outgoing'
-                          ? "account-arrow-right"
-                          : "account-search"
+                      : activeTab === "requests"
+                      ? "account-clock"
+                      : activeTab === "outgoing"
+                      ? "account-arrow-right"
+                      : "account-search"
                   }
                   size={50}
                   color="#ccc"
                 />
                 <Text style={styles.emptyText}>
-                  {activeTab === 'friends'
-                    ? friendSearchText 
+                  {activeTab === "friends"
+                    ? friendSearchText
                       ? "No friends found"
                       : "No friends yet"
-                    : activeTab === 'requests'
-                      ? "No pending requests"
-                      : activeTab === 'outgoing'
-                        ? "No outgoing requests"
-                        : searchText 
-                          ? "No users found"
-                          : "Search for friends"}
+                    : activeTab === "requests"
+                    ? "No pending requests"
+                    : activeTab === "outgoing"
+                    ? "No outgoing requests"
+                    : searchText
+                    ? "No users found"
+                    : "Search for friends"}
                 </Text>
               </View>
             )}
@@ -681,34 +794,34 @@ const FriendsListScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   mainContainer: {
     flex: 1,
     marginBottom: 55,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
   },
   headerButton: {
     padding: 8,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
     margin: 16,
     paddingHorizontal: 12,
     borderRadius: 25,
@@ -720,100 +833,100 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#000',
-    height: '100%',
+    color: "#000",
+    height: "100%",
   },
   searchButton: {
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
     marginLeft: 8,
   },
   searchButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    backgroundColor: "#fff",
     paddingHorizontal: 16,
     marginBottom: 8,
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#135CAF',
+    borderBottomColor: "#135CAF",
   },
   tabText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
   },
   activeTabText: {
-    color: '#135CAF',
-    fontWeight: '600',
+    color: "#135CAF",
+    fontWeight: "600",
   },
   friendItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 12,
     marginHorizontal: 16,
     marginVertical: 4,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   avatarContainer: {
-    position: 'relative',
+    position: "relative",
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   onlineIndicator: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 2,
     right: 2,
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: "#fff",
   },
   friendInfo: {
     flex: 1,
     marginLeft: 12,
   },
   nameContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   name: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: "600",
+    color: "#000",
     marginBottom: 4,
   },
   lastSeen: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
   },
   moreButton: {
     padding: 4,
   },
   requestItem: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginHorizontal: 16,
     marginVertical: 4,
     borderRadius: 12,
@@ -825,49 +938,49 @@ const styles = StyleSheet.create({
   },
   requestName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: "600",
+    color: "#000",
     marginBottom: 4,
   },
   requestEmail: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 12,
   },
   requestActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   requestButton: {
     paddingVertical: 8,
     paddingHorizontal: 24,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   acceptButton: {
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
   },
   declineButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   declineText: {
-    color: '#666',
+    color: "#666",
   },
   searchItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     marginHorizontal: 16,
     marginVertical: 4,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
   },
   searchInfo: {
@@ -876,44 +989,44 @@ const styles = StyleSheet.create({
   },
   searchName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: "600",
+    color: "#000",
     marginBottom: 4,
   },
   searchEmail: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   actionButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 8,
   },
   messageButton: {
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
   },
   addButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingTop: 100,
   },
   emptyText: {
     marginTop: 12,
     fontSize: 15,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   listContent: {
     flexGrow: 1,
