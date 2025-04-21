@@ -35,7 +35,11 @@ const UserInfoScreen = ({ navigation, route }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [showMemberActions, setShowMemberActions] = useState(null);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [isMenuActionPressed, setIsMenuActionPressed] = useState(false);
   const [showAllMembers, setShowAllMembers] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [showActionModal, setShowActionModal] = useState(false);
   
   // Add new state variables for modals
   const [showLeaveGroupModal, setShowLeaveGroupModal] = useState(false);
@@ -117,6 +121,18 @@ const UserInfoScreen = ({ navigation, route }) => {
     };
 
     initialize();
+    
+    // Close any open member actions when scrolling
+    const handleScroll = () => {
+      if (showMemberActions) {
+        setShowMemberActions(null);
+      }
+    };
+    
+    return () => {
+      // Cleanup function
+      setShowMemberActions(null);
+    };
   }, [conversation]);
 
   const refreshGroupMembers = async () => {
@@ -231,55 +247,91 @@ const UserInfoScreen = ({ navigation, route }) => {
 
   const handleRemoveMember = async (memberId) => {
     try {
+      setIsProcessingAction(true);
+      console.log(`[handleRemoveMember] Starting - memberId: ${memberId}, conversation: ${conversation._id}`);
       setLoading(true);
-      await chatService.removeMemberFromGroup(conversation._id, memberId);
-      await refreshGroupMembers();
+      const response = await chatService.removeMemberFromGroup(conversation._id, memberId);
+      
+      console.log('[handleRemoveMember] Response:', response);
+      
+      if (response.success) {
+        console.log("[handleRemoveMember] Member removed successfully");
+        await refreshGroupMembers();
+        Alert.alert("Success", "Member has been removed from the group");
+      } else {
+        console.error("[handleRemoveMember] Error in response:", response.error);
+        Alert.alert("Error", response.error || "Failed to remove member");
+      }
     } catch (error) {
+      console.error("[handleRemoveMember] Exception:", error);
       Alert.alert("Error", error.message || "Failed to remove member");
     } finally {
       setLoading(false);
-      setShowMemberActions(null);
+      setShowActionModal(false);
+      setSelectedMember(null);
+      setIsProcessingAction(false);
     }
   };
 
   const handleChangeRole = async (memberId) => {
     try {
+      setIsProcessingAction(true);
+      console.log(`[handleChangeRole] Starting - memberId: ${memberId}, conversation: ${conversation._id}`);
       setLoading(true);
       const response = await chatService.changeRoleMember(
         conversation._id,
         memberId
       );
+      
+      console.log('[handleChangeRole] Response:', response);
+      
       if (response.success) {
+        console.log("[handleChangeRole] Role changed successfully");
         await refreshGroupMembers();
+        Alert.alert("Success", "Member has been promoted to Owner");
       } else {
+        console.error("[handleChangeRole] Error in response:", response.error);
         Alert.alert("Error", response.error || "Failed to change member role");
       }
     } catch (error) {
+      console.error("[handleChangeRole] Exception:", error);
       Alert.alert("Error", error.message || "Failed to change member role");
     } finally {
       setLoading(false);
-      setShowMemberActions(null);
+      setShowActionModal(false);
+      setSelectedMember(null);
+      setIsProcessingAction(false);
     }
   };
 
   const handleMakeAdmin = async (memberId) => {
     try {
+      setIsProcessingAction(true);
+      console.log(`[handleMakeAdmin] Starting - memberId: ${memberId}, conversation: ${conversation._id}`);
       setLoading(true);
       const response = await chatService.changeAdmin(
         conversation._id,
         memberId
       );
+      
+      console.log('[handleMakeAdmin] Response:', response);
+      
       if (response.success) {
+        console.log("[handleMakeAdmin] Admin role assigned successfully");
         await refreshGroupMembers();
         Alert.alert("Success", "Member has been assigned as admin");
       } else {
+        console.error("[handleMakeAdmin] Error in response:", response.error);
         Alert.alert("Error", response.error || "Failed to assign admin role");
       }
     } catch (error) {
+      console.error("[handleMakeAdmin] Exception:", error);
       Alert.alert("Error", error.message || "Failed to assign admin role");
     } finally {
       setLoading(false);
-      setShowMemberActions(null);
+      setShowActionModal(false);
+      setSelectedMember(null);
+      setIsProcessingAction(false);
     }
   };
 
@@ -427,7 +479,7 @@ const UserInfoScreen = ({ navigation, route }) => {
     const isSelf = user._id === currentUser?._id;
 
     return (
-      <View style={styles.memberItem}>
+      <View style={styles.memberItem} key={item._id || user._id}>
         <View style={styles.memberInfo}>
           <Image
             source={
@@ -453,42 +505,14 @@ const UserInfoScreen = ({ navigation, route }) => {
         {!isSelf && checkIsAdmin() && (
           <TouchableOpacity
             style={styles.memberAction}
-            onPress={() => setShowMemberActions(prev => prev === user._id ? null : user._id)}
+            onPress={() => {
+              console.log("Opening action modal for member:", user._id);
+              setSelectedMember(user);
+              setShowActionModal(true);
+            }}
           >
             <MaterialIcon name="dots-vertical" size={20} color="#666" />
           </TouchableOpacity>
-        )}
-
-        {showMemberActions === user._id && (
-          <View style={styles.memberActionsMenu}>
-            {!isAdmin && (
-              <TouchableOpacity
-                style={styles.memberActionItem}
-                onPress={() => handleChangeRole(user._id)}
-              >
-                <MaterialIcon name="shield-account" size={20} color="#135CAF" />
-                <Text style={styles.memberActionText}>Make Owner</Text>
-              </TouchableOpacity>
-            )}
-            {!isAdmin && (
-              <TouchableOpacity
-                style={styles.memberActionItem}
-                onPress={() => handleMakeAdmin(user._id)}
-              >
-                <MaterialIcon name="shield" size={20} color="#4CAF50" />
-                <Text style={styles.memberActionText}>Make Admin</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.memberActionItem, styles.removeAction]}
-              onPress={() => handleRemoveMember(user._id)}
-            >
-              <MaterialIcon name="account-remove" size={20} color="#e53935" />
-              <Text style={[styles.memberActionText, styles.removeText]}>
-                Remove
-              </Text>
-            </TouchableOpacity>
-          </View>
         )}
       </View>
     );
@@ -543,7 +567,7 @@ const UserInfoScreen = ({ navigation, route }) => {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Members</Text>
+          <Text style={styles.sectionTitle}>Members ({groupMembers.length})</Text>
           <TouchableOpacity
             onPress={() => setShowAllMembers(!showAllMembers)}
             style={styles.toggleButton}
@@ -559,12 +583,9 @@ const UserInfoScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
         
-        <FlatList
-          data={showAllMembers ? groupMembers : groupMembers.slice(0, 3)}
-          renderItem={renderMemberItem}
-          keyExtractor={(item) => item._id || item.user?._id}
-          scrollEnabled={false}
-        />
+        <View style={styles.membersList}>
+          {(showAllMembers ? groupMembers : groupMembers.slice(0, 3)).map((item) => renderMemberItem({ item }))}
+        </View>
         
         {!showAllMembers && groupMembers.length > 3 && (
           <TouchableOpacity 
@@ -1103,6 +1124,64 @@ const UserInfoScreen = ({ navigation, route }) => {
     </Modal>
   );
 
+  const renderMemberActionsModal = () => (
+    <Modal
+      visible={showActionModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowActionModal(false)}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowActionModal(false)}
+      >
+        <View style={styles.actionModalContent}>
+          <Text style={styles.actionModalTitle}>
+            Member Actions
+          </Text>
+          
+          {selectedMember && (
+            <>
+              <TouchableOpacity
+                style={styles.actionModalItem}
+                onPress={() => handleChangeRole(selectedMember._id)}
+              >
+                <MaterialIcon name="shield-account" size={22} color="#135CAF" />
+                <Text style={styles.actionModalItemText}>Make Owner</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.actionModalItem}
+                onPress={() => handleMakeAdmin(selectedMember._id)}
+              >
+                <MaterialIcon name="shield-account" size={22} color="#4CAF50" />
+                <Text style={styles.actionModalItemText}>Make Admin</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          
+          <TouchableOpacity
+            style={[styles.actionModalItem, styles.removeActionItem]}
+            onPress={() => handleRemoveMember(selectedMember?._id)}
+          >
+            <MaterialIcon name="account-remove" size={22} color="#e53935" />
+            <Text style={[styles.actionModalItemText, styles.removeActionText]}>
+              Remove
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setShowActionModal(false)}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -1123,7 +1202,13 @@ const UserInfoScreen = ({ navigation, route }) => {
         <View style={{ width: 20 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.contentContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.contentContainer}
+        onScrollBeginDrag={() => {
+          console.log("Scroll started - hiding menus");
+          setShowActionModal(false);
+        }}
+      >
         {isGroup ? renderGroupHeader() : renderIndividualHeader()}
       </ScrollView>
 
@@ -1132,6 +1217,7 @@ const UserInfoScreen = ({ navigation, route }) => {
       {renderAssignAdminModal()}
       {renderAdminSelectionModal()}
       {renderDissolveGroupModal()}
+      {renderMemberActionsModal()}
     </SafeAreaView>
   );
 };
@@ -1278,6 +1364,7 @@ const styles = {
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    marginBottom: 50,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -1367,9 +1454,10 @@ const styles = {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 20,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+    position: "relative",
   },
   memberInfo: {
     flexDirection: "row",
@@ -1469,40 +1557,56 @@ const styles = {
     fontSize: 16,
     fontWeight: "600",
   },
-  memberActionsMenu: {
-    position: "absolute",
-    right: 40,
-    top: -5,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 8,
-    elevation: 4,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionModalContent: {
+    width: '80%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
-    zIndex: 1000,
-    minWidth: 150,
   },
-  memberActionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 8,
-    borderRadius: 4,
+  actionModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
   },
-  memberActionText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#333",
+  actionModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  removeAction: {
-    marginTop: 4,
+  actionModalItemText: {
+    fontSize: 16,
+    marginLeft: 15,
   },
-  removeText: {
-    color: "#e53935",
+  removeActionItem: {
+    borderBottomWidth: 0,
   },
-  dissolveButton: {
-    backgroundColor: "#e53935",
+  removeActionText: {
+    color: '#e53935',
+  },
+  cancelButton: {
+    marginTop: 15,
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
+  },
+  cancelText: {
+    color: '#666',
+    fontWeight: 'bold',
   },
   memberStatus: {
     fontSize: 12,
@@ -1528,15 +1632,12 @@ const styles = {
     marginHorizontal: 5,
     alignItems: "center",
   },
-  cancelButton: {
-    backgroundColor: "#f0f0f0",
-  },
-  confirmButton: {
-    backgroundColor: "#135CAF",
-  },
   cancelButtonText: {
     color: "#333",
     fontWeight: "500",
+  },
+  confirmButton: {
+    backgroundColor: "#135CAF",
   },
   confirmButtonText: {
     color: "#fff",
@@ -1558,6 +1659,12 @@ const styles = {
   memberSelectionName: {
     fontSize: 16,
     color: "#333",
+  },
+  adminAction: {
+    marginTop: 4,
+  },
+  membersList: {
+    width: '100%',
   },
 };
 
