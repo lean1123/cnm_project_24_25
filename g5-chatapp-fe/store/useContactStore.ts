@@ -27,6 +27,8 @@ interface iContactStore {
   unsubscribeCancelContact: () => void;
   subscribeRejectContact: () => void;
   unsubscribeRejectContact: () => void;
+  subscribeAcceptContact: () => void;
+  unsubscribeAcceptContact: () => void;
 }
 
 export const useContactStore = create<iContactStore>((set, get) => ({
@@ -113,7 +115,9 @@ export const useContactStore = create<iContactStore>((set, get) => ({
             (contact) => contact._id !== contactId
           ),
         }));
-        useConversationStore.getState().getConversations(useAuthStore.getState().user?._id as string);
+        useConversationStore
+          .getState()
+          .getConversations(useAuthStore.getState().user?._id as string);
         toast.success("Started chat with this contact now!");
       }
     } catch (error) {
@@ -136,7 +140,10 @@ export const useContactStore = create<iContactStore>((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (socket) {
           console.log("Emitting cancel contact event...");
-          const receiverId = data.data.contact === useAuthStore.getState().user?._id ? data.data.user : data.data.contact;
+          const receiverId =
+            data.data.contact === useAuthStore.getState().user?._id
+              ? data.data.user
+              : data.data.contact;
           socket.emit("rejectRequestContact", {
             receiverId: receiverId,
             name: receiverId,
@@ -165,7 +172,10 @@ export const useContactStore = create<iContactStore>((set, get) => ({
         const socket = useAuthStore.getState().socket;
         if (socket) {
           console.log("Emitting cancel contact event...");
-          const receiverId = data.data.contact === useAuthStore.getState().user?._id ? data.data.user : data.data.contact;
+          const receiverId =
+            data.data.contact === useAuthStore.getState().user?._id
+              ? data.data.user
+              : data.data.contact;
           console.log("Receiver ID:", receiverId);
           socket.emit("cancelRequestContact", {
             receiverId: receiverId,
@@ -204,7 +214,9 @@ export const useContactStore = create<iContactStore>((set, get) => ({
         set((state) => ({
           myRequestContact: [...state.myRequestContact, data],
         }));
-        toast.success(`You have a new contact request from ${data.user.firstName} ${data.user.lastName}!`);
+        toast.success(
+          `You have a new contact request from ${data.user.firstName} ${data.user.lastName}!`
+        );
       });
     }
   },
@@ -238,23 +250,20 @@ export const useContactStore = create<iContactStore>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       console.log("Subscribing to reject contact events...");
-      socket.on("rejectRequestContact", ({
-        contactId,
-        name
-      }: {
-        contactId: string;
-        name: string;
-      }) => {
-        set((state) => ({
-          // myRequestContact: state.myRequestContact?.filter(
-          //   (contact) => contact._id !== contactId
-          // ),
-          myPendingContact: state.myPendingContact?.filter(
-            (contact) => contact._id !== contactId
-          ),
-        }));
-        toast.success(`Your contact request to ${name} has been rejected!`);
-      });
+      socket.on(
+        "rejectRequestContact",
+        ({ contactId, name }: { contactId: string; name: string }) => {
+          set((state) => ({
+            // myRequestContact: state.myRequestContact?.filter(
+            //   (contact) => contact._id !== contactId
+            // ),
+            myPendingContact: state.myPendingContact?.filter(
+              (contact) => contact._id !== contactId
+            ),
+          }));
+          toast.success(`Your contact request to ${name} has been rejected!`);
+        }
+      );
     }
   },
   unsubscribeRejectContact: () => {
@@ -262,5 +271,27 @@ export const useContactStore = create<iContactStore>((set, get) => ({
     if (socket) {
       socket.off("rejectRequestContact");
     }
-  }
+  },
+  subscribeAcceptContact: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      console.log("Subscribing to accept contact events...");
+      socket.on("acceptRequestContact", (data) => {
+        socket.emit("joinNewConversation", {
+          conversationId: data.conversation,
+          userId: useAuthStore.getState().user?._id,
+        });
+        useConversationStore
+          .getState()
+          .getConversations(useAuthStore.getState().user?._id as string);
+          console.log("Received accept contact request:", data);
+      });
+    }
+  },
+  unsubscribeAcceptContact: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      socket.off("acceptRequestContact");
+    }
+  },
 }));

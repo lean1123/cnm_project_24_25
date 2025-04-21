@@ -21,6 +21,8 @@ const Layout = ({ children }: Props) => {
     unsubscribeCancelContact,
     subscribeRejectContact,
     unsubscribeRejectContact,
+    subscribeAcceptContact,
+    unsubscribeAcceptContact,
   } = useContactStore();
   const {
     subscribeCall,
@@ -74,6 +76,7 @@ const Layout = ({ children }: Props) => {
       subscribeRejectCall();
       subscribeEndCall();
       subscribeCancelCall();
+      subscribeAcceptContact();
       return () => {
         unsubscribeContact();
         unsubscribeCancelContact();
@@ -91,6 +94,7 @@ const Layout = ({ children }: Props) => {
         unsubscribeRejectCall();
         unsubscribeEndCall();
         unsubscribeCancelCall();
+        unsubscribeAcceptContact();
       };
     }
   }, [isAuthenticated, socket]);
