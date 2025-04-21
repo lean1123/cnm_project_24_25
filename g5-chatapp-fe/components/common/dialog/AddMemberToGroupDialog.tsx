@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getNameFallBack } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Conversation } from "@/types";
+import { useAuthStore } from "@/store/useAuthStore";
 
 interface AddMemberToGroupDialogProps {
   conversation: Conversation | null;
@@ -28,13 +29,36 @@ export function AddMemberToGroupDialog({
   conversation,
 }: AddMemberToGroupDialogProps) {
   const [inputValue, setInputValue] = useState("");
-  const { searchUsers, searchResults, isSearching } = useUserStore();
   const { contacts, getMyContact, createContact } = useContactStore();
-  const router = useRouter();
+  const { user } = useAuthStore();
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
-  const handleSearch = async () => {
-    await searchUsers(inputValue);
+  const toggleSelectUser = (userId: string) => {
+    setSelectedUsers((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
   };
+
+  const normalizedInput = inputValue.trim().toLowerCase();
+
+  const filterContacts = contacts
+    .map((contact) => {
+      // Ưu tiên contact là người bạn đã lưu, không phải chính bạn
+      const contactUser =
+        contact.contact._id !== user?._id ? contact.contact : contact.user;
+
+      return contactUser;
+    })
+    .filter((contactUser) => {
+      const fullName =
+        `${contactUser.firstName} ${contactUser.lastName}`.toLowerCase();
+      const email = contactUser.email?.toLowerCase() || "";
+      return (
+        fullName.includes(normalizedInput) || email.includes(normalizedInput)
+      );
+    });
 
   const checkIsMember = (userId: string) => {
     if (!conversation) return false;
@@ -56,7 +80,7 @@ export function AddMemberToGroupDialog({
     // Add member to group logic here
     console.log("Adding member to group: ", userId);
     // You can use the conversation ID and userId to make an API call to add the member
-  }
+  };
 
   useEffect(() => {
     getMyContact();
@@ -92,15 +116,10 @@ export function AddMemberToGroupDialog({
           </div>
           {/* result */}
           {/* result */}
-          {isSearching && (
-            <div className="flex items-center justify-center p-4">
-              <p className="text-sm text-gray-500">Searching...</p>
-            </div>
-          )}
           <div className="flex-grow h-[240px] overflow-y-auto">
-            {searchResults &&
-              searchResults.length > 0 &&
-              searchResults.map((user) => (
+            {filterContacts &&
+              filterContacts.length > 0 &&
+              filterContacts.map((user) => (
                 <div
                   key={user._id}
                   className="flex items-center justify-between gap-2 p-4 border-b border-base-300"
@@ -130,22 +149,16 @@ export function AddMemberToGroupDialog({
                     </div>
                   </div>
                   {checkIsMember(user._id as string) ? (
-                    // <button className="p-2 bg-base-200 text-base-content rounded-md">
-                    //   <MessageCircle className="size-4" />
-                    // </button>
-                    <span>In group</span>
+                    <span className="text-xs text-muted-foreground">
+                      In group
+                    </span>
                   ) : (
-                    <button
-                      className="p-2 bg-primary text-base-100 rounded-md"
-                      onClick={() =>
-                        handleSendFriendRequest(
-                          user._id as string,
-                          user.firstName + " " + user.lastName
-                        )
-                      }
-                    >
-                      <UserPlus className="size-4" />
-                    </button>
+                    <input
+                      type="checkbox"
+                      className="form-checkbox"
+                      checked={selectedUsers.includes(user._id!)}
+                      onChange={() => toggleSelectUser(user._id!)}
+                    />
                   )}
                 </div>
               ))}
@@ -156,7 +169,18 @@ export function AddMemberToGroupDialog({
             <DialogClose asChild>
               <Button variant="ghost">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleSearch}>Search</Button>
+            <Button
+              disabled={selectedUsers.length === 0}
+              onClick={() => {
+                selectedUsers.forEach((userId) => {
+                  handleAddMember(userId);
+                });
+                setSelectedUsers([]);
+                setInputValue("");
+              }}
+            >
+              Add ({selectedUsers.length})
+            </Button>
           </DialogFooter>
         </div>
       </DialogContent>
