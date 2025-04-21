@@ -56,7 +56,7 @@ export class ContactService {
   async acceptContact(
     userPayload: JwtPayload,
     contactId: string,
-  ): Promise<Contact> {
+  ): Promise<{ updatedContact: Contact; newConversationId: string }> {
     const contact = await this.contactModel.findById(contactId).exec();
 
     if (!contact || contact.status === Status.ACTIVE) {
@@ -104,28 +104,34 @@ export class ContactService {
       ]);
 
     // Nếu chưa có cuộc trò chuyện, tạo mới
-
+    let newConversationId: string;
     if (!existingConversation) {
       try {
-        await this.conversationService.createConvensation(
-          userPayload,
-          {
-            isGroup: false,
-            members: [user._id as string, contactUser._id as string],
-            lastMessage: null,
-            _id: null,
-            name: null,
-            profilePicture: null,
-            admin: null,
-          },
-          undefined,
-        );
+        const newConversation =
+          await this.conversationService.createConvensation(
+            userPayload,
+            {
+              isGroup: false,
+              members: [user._id as string, contactUser._id as string],
+              lastMessage: null,
+              _id: null,
+              name: null,
+              profilePicture: null,
+              admin: null,
+            },
+            undefined,
+          );
+
+        newConversationId = newConversation._id as string;
       } catch (error) {
         console.error('Failed to create conversation:', error);
       }
     }
 
-    return updatedContact;
+    return {
+      updatedContact: await this.getContactById(updatedContact._id as string),
+      newConversationId,
+    };
   }
 
   async getMyContact(userPayload: JwtPayload): Promise<Contact[]> {
