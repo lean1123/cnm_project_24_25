@@ -12,7 +12,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/checkbox": "^0.5.17",
-    "@react-native-community/datetimepicker": "^8.2.0",
+    "@react-native-community/datetimepicker": "^8.3.0",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-picker/picker": "^2.11.0",
     "@react-navigation/native": "^7.0.14",
@@ -57,6 +57,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@react-native-community/cli": "latest",
     "@babel/core": "^7.20.0",
     "@babel/plugin-transform-template-literals": "^7.26.8",
     "metro-react-native-babel-preset": "^0.77.0"
