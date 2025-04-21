@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { getSocket } from "@/lib/socket";
 import { emit } from "process";
+import { useConversationStore } from "./useConversationStore";
 
 interface iContactStore {
   contacts: Contact[];
@@ -112,6 +113,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
             (contact) => contact._id !== contactId
           ),
         }));
+        useConversationStore.getState().getConversations(useAuthStore.getState().user?._id as string);
         toast.success("Started chat with this contact now!");
       }
     } catch (error) {

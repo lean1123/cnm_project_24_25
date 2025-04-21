@@ -137,10 +137,12 @@ const Message = ({
   const isLocationMessage = (message: Message | null) => {
     if (!message) return false;
     if (message.type === "TEXT") {
-      return (message.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(message.content));
+      return (
+        message.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(message.content)
+      );
     }
     return false;
-  }
+  };
 
   const getLocationFromMessage = (message: Message | null) => {
     if (!message) return null;
@@ -154,7 +156,7 @@ const Message = ({
       }
     }
     return null;
-  }
+  };
 
   const isDeleted = checkDeletedMessage(message);
   // const [isHovered, setIsHovered] = useState(false);
@@ -166,6 +168,40 @@ const Message = ({
   };
 
   const { reactionMessage, unReactionMessage } = useMessageStore();
+
+  const checkReaction = (message: Message | null) => {
+    if (!message) return false;
+    if (message.reactions && message.reactions.length > 0) {
+      return message.reactions.some((reaction) => reaction.user === user?._id);
+    }
+    return false;
+  }
+
+  const groupReactions = (reactions: Message["reactions"]) => {
+    const map = new Map<
+      string,
+      { count: number; reactedByCurrentUser: boolean }
+    >();
+
+    reactions?.forEach((reaction) => {
+      const existing = map.get(reaction.reaction);
+      if (existing) {
+        existing.count += 1;
+        if (reaction.user === user?._id) existing.reactedByCurrentUser = true;
+      } else {
+        map.set(reaction.reaction, {
+          count: 1,
+          reactedByCurrentUser: reaction.user === user?._id,
+        });
+      }
+    });
+
+    return Array.from(map.entries()).map(([reaction, data]) => ({
+      emoji: reaction,
+      count: data.count,
+      reactedByCurrentUser: data.reactedByCurrentUser,
+    }));
+  };
 
   return (
     <div
@@ -216,7 +252,9 @@ const Message = ({
               "rounded-bl-none": !lastByUser && !fromCurrentUser,
             })}
           >
-            {!message?.isRevoked && type === "TEXT" && !isLocationMessage(message) ? (
+            {!message?.isRevoked &&
+            type === "TEXT" &&
+            !isLocationMessage(message) ? (
               <p className="text-wrap break-words whitespace-pre-wrap sm:max-w-[2200px] md:max-w-[550px] lg:max-w-[400px] xl:max-w-[600px]">
                 {content}
               </p>
@@ -224,11 +262,11 @@ const Message = ({
             {!message?.isRevoked && isLocationMessage(message) && (
               <div className="flex flex-col gap-2">
                 <iframe
-                  src={`https://maps.google.com/maps?q=${getLocationFromMessage(
-                    message
-                  )?.latitude},${getLocationFromMessage(
-                    message
-                  )?.longitude}&hl=es;z=14&output=embed`}
+                  src={`https://maps.google.com/maps?q=${
+                    getLocationFromMessage(message)?.latitude
+                  },${
+                    getLocationFromMessage(message)?.longitude
+                  }&hl=es;z=14&output=embed`}
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
@@ -257,14 +295,8 @@ const Message = ({
               <div className="flex flex-col gap-2">
                 {file.map((audio, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <audio
-                      key={audio.url}
-                      controls
-                    >
-                      <source
-                        src={audio.url}
-                        type="audio/mp3"
-                      />
+                    <audio key={audio.url} controls>
+                      <source src={audio.url} type="audio/mp3" />
                       Your browser does not support the audio tag.
                     </audio>
                   </div>
@@ -439,55 +471,64 @@ const Message = ({
           )}
         </div>
         {message && message.reactions && message.reactions.length > 0 && (
+          //
           <div
             className={cn(
               "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
               {
-                "right-auto left-2": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
-                "right-2": !fromCurrentUser, // Hiển thị bên phải nếu không phải user hiện tại
+                "right-auto left-2": fromCurrentUser,
+                "right-2": !fromCurrentUser,
               }
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full size-4 bg-background shadow-sm hover:bg-muted"
-              onClick={(e) => {
-                unReactionMessage(message!._id);
-              }}
-            >
-              {message.reactions.map((reaction, index) => {
-                return (
-                  <span key={index} className="text-sm text-foreground">
-                    {reaction.reaction}
-                  </span>
-                );
-              })}
-            </Button>
+            {groupReactions(message.reactions).map((reaction) => (
+              <span
+                key={reaction.emoji}
+                className={cn(
+                  "text-xs pl-1 cursor-pointer hover:opacity-70 rounded-full",
+                  {
+                    "bg-primary text-primary-foreground":
+                      reaction.reactedByCurrentUser,
+                  }
+                )}
+                onClick={() => {
+                  if (reaction.reactedByCurrentUser) {
+                    unReactionMessage(message!._id);
+                  } else {
+                    // reactionMessage(message!._id, reaction.emoji);
+                  }
+                }}
+                title={`${reaction.count} người đã phản ứng`}
+              >
+                <span>{reaction.count > 1 && `${reaction.count}`}</span>
+                {""}
+                {reaction.emoji}
+              </span>
+            ))}
           </div>
         )}
 
-        {isHovered && message?.reactions?.length === 0 && (
+        {isHovered && !checkReaction(message) && (
+          //&& message?.reactions?.length === 0
+          //
           <div
             className={cn(
               "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
               {
-                "right-auto left-2": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
-                "right-2": !fromCurrentUser, // Hiển thị bên phải nếu không phải user hiện tại
+                "right-auto left-2": fromCurrentUser,
+                "right-2": !fromCurrentUser,
               }
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full size-4 bg-background shadow-sm hover:bg-muted"
-              onClick={(e) => {
-                e.stopPropagation();
-                reactionMessage(message!._id, "❤️");
-              }}
-            >
-              <Heart className="size-4" />
-            </Button>
+            {["👍", "❤️", "😂", "😮", "😢", "😡"].map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => reactionMessage(message!._id, emoji)}
+                className="text-lg hover:scale-110 transition-transform"
+              >
+                {emoji}
+              </button>
+            ))}
           </div>
         )}
 

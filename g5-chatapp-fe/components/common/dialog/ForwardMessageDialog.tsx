@@ -23,7 +23,8 @@ type Props = {
 };
 
 const ForwardMessageDialog = ({ messageToForward }: Props) => {
-  const { getConversations, conversations, selectedConversation } = useConversationStore();
+  const { getConversations, conversations, selectedConversation } =
+    useConversationStore();
   const { forwardMessage } = useMessageStore();
   const [inputValue, setInputValue] = React.useState("");
   const { user } = useAuthStore();
@@ -40,7 +41,9 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
       );
     }
     return (
-      conversation.members[1].user.firstName + " " + conversation.members[1].user.lastName
+      conversation.members[1].user.firstName +
+      " " +
+      conversation.members[1].user.lastName
     );
   };
 
@@ -50,17 +53,16 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
       if (conversation._id === selectedConversation?._id) {
         return false;
       }
-  
+
       // Nếu không có input, trả về tất cả trừ selectedConversation
       if (inputValue.length === 0) {
         return true;
       }
-  
+
       const memberName = getMemberName(conversation).toLowerCase();
       return memberName.includes(inputValue.toLowerCase());
     });
   };
-  
 
   const filteredConversations = filterConversations();
 
@@ -77,12 +79,9 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
         toast.error("Please select at least one conversation to forward");
         return;
       }
-      forwardMessage(
-        messageToForward._id,
-        selectedConversationId as string[]
-      );
+      forwardMessage(messageToForward._id, selectedConversationId as string[]);
     }
-  }
+  };
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -94,7 +93,7 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
           <Forward className="size-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[400px] h-[60vh] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[400px] h-[60vh] p-0 ">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b">
@@ -116,7 +115,7 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
             />
           </div>
           {/* result */}
-          <div className="flex-1  overflow-y-auto">
+          <div className="h-[240px] overflow-y-scroll no-scrollbar">
             {filteredConversations &&
               filteredConversations.length > 0 &&
               filteredConversations.map((conversation) => (
@@ -124,24 +123,46 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
                   key={conversation._id}
                   className="flex items-center justify-between gap-2 p-4 border-b border-base-300"
                 >
-                  <div className="flex items-center gap-2">
-                    {/* <img
+                  {conversation.isGroup ? (
+                    <div className="flex items-center gap-2">
+                      {/* <img
                       src={user.avatar || "/avatar.png"}
                       alt={user.firstName + " " + user.lastName}
                       className="w-10 h-10 rounded-full"
                     /> */}
-                    <Avatar>
-                      <AvatarImage
-                        src={getAvatarUrl(conversation) || "/avatar.png"}
-                      ></AvatarImage>
-                      <AvatarFallback></AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {getMemberName(conversation)}
-                      </p>
+                      <Avatar>
+                        <AvatarImage
+                          src={conversation.profilePicture || "/group.jpg"}
+                        ></AvatarImage>
+                        <AvatarFallback></AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {conversation.name}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {/* <img
+                      src={user.avatar || "/avatar.png"}
+                      alt={user.firstName + " " + user.lastName}
+                      className="w-10 h-10 rounded-full"
+                    /> */}
+                      <Avatar>
+                        <AvatarImage
+                          src={getAvatarUrl(conversation) || "/avatar.png"}
+                        ></AvatarImage>
+                        <AvatarFallback></AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {getMemberName(conversation)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
