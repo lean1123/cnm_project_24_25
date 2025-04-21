@@ -17,6 +17,7 @@ import {
   FileVideo,
   FormInput,
   Image,
+  Mic,
   SendHorizonal,
   Smile,
   ThumbsUp,
@@ -61,6 +62,62 @@ const ChatInput = (props: Props) => {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
 
+  // voice
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  const [recordedFile, setRecordedFile] = useState<File | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingInterval = useRef<NodeJS.Timeout | null>(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks: Blob[] = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        const file = new File([blob], `voice-${Date.now()}.webm`, {
+          type: "audio/webm",
+        });
+
+        setRecordingUrl(url);
+        setRecordedFile(file);
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Đếm thời gian ghi
+      recordingInterval.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch (error) {
+      toast.error("Không thể truy cập microphone");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+      }
+    }
+  };
+
   const { user } = useAuthStore();
   const { selectedConversation } = useConversationStore();
   const { addTempMessage, sendMessage, typing } = useMessageStore();
@@ -99,8 +156,9 @@ const ChatInput = (props: Props) => {
     const files = data.files || []; // Lấy files từ form
     const hasText = data.content.trim() !== "";
     const hasFiles = files.length > 0;
+    const hasVoice = recordedFile !== null;
 
-    if (!hasText && !hasFiles) return;
+    if (!hasText && !hasFiles && !hasVoice) return;
 
     const mediaFiles = files.filter(
       (file) => file.type.startsWith("image/") || file.type.startsWith("video/")
@@ -109,6 +167,21 @@ const ChatInput = (props: Props) => {
       (file) =>
         !file.type.startsWith("image/") && !file.type.startsWith("video/")
     );
+
+    // Nếu có voice message
+    if (recordedFile) {
+      const tempVoice = generateMessageTemp(
+        "AUDIO",
+        recordingUrl || "",
+        recordedFile.name
+      );
+      sendMessage({ content: "", files: [recordedFile] });
+      addTempMessage(tempVoice);
+      setRecordingUrl(null);
+      setRecordedFile(null);
+      setRecordingTime(0);
+      return;
+    }
 
     if (hasText || mediaFiles.length > 0 || otherFiles.length <= 1) {
       sendMessage({ ...data, files });
@@ -142,6 +215,7 @@ const ChatInput = (props: Props) => {
         addTempMessage(tempMessage);
       });
     }
+
     form.reset({ content: "", files: [] });
     setFilePreviews([]);
   };
@@ -437,19 +511,33 @@ const ChatInput = (props: Props) => {
               <Smile className="size-4" />
             </Button>
 
-            {hasText || hasFiles ? (
+            {hasText || hasFiles || recordedFile ? (
               <Button disabled={false} size={"icon"} type="submit">
                 <SendHorizonal />
               </Button>
             ) : (
-              <Button
-                type="button"
-                size={"icon"}
-                variant={"ghost"}
-                onClick={() => handleLike()}
-              >
-                <ThumbsUp className="size-4" />
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  size={"icon"}
+                  variant={"ghost"}
+                  onClick={() =>
+                    isRecording ? stopRecording() : startRecording()
+                  }
+                >
+                  <Mic
+                    className={cn("size-4", isRecording && "text-red-500")}
+                  />
+                </Button>
+                <Button
+                  type="button"
+                  size={"icon"}
+                  variant={"ghost"}
+                  onClick={() => handleLike()}
+                >
+                  <ThumbsUp className="size-4" />
+                </Button>
+              </>
             )}
           </form>
         </Form>
@@ -526,6 +614,23 @@ const ChatInput = (props: Props) => {
                 </div>
               );
             })}
+          </div>
+        )}
+        {recordingUrl && (
+          <div className="flex flex-wrap gap-2 w-full absolute -top-24 left-0 p-2 bg-white rounded-lg shadow-lg ">
+            <audio controls src={recordingUrl} className="w-full" />
+            <Button
+              size={"icon"}
+              variant={"destructive"}
+              className="absolute -top-1.5 -right-1.5 size-5 bg-white rounded-full flex items-center justify-center text-red-500 shadow"
+              onClick={() => {
+                setRecordingUrl(null);
+                setRecordedFile(null);
+                setRecordingTime(0);
+              }}
+            >
+              <X className="size-4" />
+            </Button>
           </div>
         )}
       </div>

@@ -3,6 +3,7 @@ import SidebarWrapper from "@/components/common/sidebar/SidebarWrapper";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCallStore } from "@/store/useCallStore";
 import { useContactStore } from "@/store/useContactStore";
+import { useMessageStore } from "@/store/useMessageStore";
 import React, { useEffect, useState } from "react";
 
 type Props = React.PropsWithChildren<{}>;
@@ -29,9 +30,20 @@ const Layout = ({ children }: Props) => {
     unsubscribeCancelCall,
   } = useCallStore();
   const {
-    subscribeActiveUsers,
-    unsubscribeActiveUsers
-  } = useAuthStore();
+    subscribeToNewMessages,
+    unsubscribeFromNewMessages,
+    subscribeToDeleteMessage,
+    unsubscribeFromDeleteMessage,
+    subscribeToRevokeMessage,
+    unsubscribeFromRevokeMessage,
+    subscribeToTyping,
+    unsubscribeFromTyping,
+    subscribeToReaction,
+    unsubscribeFromReaction,
+    subscribeToUnReaction,
+    unsubscribeFromUnReaction,
+  } = useMessageStore();
+  const { subscribeActiveUsers, unsubscribeActiveUsers } = useAuthStore();
   const { isAuthenticated, connectSocket, socket } = useAuthStore();
   useEffect(() => {
     if (isAuthenticated) {
@@ -46,13 +58,24 @@ const Layout = ({ children }: Props) => {
       subscribeRejectContact();
       subscribeCall();
       subscribeActiveUsers();
-
+      subscribeToNewMessages();
+      subscribeToDeleteMessage();
+      subscribeToRevokeMessage();
+      subscribeToTyping();
+      subscribeToReaction();
+      subscribeToUnReaction();
       return () => {
         unsubscribeContact();
         unsubscribeCancelContact();
         unsubscribeRejectContact();
         unsubscribeCall();
         unsubscribeActiveUsers();
+        unsubscribeFromNewMessages();
+        unsubscribeFromDeleteMessage();
+        unsubscribeFromRevokeMessage();
+        unsubscribeFromTyping();
+        unsubscribeFromReaction();
+        unsubscribeFromUnReaction();
       };
     }
   }, [isAuthenticated, socket]);

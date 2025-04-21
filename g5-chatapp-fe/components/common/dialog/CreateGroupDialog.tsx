@@ -173,7 +173,7 @@ export function CreateGroupDialog() {
           {/* result */}
           <div className="flex-grow grid grid-cols-5">
             {/* left */}
-            <div className="col-span-3">
+            <div className="col-span-3 overflow-y-scroll h-[300px] no-scrollbar">
               {friendFilter &&
                 friendFilter.map((contact, idx) => (
                   <div

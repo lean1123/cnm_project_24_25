@@ -251,7 +251,17 @@ export const useAuthStore = create<iAuthStore>()(
           });
           const { data } = await api.put("/users/change-avatar", formData);
           if (data.success) {
-            set({ user: data.data });
+            const updatedUser = {
+              ...get().user,
+              avatar: data.data.avatar,
+              id: get().user?.id || "",
+              firstName: get().user?.firstName || "",
+              lastName: get().user?.lastName || "",
+              email: get().user?.email || "",
+              gender: get().user?.gender || "",
+              dob: get().user?.dob || "",
+            };
+            set({ user: updatedUser });
             toast.success("Avatar updated successfully!", {
               id: "avatar-upload",
             });
