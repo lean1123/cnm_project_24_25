@@ -23,6 +23,7 @@ import { ChatGateway } from '../message/gateway/chat.gateway';
 import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
 import { MemberRemovationRequest } from './dto/requests/memberRemovation.request';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AdminChangeConversationDto } from './dto/requests/adminChange.dto';
 
 @Controller('conversation')
 export class ConvensationController {
@@ -106,6 +107,24 @@ export class ConvensationController {
         userPayload,
         conversationId,
       );
+
+    this.chatGateWay.handleUpdateConversation(updatedConversation);
+
+    return updatedConversation;
+  }
+
+  @Put('change-admin/:conversationId')
+  @UseGuards(AuthGuard('jwt'))
+  async changeAdmin(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('conversationId') conversationId: string,
+    @Body() memberToChange: AdminChangeConversationDto,
+  ) {
+    const updatedConversation = await this.convensationService.changeAdminRole(
+      userPayload,
+      conversationId,
+      memberToChange.adminId,
+    );
 
     this.chatGateWay.handleUpdateConversation(updatedConversation);
 

@@ -119,11 +119,14 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   subscribeNewGroup: () => {
     const socket = getSocket();
     if (socket) {
-      socket.on("createConversationForGroup", (data: Conversation) => {
+      socket.on("createConversationForGroup", (data) => {
         console.log("New group created:", data);
-        set((state) => ({
-          conversations: [...state.conversations, data],
-        }));
+        get().getConversations(useAuthStore.getState().user?._id as string);
+        console.log("Conversation ID:", data);
+        socket.emit("joinNewConversation", {
+          conversationId: data.conversation._id,
+          userId: useAuthStore.getState().user?._id,
+        });
       });
     }
   },
