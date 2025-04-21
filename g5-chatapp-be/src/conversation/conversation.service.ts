@@ -401,4 +401,28 @@ export class ConversationService {
 
     return this.getConvensationById(conversation._id as string);
   }
+
+  async leaveFromConversation(userPayload: JwtPayload, conversationId: string) {
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    const isMember = conversation.members.some((member) =>
+      member.user.equals(new Types.ObjectId(userPayload._id)),
+    );
+
+    if (!isMember) {
+      throw new Error('You are not a member of this conversation');
+    }
+
+    // Remove the user from the members array
+    conversation.members = conversation.members.filter(
+      (member) => !member.user.equals(new Types.ObjectId(userPayload._id)),
+    );
+
+    await conversation.save();
+
+    return this.getConvensationById(conversation._id as string);
+  }
 }

@@ -7,7 +7,10 @@ import { Convensation } from 'src/conversation/schema/convensation.schema';
 export class HandleConversation {
   constructor(private readonly conversationService: ConversationService) {}
 
-  handleCreateConversationForGroup(conversation: Convensation, server: Server) {
+  handleCreateConversationForGroupEvent(
+    conversation: Convensation,
+    server: Server,
+  ) {
     const conversationId = conversation._id as string;
     if (conversationId) {
       server.to(conversationId).emit('createConversationForGroup', {
