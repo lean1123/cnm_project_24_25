@@ -19,7 +19,16 @@ type Props = {
 };
 
 function ConversationPage({ params }: Props) {
-  const { conversationId } = use(params);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolveParams = async () => {
+      const resolvedParams = await params;
+      setConversationId(resolvedParams.conversationId);
+    };
+
+    resolveParams();
+  }, [params]);
 
   const { selectedConversation, getConversation } = useConversationStore();
 
@@ -32,7 +41,7 @@ function ConversationPage({ params }: Props) {
     if (conversationId) {
       getConversation(conversationId);
     }
-  }, [conversationId]);
+  }, [conversationId, getConversation]);
 
   const userSelected = selectedConversation?.members.find(
     (member) => member.user._id !== user?.id
@@ -45,15 +54,23 @@ function ConversationPage({ params }: Props) {
 
   const [isOpenRightBar, setIsOpenRightBar] = useState(false);
 
-  return conversationId === undefined ? (
-    <div className="w-full h-full flex items-center justify-center">
-      <Loader2 className="w-8 h-8" />
-    </div>
-  ) : conversationId === null ? (
-    <p className="w-full h-full flex items-center justify-center">
-      Select/start a conversation to get started!
-    </p>
-  ) : (
+  if (conversationId === null) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (conversationId === undefined) {
+    return (
+      <p className="w-full h-full flex items-center justify-center">
+        Select/start a conversation to get started!
+      </p>
+    );
+  }
+
+  return  (
     <ConversationContainer>
       {/* <RemoveFriendDialog
         conversationId={conversationId}

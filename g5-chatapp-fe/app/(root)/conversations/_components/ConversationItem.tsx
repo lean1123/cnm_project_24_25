@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { LastMessage } from "@/types";
 import { User } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 
 type Props = {
@@ -18,11 +18,15 @@ type Props = {
 };
 
 const ConversationItem = ({ id, imageUrl, name, lastMessage }: Props) => {
+  const router = useRouter();
   const path = usePathname();
   const isActive = path === `/conversations/${id}`;
   const { user } = useAuthStore();
+  const handleClick = () => {
+    router.push(`/conversations/${id}`);
+  };
   return (
-    <Link href={`/conversations/${id}`} className="w-full" id={id}>
+    <div onClick={handleClick} className="w-full cursor-pointer" id={id}>
       <Card
         className={`p-2 flex flex-row items-center gap-4 truncate ${
           isActive ? "bg-secondary/65" : ""
@@ -49,7 +53,7 @@ const ConversationItem = ({ id, imageUrl, name, lastMessage }: Props) => {
                   )}
                 {lastMessage.type === "IMAGE" &&
                   lastMessage.files &&
-                  lastMessage.files.length == 1  && (
+                  lastMessage.files.length == 1 && (
                     <p className="text-sm text-muted-foreground truncate">
                       {`Send a photo`}
                     </p>
@@ -121,7 +125,7 @@ const ConversationItem = ({ id, imageUrl, name, lastMessage }: Props) => {
           </div>
         </div>
       </Card>
-    </Link>
+    </div>
   );
 };
 
