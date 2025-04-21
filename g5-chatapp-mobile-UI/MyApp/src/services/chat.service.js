@@ -892,6 +892,54 @@ const chatService = {
       throw new Error(error.response?.data?.message || "Failed to dissolve group");
     }
   },
+
+  async reactToMessage(messageId, reaction) {
+    try {
+      const response = await axiosInstance.put('/message/reaction', {
+        messageId,
+        reaction
+      });
+      
+      if (response.data) {
+        // Update via socket for real-time feedback
+        const socket = getSocket();
+        if (socket) {
+          socket.emit('messageReaction', {
+            messageId,
+            reaction
+          });
+        }
+        return response.data;
+      }
+      throw new Error("Invalid response format");
+    } catch (error) {
+      console.error('Error reacting to message:', error);
+      return { success: false, error: error.response?.data?.message || error.message };
+    }
+  },
+
+  async removeReaction(messageId) {
+    try {
+      const response = await axiosInstance.put(`/message/${messageId}/un-reaction`);
+      
+      if (response.data) {
+        // Update via socket for real-time feedback
+        const socket = getSocket();
+        if (socket) {
+          socket.emit('messageReaction', {
+            messageId,
+            remove: true
+          });
+        }
+        return response.data;
+      }
+      throw new Error("Invalid response format");
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      return { success: false, error: error.response?.data?.message || error.message };
+    }
+  },
+
 };
 
 export { chatService };
