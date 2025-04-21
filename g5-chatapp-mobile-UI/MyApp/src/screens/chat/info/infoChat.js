@@ -134,21 +134,6 @@ const UserInfoScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleSearchUsers = async (query) => {
-    try {
-      const response = await chatService.searchUsers(query);
-      if (response?.success) {
-        // Filter out existing members
-        const existingMemberIds = groupMembers.map((member) => member.user._id);
-        const filteredResults = response.data.filter(
-          (user) => !existingMemberIds.includes(user._id)
-        );
-        setSearchResults(filteredResults);
-      }
-    } catch (error) {
-      console.error("Error searching users:", error);
-    }
-  };
 
   const handleShowAddMemberModal = async () => {
     try {
