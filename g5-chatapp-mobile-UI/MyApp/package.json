@@ -10,11 +10,11 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/checkbox": "^0.5.17",
-    "@react-native-community/datetimepicker": "^8.3.0",
+    "@react-native-community/datetimepicker": "8.2.0",
     "@react-native-community/netinfo": "^11.4.1",
-    "@react-native-picker/picker": "^2.11.0",
+    "@react-native-picker/picker": "2.9.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/stack": "^7.1.1",
     "@twotalltotems/react-native-otp-input": "^1.3.11",
@@ -46,20 +46,20 @@
     "react-native-modal": "^13.0.1",
     "react-native-paper": "^5.13.1",
     "react-native-picker-select": "^9.3.1",
-    "react-native-reanimated": "^2.17.0",
-    "react-native-safe-area-context": "^4.12.0",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
     "react-native-sound": "^0.11.2",
     "react-native-vector-icons": "^10.2.0",
     "react-native-video": "^6.12.0",
-    "react-native-webview": "^13.12.5",
+    "react-native-webview": "13.12.5",
     "socket.io-client": "^4.8.1",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@react-native-community/cli": "latest",
     "@babel/core": "^7.20.0",
     "@babel/plugin-transform-template-literals": "^7.26.8",
+    "@react-native-community/cli": "latest",
     "metro-react-native-babel-preset": "^0.77.0"
   },
   "private": true
