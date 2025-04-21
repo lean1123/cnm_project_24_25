@@ -285,6 +285,11 @@ export const useContactStore = create<iContactStore>((set, get) => ({
           .getState()
           .getConversations(useAuthStore.getState().user?._id as string);
           console.log("Received accept contact request:", data);
+        set((state) => ({
+          myRequestContact: state.myRequestContact?.filter(
+            (contact) => contact._id !== data.contactId
+          ),
+        }));
       });
     }
   },
