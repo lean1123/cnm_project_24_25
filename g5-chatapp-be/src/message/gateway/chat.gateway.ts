@@ -255,18 +255,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('call')
   handleCall(
     @MessageBody()
-    { sender, conversationId }: { sender: User; conversationId: string },
+    { sender, conversationId, type, isGroup }: { sender: User; conversationId: string, type: string, isGroup: boolean },
   ) {
-    this.handleCallService.handleCall({ sender, conversationId }, this.server);
+    this.handleCallService.handleCall({ sender, conversationId, type, isGroup }, this.server);
   }
 
   @SubscribeMessage('joinCall')
   handleJoinCall(
     @MessageBody()
-    { userId, conversationId }: { userId: string; conversationId: string },
+    { userId, conversationId, isGroup }: { userId: string; conversationId: string, isGroup: boolean },
   ) {
     this.handleCallService.handleJoinCall(
-      { userId, conversationId },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }
@@ -274,28 +274,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('acceptCall')
   handleAcceptCall(
     @MessageBody()
-    { userId, conversationId }: { userId: string; conversationId: string },
+    { userId, conversationId, isGroup }: { userId: string; conversationId: string, isGroup: boolean },
   ) {
     this.handleCallService.handleAcceptCall(
-      { userId, conversationId },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }
   @SubscribeMessage('rejectCall')
   handleRejectCall(
     @MessageBody()
-    {
-      userId,
-      conversationId,
-      callData,
-    }: {
-      userId: string;
-      conversationId: string;
-      callData: any;
-    },
+    { userId, conversationId, isGroup }: { userId: string; conversationId: string, isGroup: boolean },
   ) {
     this.handleCallService.handleRejectCall(
-      { userId, conversationId, callData },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }
@@ -305,33 +297,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     {
       userId,
       conversationId,
-      callData,
     }: {
       userId: string;
       conversationId: string;
-      callData: any;
     },
   ) {
     this.handleCallService.handleEndCall(
-      { userId, conversationId, callData },
+      { userId, conversationId },
       this.server,
     );
   }
   @SubscribeMessage('cancelCall')
   handleCancelCall(
     @MessageBody()
-    {
-      userId,
-      conversationId,
-      callData,
-    }: {
-      userId: string;
-      conversationId: string;
-      callData: any;
-    },
+    { userId, conversationId, isGroup }: { userId: string; conversationId: string, isGroup: boolean },
   ) {
     this.handleCallService.handleCancelCall(
-      { userId, conversationId, callData },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }

@@ -9,14 +9,22 @@ export class HandleCall {
     {
       sender,
       conversationId,
+      type,
+      isGroup
     }: {
       sender: User;
       conversationId: string;
+      type: string;
+      isGroup: boolean;
     },
     server: Server,
   ) {
+    // tạo cuộc gọi với trạng thái đang gọi
     server.to(conversationId).emit('goingCall', {
       sender,
+      type,
+      conversationId,
+      isGroup,
     });
   }
 
@@ -24,83 +32,93 @@ export class HandleCall {
     {
       userId,
       conversationId,
+      isGroup,
     }: {
       userId: string;
       conversationId: string;
+      isGroup: boolean;
     },
     server: Server,
   ) {
-    server.to(conversationId).emit('newUser', {
-      userId: userId,
-    });
+    // bỏ
   }
 
   handleAcceptCall(
     {
       userId,
       conversationId,
+      isGroup,
     }: {
       userId: string;
       conversationId: string;
+      isGroup: boolean;
     },
     server: Server,
   ) {
-    server.to(conversationId).emit('newUserJoinCall', {
-      sender: userId,
+    server.to(conversationId).emit('acceptCall', {
+      userId,
+      conversationId,
+      isGroup,
     });
+    // cập nhật người tham gia trong call
+    // cập nhật trạng thái cuộc gọi
   }
 
   handleRejectCall(
     {
       userId,
       conversationId,
-      callData,
+      isGroup,
     }: {
       userId: string;
       conversationId: string;
-      callData: any;
+      isGroup: boolean;
     },
     server: Server,
   ) {
-    server.to(userId).emit('rejectCall', {
+    server.to(conversationId).emit('rejectCall', {
+      userId,
       conversationId,
-      callData,
+      isGroup,
     });
+    // cập nhật trạng thái cuộc gọi đã từ chối
   }
 
   handleEndCall(
     {
       userId,
       conversationId,
-      callData,
+      
     }: {
       userId: string;
       conversationId: string;
-      callData: any;
     },
     server: Server,
   ) {
-    server.to(userId).emit('endCall', {
-      conversationId,
-      callData,
-    });
+    // server.to(userId).emit('endCall', {
+    //   conversationId,
+    // });
+    // check còn người tham gia không
+    // nếu không còn thì cập nhật trạng thái cuộc gọi đã kết thúc
+    // cập nhật trạng thái cuộc gọi đã kết thúc
   }
 
   handleCancelCall(
     {
       userId,
       conversationId,
-      callData,
+      isGroup,
     }: {
       userId: string;
       conversationId: string;
-      callData: any;
+      isGroup: boolean;
     },
     server: Server,
   ) {
-    server.to(userId).emit('cancelCall', {
+    server.to(conversationId).emit('cancelCall', {
       conversationId,
-      callData,
+      userId,
+      isGroup,
     });
   }
 

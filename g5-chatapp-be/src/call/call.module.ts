@@ -11,6 +11,9 @@ import {
   CallParticipantSchema,
 } from './schema/callParticipants.schema';
 import { CallQuality, CallQualitySchema } from './schema/callQuality.schema';
+import { ConversationModule } from 'src/conversation/conversation.module';
+import { UserModule } from 'src/user/user.module';
+import { MessageModule } from 'src/message/message.module';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { CallQuality, CallQualitySchema } from './schema/callQuality.schema';
       { name: CallQuality.name, schema: CallQualitySchema },
     ]),
     AuthModule,
+    ConversationModule,
+    UserModule,
+    MessageModule
   ],
   providers: [
     CallService,

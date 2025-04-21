@@ -115,6 +115,7 @@ export type OngoingCallex = {
 export type OngoingCall = {
     sender: User;
     isRinging: boolean;
+    type: string;
 }
 
 export type Reactions = {
