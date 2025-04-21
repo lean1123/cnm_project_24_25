@@ -277,27 +277,59 @@ const UserInfoScreen = ({ navigation, route }) => {
   };
 
   const handleLeaveGroup = async () => {
-    Alert.alert(
-      "Leave Group",
-      "Are you sure you want to leave this group?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Leave",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await chatService.removeMemberFromGroup(conversation._id, currentUser._id);
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert("Error", error.message || "Failed to leave group");
-              setLoading(false);
-            }
-          }
+    try {
+      // Check if current user is admin (owner)
+      const isAdmin = checkIsAdmin();
+      console.log("Current user is admin:", isAdmin);
+  
+      if (isAdmin) {
+        // Check if there's another owner in the group
+        const hasAnotherOwner = groupMembers.some(
+          (member) => member.role === "OWNER" && member.user._id !== currentUser._id
+        );
+        console.log("Has another owner:", hasAnotherOwner);
+  
+        if (hasAnotherOwner) {
+          // If there is another owner, show modal to confirm leaving
+          setShowLeaveGroupModal(true);
+        } else if (groupMembers.length > 1) {
+          // No other owner, but there are other members; show modal to assign a new owner
+          const otherMembers = groupMembers.filter(
+            (member) => member.user._id !== currentUser._id
+          );
+          setPotentialOwners(otherMembers);
+          setShowAssignOwnerModal(true);
+        } else {
+          // Admin is the only member; show modal to confirm dissolving the group
+          setShowDissolveGroupModal(true);
         }
-      ]
-    );
+      } else {
+        // Non-admin (member) can leave directly - show leave confirmation modal
+        setShowLeaveGroupModal(true);
+      }
+    } catch (error) {
+      console.error("Error in handleLeaveGroup:", error);
+      Alert.alert("Error", error.message || "An unexpected error occurred");
+    }
+  };
+
+  const confirmLeaveGroup = async () => {
+    try {
+      setLoading(true);
+      await chatService.leaveGroup(conversation._id);
+      setShowLeaveGroupModal(false);
+      navigation.navigate("Home_Chat");
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      Alert.alert("Error", error.message || "Failed to leave group");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showOwnerSelection = () => {
+    setShowAssignOwnerModal(false);
+    setShowOwnerSelectionModal(true);
   };
 
   const assignNewOwnerAndLeave = async (memberId) => {
