@@ -1,21 +1,17 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { CallType } from './callType.enum';
 import { CallStatus } from './callStatus.enum';
-import { CallParticipant } from './callParticipants.schema';
-import { CallQuality } from './callQuality.schema';
-import { Convensation } from 'src/conversation/schema/convensation.schema';
-import { User } from 'src/user/schema/user.schema';
+import { CallType } from './callType.enum';
 
 @Schema({
   timestamps: true,
 })
 export class Call {
-  @Prop({ type: Types.ObjectId, ref: Convensation.name })
+  @Prop({ type: Types.ObjectId, ref: "Convensation" })
   convensationId: Types.ObjectId;
-  @Prop({ type: Types.ObjectId, required: true, ref: User.name })
+  @Prop({ type: Types.ObjectId, required: true, ref: "User" })
   callerId: Types.ObjectId;
-  @Prop({ type: [{ type: Types.ObjectId, ref: User.name }] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }] })
   receiverIds: Types.ObjectId[];
   @Prop({ type: String, enum: CallType })
   type: CallType;
@@ -27,12 +23,8 @@ export class Call {
   endTime: Date;
   @Prop()
   duration: number;
-  @Prop({ type: [Types.ObjectId], ref: CallParticipant.name })
+  @Prop({ type: [Types.ObjectId], ref: "User" })
   participants: Types.ObjectId[];
-  @Prop({ type: CallQuality })
-  call_quality: CallQuality;
-  @Prop()
-  record_url: string;
 }
 
 export const CallSchema = SchemaFactory.createForClass(Call);
