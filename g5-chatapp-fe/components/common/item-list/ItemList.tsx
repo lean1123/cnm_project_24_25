@@ -22,9 +22,12 @@ const ItemList = ({ children, title, action }: Props) => {
       <div className="mb-4 flex items-center justify-between">
         {/* <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {action ? action : null} */}
-        <SearchNav isOpenSearchResult={false} setIsOpenSearchResult={()=>{}}/>
+        <SearchNav
+          isOpenSearchResult={false}
+          setIsOpenSearchResult={() => {}}
+        />
       </div>
-      <div className="w-full h-full flex flex-col items-center justify-start gap-2">
+      <div className="w-full h-[85vh] overflow-y-scroll no-scrollbar flex flex-col items-center justify-start gap-2">
         {children}
       </div>
     </Card>
