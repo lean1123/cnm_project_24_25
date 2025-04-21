@@ -35,13 +35,14 @@ const UserInfoScreen = ({ navigation, route }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [showMemberActions, setShowMemberActions] = useState(null);
+  const [showAllMembers, setShowAllMembers] = useState(false);
   
   // Add new state variables for modals
   const [showLeaveGroupModal, setShowLeaveGroupModal] = useState(false);
-  const [showAssignOwnerModal, setShowAssignOwnerModal] = useState(false);
+  const [showAssignAdminModal, setShowAssignAdminModal] = useState(false);
   const [showDissolveGroupModal, setShowDissolveGroupModal] = useState(false);
-  const [showOwnerSelectionModal, setShowOwnerSelectionModal] = useState(false);
-  const [potentialOwners, setPotentialOwners] = useState([]);
+  const [showAdminSelectionModal, setShowAdminSelectionModal] = useState(false);
+  const [potentialAdmins, setPotentialAdmins] = useState([]);
   
   const conversation = route.params?.conversation;
   const isGroup = conversation?.isGroup || false;
@@ -261,29 +262,50 @@ const UserInfoScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleMakeAdmin = async (memberId) => {
+    try {
+      setLoading(true);
+      const response = await chatService.changeAdmin(
+        conversation._id,
+        memberId
+      );
+      if (response.success) {
+        await refreshGroupMembers();
+        Alert.alert("Success", "Member has been assigned as admin");
+      } else {
+        Alert.alert("Error", response.error || "Failed to assign admin role");
+      }
+    } catch (error) {
+      Alert.alert("Error", error.message || "Failed to assign admin role");
+    } finally {
+      setLoading(false);
+      setShowMemberActions(null);
+    }
+  };
+
   const handleLeaveGroup = async () => {
     try {
-      // Check if current user is admin (owner)
+      // Check if current user is admin
       const isAdmin = checkIsAdmin();
       console.log("Current user is admin:", isAdmin);
   
       if (isAdmin) {
-        // Check if there's another owner in the group
-        const hasAnotherOwner = groupMembers.some(
-          (member) => member.role === "OWNER" && member.user._id !== currentUser._id
+        // Check if there's another admin in the group
+        const hasAnotherAdmin = groupMembers.some(
+          (member) => member.role === "ADMIN" && member.user._id !== currentUser._id
         );
-        console.log("Has another owner:", hasAnotherOwner);
+        console.log("Has another admin:", hasAnotherAdmin);
   
-        if (hasAnotherOwner) {
-          // If there is another owner, show modal to confirm leaving
+        if (hasAnotherAdmin) {
+          // If there is another admin, show modal to confirm leaving
           setShowLeaveGroupModal(true);
         } else if (groupMembers.length > 1) {
-          // No other owner, but there are other members; show modal to assign a new owner
+          // No other admin, but there are other members; show modal to assign a new admin
           const otherMembers = groupMembers.filter(
             (member) => member.user._id !== currentUser._id
           );
-          setPotentialOwners(otherMembers);
-          setShowAssignOwnerModal(true);
+          setPotentialAdmins(otherMembers);
+          setShowAssignAdminModal(true);
         } else {
           // Admin is the only member; show modal to confirm dissolving the group
           setShowDissolveGroupModal(true);
@@ -312,36 +334,35 @@ const UserInfoScreen = ({ navigation, route }) => {
     }
   };
 
-  const showOwnerSelection = () => {
-    setShowAssignOwnerModal(false);
-    setShowOwnerSelectionModal(true);
+  const showAdminSelection = () => {
+    setShowAssignAdminModal(false);
+    setShowAdminSelectionModal(true);
   };
 
-  const assignNewOwnerAndLeave = async (memberId) => {
+  const assignNewAdminAndLeave = async (memberId) => {
     try {
       setLoading(true);
-      console.log("Assigning new owner:", memberId);
+      console.log("Assigning new admin:", memberId);
       
-      // Change the selected member's role to OWNER
-      const roleChangeResult = await chatService.changeRoleMember(
+      // Use the new changeAdmin function instead of changeRoleMember
+      const adminChangeResult = await chatService.changeAdmin(
         conversation._id,
-        memberId,
-        "OWNER" // Pass the new role explicitly
+        memberId
       );
 
-      console.log("Role change result:", roleChangeResult);
+      console.log("Admin change result:", adminChangeResult);
 
-      if (roleChangeResult.success) {
-        // Leave the group after assigning new owner
+      if (adminChangeResult.success) {
+        // Leave the group after assigning new admin
         await chatService.leaveGroup(conversation._id);
-        setShowOwnerSelectionModal(false);
+        setShowAdminSelectionModal(false);
         navigation.navigate("Home_Chat");
       } else {
-        throw new Error("Failed to assign new owner");
+        throw new Error("Failed to assign new admin");
       }
     } catch (error) {
-      console.error("Error assigning new owner:", error);
-      Alert.alert("Error", error.message || "Failed to assign new owner and leave group");
+      console.error("Error assigning new admin:", error);
+      Alert.alert("Error", error.message || "Failed to assign new admin and leave group");
     } finally {
       setLoading(false);
     }
@@ -432,7 +453,7 @@ const UserInfoScreen = ({ navigation, route }) => {
         {!isSelf && checkIsAdmin() && (
           <TouchableOpacity
             style={styles.memberAction}
-            onPress={() => setShowMemberActions(user._id)}
+            onPress={() => setShowMemberActions(prev => prev === user._id ? null : user._id)}
           >
             <MaterialIcon name="dots-vertical" size={20} color="#666" />
           </TouchableOpacity>
@@ -447,6 +468,15 @@ const UserInfoScreen = ({ navigation, route }) => {
               >
                 <MaterialIcon name="shield-account" size={20} color="#135CAF" />
                 <Text style={styles.memberActionText}>Make Owner</Text>
+              </TouchableOpacity>
+            )}
+            {!isAdmin && (
+              <TouchableOpacity
+                style={styles.memberActionItem}
+                onPress={() => handleMakeAdmin(user._id)}
+              >
+                <MaterialIcon name="shield" size={20} color="#4CAF50" />
+                <Text style={styles.memberActionText}>Make Admin</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -512,13 +542,40 @@ const UserInfoScreen = ({ navigation, route }) => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Members</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Members</Text>
+          <TouchableOpacity
+            onPress={() => setShowAllMembers(!showAllMembers)}
+            style={styles.toggleButton}
+          >
+            <Text style={styles.toggleText}>
+              {showAllMembers ? "Hide" : "Show all"}
+            </Text>
+            <MaterialIcon 
+              name={showAllMembers ? "chevron-up" : "chevron-down"} 
+              size={18} 
+              color="#135CAF" 
+            />
+          </TouchableOpacity>
+        </View>
+        
         <FlatList
-          data={groupMembers}
+          data={showAllMembers ? groupMembers : groupMembers.slice(0, 3)}
           renderItem={renderMemberItem}
           keyExtractor={(item) => item._id || item.user?._id}
           scrollEnabled={false}
         />
+        
+        {!showAllMembers && groupMembers.length > 3 && (
+          <TouchableOpacity 
+            style={styles.showMoreButton}
+            onPress={() => setShowAllMembers(true)}
+          >
+            <Text style={styles.showMoreText}>
+              +{groupMembers.length - 3} more members
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {mediaMessages.images.length > 0 && (
@@ -908,38 +965,38 @@ const UserInfoScreen = ({ navigation, route }) => {
     </Modal>
   );
 
-  const renderAssignOwnerModal = () => (
+  const renderAssignAdminModal = () => (
     <Modal
-      visible={showAssignOwnerModal}
+      visible={showAssignAdminModal}
       animationType="slide"
       transparent={true}
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Assign New Owner</Text>
-            <TouchableOpacity onPress={() => setShowAssignOwnerModal(false)}>
+            <Text style={styles.modalTitle}>Assign New Admin</Text>
+            <TouchableOpacity onPress={() => setShowAssignAdminModal(false)}>
               <MaterialIcon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.modalMessage}>
-            Before leaving the group, you must assign another member as owner.
+            Before leaving the group, you must assign another member as admin.
           </Text>
           
           <View style={styles.modalButtons}>
             <TouchableOpacity 
               style={[styles.modalButton, styles.cancelButton]}
-              onPress={() => setShowAssignOwnerModal(false)}
+              onPress={() => setShowAssignAdminModal(false)}
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.modalButton, styles.confirmButton]}
-              onPress={showOwnerSelection}
+              onPress={showAdminSelection}
             >
-              <Text style={styles.confirmButtonText}>Select New Owner</Text>
+              <Text style={styles.confirmButtonText}>Select New Admin</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -947,32 +1004,32 @@ const UserInfoScreen = ({ navigation, route }) => {
     </Modal>
   );
 
-  const renderOwnerSelectionModal = () => (
+  const renderAdminSelectionModal = () => (
     <Modal
-      visible={showOwnerSelectionModal}
+      visible={showAdminSelectionModal}
       animationType="slide"
       transparent={true}
     >
       <View style={styles.modalContainer}>
         <View style={[styles.modalContent, { maxHeight: "70%" }]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select New Owner</Text>
-            <TouchableOpacity onPress={() => setShowOwnerSelectionModal(false)}>
+            <Text style={styles.modalTitle}>Select New Admin</Text>
+            <TouchableOpacity onPress={() => setShowAdminSelectionModal(false)}>
               <MaterialIcon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.modalMessage}>
-            Choose a member to be the new owner:
+            Choose a member to be the new admin:
           </Text>
           
           <FlatList
-            data={potentialOwners}
+            data={potentialAdmins}
             keyExtractor={(item) => item.user._id}
             renderItem={({ item }) => (
               <TouchableOpacity 
                 style={styles.memberSelectionItem}
-                onPress={() => assignNewOwnerAndLeave(item.user._id)}
+                onPress={() => assignNewAdminAndLeave(item.user._id)}
               >
                 <Image 
                   source={
@@ -991,14 +1048,14 @@ const UserInfoScreen = ({ navigation, route }) => {
             )}
             ListEmptyComponent={
               <Text style={{ textAlign: "center", padding: 20, color: "#666" }}>
-                No other members to assign as owner.
+                No other members to assign as admin.
               </Text>
             }
           />
           
           <TouchableOpacity 
             style={[styles.modalButton, styles.cancelButton, { marginTop: 10 }]}
-            onPress={() => setShowOwnerSelectionModal(false)}
+            onPress={() => setShowAdminSelectionModal(false)}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -1072,8 +1129,8 @@ const UserInfoScreen = ({ navigation, route }) => {
 
       {renderAddMemberModal()}
       {renderLeaveGroupModal()}
-      {renderAssignOwnerModal()}
-      {renderOwnerSelectionModal()}
+      {renderAssignAdminModal()}
+      {renderAdminSelectionModal()}
       {renderDissolveGroupModal()}
     </SafeAreaView>
   );
@@ -1222,11 +1279,36 @@ const styles = {
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
-    marginBottom: 12,
+  },
+  toggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  toggleText: {
+    marginLeft: 8,
+    color: "#135CAF",
+    fontWeight: "500",
+  },
+  showMoreButton: {
+    alignSelf: "center",
+    marginTop: 12,
+    padding: 8,
+  },
+  showMoreText: {
+    color: "#135CAF",
+    fontWeight: "600",
+    fontSize: 14,
   },
   mediaItem: {
     flex: 1 / 3,
@@ -1285,7 +1367,7 @@ const styles = {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
@@ -1390,7 +1472,7 @@ const styles = {
   memberActionsMenu: {
     position: "absolute",
     right: 40,
-    top: 0,
+    top: -5,
     backgroundColor: "#fff",
     borderRadius: 8,
     padding: 8,
@@ -1399,6 +1481,8 @@ const styles = {
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+    zIndex: 1000,
+    minWidth: 150,
   },
   memberActionItem: {
     flexDirection: "row",

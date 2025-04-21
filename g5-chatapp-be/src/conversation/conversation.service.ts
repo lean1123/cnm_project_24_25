@@ -456,11 +456,8 @@ export class ConversationService {
     }
 
     // Nếu người được chỉ định đã là ADMIN hoặc OWNER thì không làm gì
-    if (
-      memberToPromote.role === ConversationRole.ADMIN ||
-      memberToPromote.role === ConversationRole.OWNER
-    ) {
-      throw new Error('Target member is already an admin or owner');
+    if (memberToPromote.role === ConversationRole.ADMIN) {
+      throw new Error('Target member is already an admin');
     }
 
     // Gán quyền admin cho người mới
