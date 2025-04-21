@@ -735,13 +735,15 @@ const chatService = {
   // Add members to group
   addMembersToGroup: async (conversationId, memberIds) => {
     try {
+      // Try with a different field name - the backend error suggests it's looking for "newMemberIds"
+      console.log("API call: Adding members to group", conversationId);
+      console.log("Members to add:", memberIds);
+      
       const response = await axiosInstance.post(`/conversation/add-member/${conversationId}`, {
-        members: memberIds
+        newMemberIds: memberIds
       });
 
-      if (!response.data) {
-        throw new Error("Invalid response format");
-      }
+      console.log("Add members API response:", response.status);
 
       return {
         success: true,
@@ -749,7 +751,17 @@ const chatService = {
       };
     } catch (error) {
       console.error("Error adding members to group:", error);
-      throw new Error(error.response?.data?.message || "Failed to add members");
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      }
+      
+      return {
+        success: false,
+        error: error.response?.data || error.message || "Failed to add members"
+      };
     }
   },
 
