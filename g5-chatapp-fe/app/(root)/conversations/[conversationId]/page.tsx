@@ -75,7 +75,7 @@ function ConversationPage({ params }: Props) {
               {
                 label: "Voice call",
                 icon: <Phone />,
-                onClick: () => handleCall(conversationId),
+                onClick: () => handleCall(conversationId, selectedConversation.isGroup),
               },
               {
                 label: "Video call",
@@ -100,12 +100,12 @@ function ConversationPage({ params }: Props) {
               {
                 label: "Voice call",
                 icon: <Phone />,
-                onClick: () => handleCall(conversationId),
+                onClick: () => handleCall(conversationId, selectedConversation!.isGroup),
               },
               {
                 label: "Video call",
                 icon: <Video />,
-                onClick: () => setDeleteGroupDialogOpen(true),
+                onClick: () => handleCall(conversationId, selectedConversation!.isGroup),
               },
               {
                 label: "Info",

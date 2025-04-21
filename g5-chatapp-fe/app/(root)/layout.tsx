@@ -70,6 +70,10 @@ const Layout = ({ children }: Props) => {
       subscribeToReaction();
       subscribeToUnReaction();
       subscribeNewGroup();
+      subscribeAcceptCall();
+      subscribeRejectCall();
+      subscribeEndCall();
+      subscribeCancelCall();
       return () => {
         unsubscribeContact();
         unsubscribeCancelContact();
@@ -83,6 +87,10 @@ const Layout = ({ children }: Props) => {
         unsubscribeFromReaction();
         unsubscribeFromUnReaction();
         unsubscribeNewGroup();
+        unsubscribeAcceptCall();
+        unsubscribeRejectCall();
+        unsubscribeEndCall();
+        unsubscribeCancelCall();
       };
     }
   }, [isAuthenticated, socket]);

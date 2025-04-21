@@ -9,7 +9,13 @@ interface RingCallProps {
 
 function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
   // listen call
-  const { ongoingCall, handleAcceptCall, handleRejectCall } = useCallStore();
+  const {
+    ongoingCall,
+    callConversationId,
+    handleAcceptCall,
+    handleRejectCall,
+    isCallGroup
+  } = useCallStore();
 
   if (!ongoingCall?.isRinging) return null;
   return (
@@ -32,7 +38,10 @@ function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
           className="w-20 h-20 rounded-full"
         /> */}
         <Avatar>
-            <AvatarImage src={ongoingCall.sender.avatar || "/avatar.png"} alt="profile" />
+          <AvatarImage
+            src={ongoingCall.sender.avatar || "/avatar.png"}
+            alt="profile"
+          />
         </Avatar>
         <h3 className="text-lg font-semibold">
           {ongoingCall?.sender?.firstName || "NO"}
@@ -40,12 +49,7 @@ function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
         <div className="flex items-center justify-evenly gap-4 w-full mt-4">
           <button
             className="bg-red-500 p-2 rounded-full"
-            // onClick={() =>
-            //   handleHangup({
-            //     ongoingCall: ongoingCall ? ongoingCall : undefined,
-            //     isEmitHangup: true,
-            //   })
-            // }
+            onClick={() => handleRejectCall(callConversationId!, isCallGroup)}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -64,7 +68,7 @@ function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
           </button>
           <button
             className="bg-green-500 p-2 rounded-full"
-            onClick={() => handleAcceptCall(ongoingCall.sender._id!)}
+            onClick={() => handleAcceptCall(callConversationId!, isCallGroup)}
           >
             <svg
               xmlns="http://www.w3.org/
