@@ -112,30 +112,40 @@ const FriendsListScreen = ({ navigation }) => {
   }, [friends, friendSearchText]);
 
   const fetchFriends = async () => {
-    try {
-      setIsLoading(true);
-      const response = await contactService.getMyContacts();
-      console.log('fetchFriends response:', response);
-      if (response.success) {
-        // Transform data to ensure consistent structure
-        const formattedFriends = (response.data || []).map(friend => ({
+  try {
+    setIsLoading(true);
+    const response = await contactService.getMyContacts();
+    const userDataStr = await AsyncStorage.getItem('userData');
+    const currentUser = JSON.parse(userDataStr);
+    
+    console.log('fetchFriends response:', response);
+
+    if (response.success) {
+      const formattedFriends = (response.data || []).map(friend => {
+        const isCurrentUser = friend.user._id === currentUser._id;
+        const friendData = isCurrentUser ? friend.contact : friend.user;
+
+        return {
           ...friend,
-          user: friend.user || friend.contact || {}, // Handle both user and contact
-        }));
-        console.log('Formatted friends:', formattedFriends);
-        setFriends(formattedFriends);
-        setFilteredFriends(formattedFriends);
-      } else {
-        console.error('fetchFriends failed:', response.message);
-        Alert.alert("Error", response.message || "Failed to fetch friends");
-      }
-    } catch (error) {
-      console.error('Error fetching friends:', error);
-      Alert.alert("Error", "Failed to fetch friends");
-    } finally {
-      setIsLoading(false);
+          user: friendData || {},  // user ở đây luôn là bạn bè
+        };
+      });
+
+      console.log('Formatted friends:', formattedFriends);
+      setFriends(formattedFriends);
+      setFilteredFriends(formattedFriends);
+    } else {
+      console.error('fetchFriends failed:', response.message);
+      Alert.alert("Error", response.message || "Failed to fetch friends");
     }
-  };
+  } catch (error) {
+    console.error('Error fetching friends:', error);
+    Alert.alert("Error", "Failed to fetch friends");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const fetchPendingRequests = async () => {
     try {
