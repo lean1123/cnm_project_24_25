@@ -2242,63 +2242,67 @@ const ChatDetailScreen = ({ navigation, route }) => {
         console.error("Invalid message for reaction");
         return;
       }
-      
+
       console.log(`Adding reaction ${reaction} to message:`, message._id);
-      
+
       // Make sure we're sending a clean message ID, not the whole message object
       const messageId = message._id;
-      
+
       // Immediately update UI with temporary reaction
       const userId = currentUser?._id;
       const tempReaction = {
         reaction: reaction,
-        user: userId
+        user: userId,
       };
-      
+
       // Optimistically update UI before waiting for server response
-      setMessages((prevMessages) => 
+      setMessages((prevMessages) =>
         prevMessages.map((msg) => {
           if (msg._id === messageId) {
-            const updatedReactions = Array.isArray(msg.reactions) 
-              ? [...msg.reactions, tempReaction] 
+            const updatedReactions = Array.isArray(msg.reactions)
+              ? [...msg.reactions, tempReaction]
               : [tempReaction];
-            
+
             return { ...msg, reactions: updatedReactions };
           }
           return msg;
         })
       );
-      
+
       // Close reaction modal if open
       setShowReactionModal(false);
       setReactionMessage(null);
-      
+
       // Call API to update reaction on server
       const response = await chatService.reactToMessage(messageId, reaction);
-      
+
       console.log("Reaction response from server:", JSON.stringify(response));
-      
+
       if (response && !response.error) {
         console.log("Reaction added successfully");
-        
+
         // If socket doesn't handle the update, manually update with server response
         if (response.reactions) {
-          setMessages((prevMessages) => 
-            prevMessages.map((msg) => 
-              msg._id === messageId ? { ...msg, reactions: response.reactions } : msg
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg._id === messageId
+                ? { ...msg, reactions: response.reactions }
+                : msg
             )
           );
         }
       } else {
         console.error("Failed to add reaction:", response?.error);
-        
+
         // Revert optimistic update if there was an error
-        setMessages((prevMessages) => 
-          prevMessages.map((msg) => 
-            msg._id === messageId ? { ...msg, reactions: message.reactions || [] } : msg
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === messageId
+              ? { ...msg, reactions: message.reactions || [] }
+              : msg
           )
         );
-        
+
         Alert.alert("Error", "Unable to add reaction. Please try again.");
       }
     } catch (error) {
@@ -2393,12 +2397,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
     if (socket) {
       // Define a robust handler for reaction events
       const handleReactionEvent = (data) => {
-        console.log("Received reaction event via socket:", JSON.stringify(data));
-        
+        console.log(
+          "Received reaction event via socket:",
+          JSON.stringify(data)
+        );
+
         // Extract essential information from any possible format
         let messageId = null;
         let reactions = null;
-        
+
         // Handle different possible data formats for messageId
         if (data.messageId) {
           messageId = data.messageId;
@@ -2407,21 +2414,29 @@ const ChatDetailScreen = ({ navigation, route }) => {
         } else if (data._id) {
           messageId = data._id;
         }
-        
+
         // Extract reactions from different possible formats
         if (data.reactions) {
           reactions = data.reactions;
         } else if (data.message && data.message.reactions) {
           reactions = data.message.reactions;
         }
-        
-        console.log(`Processing ${data.remove ? 'un-reaction' : 'reaction'} for messageId:`, messageId);
-        
+
+        console.log(
+          `Processing ${
+            data.remove ? "un-reaction" : "reaction"
+          } for messageId:`,
+          messageId
+        );
+
         if (messageId && reactions !== null) {
           setMessages((prevMessages) => {
             return prevMessages.map((msg) => {
               if (msg._id === messageId) {
-                console.log("Updating message reactions from socket event for:", msg._id);
+                console.log(
+                  "Updating message reactions from socket event for:",
+                  msg._id
+                );
                 return { ...msg, reactions };
               }
               return msg;
@@ -2429,20 +2444,20 @@ const ChatDetailScreen = ({ navigation, route }) => {
           });
         }
       };
-      
+
       // Listen for various reaction event types
       socket.off("messageReaction");
       socket.off("reaction");
       socket.off("reactionAdded");
       socket.off("reactionRemoved");
       socket.off("messageReactionUpdate");
-      
+
       socket.on("messageReaction", handleReactionEvent);
       socket.on("reaction", handleReactionEvent);
       socket.on("reactionAdded", handleReactionEvent);
       socket.on("reactionRemoved", handleReactionEvent);
       socket.on("messageReactionUpdate", handleReactionEvent);
-      
+
       return () => {
         socket.off("messageReaction");
         socket.off("reaction");
@@ -2457,20 +2472,29 @@ const ChatDetailScreen = ({ navigation, route }) => {
   useEffect(() => {
     const initChats = async () => {
       if (socket && conversation) {
-        console.log("Setting up specific reaction listeners for conversation:", conversation._id);
-        
+        console.log(
+          "Setting up specific reaction listeners for conversation:",
+          conversation._id
+        );
+
         // Listen for specific conversation reactions
         socket.on("reactionInConversation", (data) => {
           if (data.conversationId === conversation._id) {
-            console.log("Received specific conversation reaction:", JSON.stringify(data));
-            
+            console.log(
+              "Received specific conversation reaction:",
+              JSON.stringify(data)
+            );
+
             const { messageId, reactions } = data;
-            
+
             if (messageId && reactions) {
               setMessages((prevMessages) => {
                 return prevMessages.map((msg) => {
                   if (msg._id === messageId) {
-                    console.log("Updating message reactions in conversation:", msg._id);
+                    console.log(
+                      "Updating message reactions in conversation:",
+                      msg._id
+                    );
                     return { ...msg, reactions };
                   }
                   return msg;
@@ -2480,14 +2504,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
         });
       }
-      
+
       return () => {
         if (socket) {
           socket.off("reactionInConversation");
         }
       };
     };
-    
+
     initChats();
   }, [socket, conversation]);
 
@@ -2592,10 +2616,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
       if (socketInstance && !socketInstance.connected && conversation) {
         console.log("Socket not connected, reconnecting...");
         socketInstance.connect();
-        
+
         // After connecting, join the conversation room
-        socketInstance.once('connect', () => {
-          console.log("Socket reconnected, joining conversation room:", conversation._id);
+        socketInstance.once("connect", () => {
+          console.log(
+            "Socket reconnected, joining conversation room:",
+            conversation._id
+          );
           if (currentUser && currentUser._id) {
             socketInstance.emit("join", {
               conversationId: conversation._id,
@@ -2608,7 +2635,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
         });
       } else if (socketInstance && socketInstance.connected && conversation) {
-        console.log("Socket already connected, joining conversation room:", conversation._id);
+        console.log(
+          "Socket already connected, joining conversation room:",
+          conversation._id
+        );
         if (currentUser && currentUser._id) {
           socketInstance.emit("join", {
             conversationId: conversation._id,
@@ -2621,15 +2651,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
         }
       }
     };
-    
+
     // Run connection check immediately and periodically
     ensureSocketConnected();
-    
+
     // Check socket connection status every 10 seconds
     const intervalId = setInterval(() => {
       ensureSocketConnected();
     }, 10000);
-    
+
     return () => {
       clearInterval(intervalId);
     };

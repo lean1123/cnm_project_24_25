@@ -319,11 +319,11 @@ export const useAuthStore = create<iAuthStore>()(
         Object.fromEntries(
           Object.entries(state).filter(([key]) => key !== "socket")
         ),
-      onRehydrateStorage: () => ((state) => {
+      onRehydrateStorage: () => (state) => {
         if (state?.isAuthenticated) {
           state.connectSocket();
         }
-      }),
+      },
     }
   )
 );

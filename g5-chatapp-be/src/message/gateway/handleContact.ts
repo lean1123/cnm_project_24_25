@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { ContactResponseDto } from 'src/contact/dto/contactResponse.dto';
+import { Contact } from 'src/contact/schema/contact.schema';
 
 @Injectable()
 export class HandleContact {
@@ -72,6 +73,22 @@ export class HandleContact {
     server.to(receiverId).emit('rejectRequestContact', {
       contactId,
       name,
+    });
+  }
+
+  handleAcceptRequestContact(
+    contact: Contact,
+    server: Server,
+    conversation: string,
+  ) {
+    server.to(contact.user.toString()).emit('acceptRequestContact', {
+      contactId: contact._id,
+      conversation,
+    });
+
+    server.to(contact.contact.toString()).emit('acceptRequestContact', {
+      contactId: contact._id,
+      conversation,
     });
   }
 
