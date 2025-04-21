@@ -789,6 +789,7 @@ const chatService = {
   // Change member role (promote/demote admin)
   changeRoleMember: async (conversationId, memberId) => {
     try {
+      console.log(`Changing role for member ${memberId} in conversation ${conversationId}`);
       const response = await axiosInstance.post(`/conversation/change-role/${conversationId}/${memberId}`);
 
       if (!response.data) {
@@ -937,6 +938,35 @@ const chatService = {
     } catch (error) {
       console.error('Error removing reaction:', error);
       return { success: false, error: error.response?.data?.message || error.message };
+    }
+  },
+  leaveGroup: async (conversationId) => {
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      if (!userData) throw new Error("User not logged in");
+      const token = JSON.parse(userData).token;
+
+      const response = await axiosInstance.post(
+        `/conversation/leave/${conversationId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.data) {
+        throw new Error("Invalid response format");
+      }
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      throw new Error(error.response?.data?.message || "Failed to leave group");
     }
   },
 
