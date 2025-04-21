@@ -13,9 +13,20 @@ export class HandleConversation {
   ) {
     const conversationId = conversation._id as string;
     if (conversationId) {
-      server.to(conversationId).emit('createConversationForGroup', {
-        conversation: conversation,
-      });
+      // server.to(conversationId).emit('createConversationForGroup', {
+      //   conversation: conversation,
+      // });
+      for (const member of conversation.members) {
+        const userId = member.user._id.toString();
+        if (userId) {
+          server.to(userId).emit('createConversationForGroup', {
+            conversation: conversation,
+          });
+          console.log(
+            `[Conversation] User ${userId} joined conversation ${conversationId}`,
+          );
+        }
+      }
     }
   }
 

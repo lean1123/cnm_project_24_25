@@ -58,7 +58,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
   isTyping: false,
   membersCreateGroup: [],
   typing: (conversationId: string) => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.emit("typing", {
         conversationId,
@@ -128,7 +128,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
     }));
   },
   subscribeToNewMessages: () => {
-    const socket = getSocket();
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
 
     if (!socket) return;
 
@@ -189,7 +189,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
   },
 
   unsubscribeFromNewMessages: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.off("newMessage");
     }
@@ -261,19 +261,19 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
     }
   },
   subscribeToDeleteMessage: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.on("deleteMessage", (message: Message) => {});
     }
   },
   unsubscribeFromDeleteMessage: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.off("deleteMessage");
     }
   },
   subscribeToRevokeMessage: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.on("revokeMessage", (message: Message) => {
         set((state) => ({
@@ -285,13 +285,13 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
     }
   },
   unsubscribeFromRevokeMessage: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.off("revokeMessage");
     }
   },
   subscribeToTyping: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.on(
         "typing",
@@ -313,13 +313,13 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
     }
   },
   unsubscribeFromTyping: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.off("typing");
     }
   },
   subscribeToReaction: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.on("reactToMessage", (message: Message) => {
         set((state) => ({
@@ -331,13 +331,13 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
     }
   },
   unsubscribeFromReaction: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.off("reactToMessage");
     }
   },
   subscribeToUnReaction: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.on("unReactToMessage", (message: Message) => {
         set((state) => ({
@@ -349,7 +349,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
     }
   },
   unsubscribeFromUnReaction: () => {
-    const socket = getSocket(); // Ensure socket is initialized
+    const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
       socket.off("unReactToMessage");
     }
