@@ -60,6 +60,8 @@ import ForgotPasswordScreen from "../screens/account/forgotPassword";
 import { useNavigation } from "@react-navigation/native";
 import { getSocket, reconnectSocket } from "../services/socket";
 
+import TestCallScreen from "../screens/chat/call/testCall";
+
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
@@ -198,6 +200,10 @@ useEffect(() => {
           <Stack.Screen
             name="FileViewer"
             component={FileViewer}
+          />
+          <Stack.Screen
+            name="TestCallScreen"
+            component={TestCallScreen}
           />
         </>
       )}

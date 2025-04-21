@@ -255,7 +255,7 @@ const UserInfoScreen = ({ navigation, route }) => {
             try {
               setLoading(true);
               await chatService.removeMemberFromGroup(conversation._id, currentUser._id);
-              navigation.goBack();
+              navigation.navigate("Home_Chat");
             } catch (error) {
               Alert.alert("Error", error.message || "Failed to leave group");
               setLoading(false);

@@ -2794,7 +2794,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     icon="phone"
                     iconColor="#fff"
                     size={24}
-                    onPress={() => Alert.alert("Audio call")}
+                    onPress={() => {
+                      navigation.navigate("TestCallScreen", {
+                        roomID: conversation._id,
+                        userID: currentUser.id, // từ context
+                        userName: `${currentUser.firstName} ${currentUser.lastName}`
+                      });
+                    }}
+                    
                   />
                   <IconButton
                     icon="video"
