@@ -18,7 +18,7 @@ import {
   ImageBackground,
 } from "react-native";
 import WebView from "react-native-webview";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
@@ -54,6 +54,9 @@ import {
   Badge,
 } from "react-native-paper";
 
+// Add this at the beginning of the file after other imports
+import { TapGestureHandler, State } from "react-native-gesture-handler";
+
 const customTheme = {
   colors: {
     primary: "#0099ff",
@@ -64,7 +67,6 @@ const customTheme = {
     error: "#e74c3c",
   },
 };
-
 
 const AudioMessage = ({ file, isMyMessage }) => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -443,6 +445,17 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [authenticated, setAuthenticated] = useState("");
   const video = useRef(null);
   const [showAudioRecording, setShowAudioRecording] = useState(false);
+  const [showReactionModal, setShowReactionModal] = useState(false);
+  const [reactionMessage, setReactionMessage] = useState(null);
+  // Add this state to the ChatDetailScreen component
+  const [lastTap, setLastTap] = useState(0);
+  // Add these state variables in the ChatDetailScreen component
+  const [showReactionDetailsModal, setShowReactionDetailsModal] =
+    useState(false);
+  const [currentReactionDetails, setCurrentReactionDetails] = useState({
+    reaction: "",
+    users: [],
+  });
 
   const scrollToBottom = () => {
     if (flatListRef.current) {
@@ -516,14 +529,20 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 // Individual conversation with set name
                 setOtherUser({
                   _id: conversation._id,
-                  firstName: conversation.name.split(" ").slice(0, -1).join(" "),
+                  firstName: conversation.name
+                    .split(" ")
+                    .slice(0, -1)
+                    .join(" "),
                   lastName: conversation.name.split(" ").slice(-1)[0],
                   avatar: conversation.avatar,
                 });
               } else if (conversation.user) {
                 // Individual conversation with user data
                 setOtherUser(conversation.user);
-              } else if (conversation.members && conversation.members.length > 0) {
+              } else if (
+                conversation.members &&
+                conversation.members.length > 0
+              ) {
                 // Try to find the other user from members list
                 try {
                   const otherMember = conversation.members.find(
@@ -533,20 +552,27 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     setOtherUser(otherMember);
                   } else {
                     // If we can't find members, try to get conversation details
-                    const conversationsResponse = await chatService.getMyConversations();
-                    if (conversationsResponse.success && conversationsResponse.data) {
+                    const conversationsResponse =
+                      await chatService.getMyConversations();
+                    if (
+                      conversationsResponse.success &&
+                      conversationsResponse.data
+                    ) {
                       const currentConv = conversationsResponse.data.find(
-                        conv => conv._id === conversation._id
+                        (conv) => conv._id === conversation._id
                       );
-                      
+
                       if (currentConv) {
                         if (currentConv.isGroup) {
                           // Group conversation
                           setOtherUser(null);
-                        } else if (currentConv.members && currentConv.members.length > 0) {
+                        } else if (
+                          currentConv.members &&
+                          currentConv.members.length > 0
+                        ) {
                           // Find the other member in individual chat
                           const otherMember = currentConv.members.find(
-                            member => member._id !== currentUserData._id
+                            (member) => member._id !== currentUserData._id
                           );
                           if (otherMember) {
                             setOtherUser(otherMember);
@@ -556,25 +582,35 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     }
                   }
                 } catch (error) {
-                  console.error("Error setting other user from members:", error);
+                  console.error(
+                    "Error setting other user from members:",
+                    error
+                  );
                 }
               } else {
                 // Fallback: If we can't determine the other user, try to fetch conversation details
                 try {
-                  const conversationsResponse = await chatService.getMyConversations();
-                  if (conversationsResponse.success && conversationsResponse.data) {
+                  const conversationsResponse =
+                    await chatService.getMyConversations();
+                  if (
+                    conversationsResponse.success &&
+                    conversationsResponse.data
+                  ) {
                     const currentConv = conversationsResponse.data.find(
-                      conv => conv._id === conversation._id
+                      (conv) => conv._id === conversation._id
                     );
-                    
+
                     if (currentConv) {
                       if (currentConv.isGroup) {
                         // Group conversation
                         setOtherUser(null);
-                      } else if (currentConv.members && currentConv.members.length > 0) {
+                      } else if (
+                        currentConv.members &&
+                        currentConv.members.length > 0
+                      ) {
                         // Find the other member in individual chat
                         const otherMember = currentConv.members.find(
-                          member => member._id !== currentUserData._id
+                          (member) => member._id !== currentUserData._id
                         );
                         if (otherMember) {
                           setOtherUser(otherMember);
@@ -612,9 +648,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   setIsOnline(data.isOnline);
                 }
               });
-              
+
               socketInstance.on("activeUsers", (data) => {
-                if (otherUser && data.activeUsers && data.activeUsers.includes(otherUser._id)) {
+                if (
+                  otherUser &&
+                  data.activeUsers &&
+                  data.activeUsers.includes(otherUser._id)
+                ) {
                   setIsOnline(true);
                 }
               });
@@ -1122,6 +1162,49 @@ const ChatDetailScreen = ({ navigation, route }) => {
     const isMyMessage = currentUser && item.sender._id === currentUser._id;
     const isTemp = item._id && item._id.startsWith("temp-");
 
+    // Check if this is a forwarded message
+    const isForwarded =
+      item.forwardFrom !== undefined && item.forwardFrom !== null;
+
+    // If this is a forwarded message, wrap the content in a forwarded message container
+    const wrapForwardedContent = (content) => {
+      if (!isForwarded) return content;
+
+      return (
+        <View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 4,
+              paddingBottom: 4,
+              borderBottomWidth: 1,
+              borderBottomColor: isMyMessage
+                ? "rgba(255,255,255,0.2)"
+                : "rgba(0,0,0,0.1)",
+            }}
+          >
+            <Feather
+              name="corner-up-right"
+              size={12}
+              color={isMyMessage ? "#fff" : "#666"}
+              style={{ marginRight: 4, opacity: 0.7 }}
+            />
+            <Text
+              style={{
+                fontSize: 12,
+                color: isMyMessage ? "rgba(255,255,255,0.7)" : "#666",
+                fontStyle: "italic",
+              }}
+            >
+              Message is forwarded
+            </Text>
+          </View>
+          {content}
+        </View>
+      );
+    };
+
     const isLocationMessage =
       (item.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.content)) ||
       item.isLocation;
@@ -1131,7 +1214,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
         ? item.content.split(",").map(Number)
         : [0, 0];
 
-      return (
+      return wrapForwardedContent(
         <View
           style={{
             width: 200,
@@ -1198,7 +1281,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
               ? { columns: 2, rows: 1 }
               : { columns: 2, rows: Math.ceil(item.files.length / 2) };
 
-          return (
+          return wrapForwardedContent(
             <View
               style={{
                 flexDirection: "row",
@@ -1270,7 +1353,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           );
         }
 
-        return (
+        return wrapForwardedContent(
           <TouchableOpacity
             style={{
               width: 200,
@@ -1305,7 +1388,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         );
       case "VIDEO":
-        return (
+        return wrapForwardedContent(
           <TouchableOpacity
             style={{
               width: 280,
@@ -1355,7 +1438,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         );
       case "AUDIO":
-        return <AudioMessage file={item.files[0]} isMyMessage={isMyMessage} />;
+        return wrapForwardedContent(
+          <AudioMessage file={item.files[0]} isMyMessage={isMyMessage} />
+        );
       case "FILE":
         const file = item.files && item.files[0];
         const fileName =
@@ -1365,10 +1450,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           fileUrl
         )}&embedded=true`;
 
-        // Debugging log to confirm fileName
-        // console.log(`Rendering file message - fileName: ${fileName}`);
-
-        return (
+        return wrapForwardedContent(
           <TouchableOpacity
             style={{
               marginVertical: 4,
@@ -1432,7 +1514,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
           return null;
         }
 
-        return (
+        return wrapForwardedContent(
           <Text
             variant="bodyMedium"
             style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 16 }}
@@ -1468,6 +1550,26 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     if (isLastMessage) {
       showAvatar = true;
+    }
+
+    // Reaction display logic
+    const hasReactions =
+      item.reactions &&
+      (Array.isArray(item.reactions)
+        ? item.reactions.length > 0
+        : typeof item.reactions === "object" &&
+          Object.keys(item.reactions).length > 0);
+
+    // Count total reactions
+    let reactionCount = 0;
+    if (hasReactions) {
+      if (Array.isArray(item.reactions)) {
+        reactionCount = item.reactions.length;
+      } else {
+        Object.values(item.reactions).forEach((userIds) => {
+          reactionCount += Array.isArray(userIds) ? userIds.length : 1;
+        });
+      }
     }
 
     return (
@@ -1510,49 +1612,179 @@ const ChatDetailScreen = ({ navigation, route }) => {
             maxWidth: "75%",
           }}
         >
-          <TouchableOpacity
-          style={{
-            backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            borderBottomLeftRadius: isMyMessage ? 16 : showAvatar ? 4 : 16,
-            borderBottomRightRadius: 16,
-            padding: item.type === "TEXT" ? 10 : 0,
-            overflow: "hidden",
-            alignSelf: isMyMessage ? "flex-end" : "flex-start",
-            marginLeft: isMyMessage ? 50 : 0, 
-          }}
-            onLongPress={() => {
-              if (!isTemp) {
-                setSelectedMessage(item);
-                setShowMessageOptions(true);
+          <TapGestureHandler
+            onHandlerStateChange={({ nativeEvent }) => {
+              if (nativeEvent.state === State.ACTIVE) {
+                // Double tap detection
+                if (Date.now() - lastTap < 300) {
+                  // Handle double tap - add thumbs up reaction
+                  if (!isTemp) {
+                    handleReaction(item, "❤️");
+                    setReactionMessage(item);
+                  }
+                }
               }
+              setLastTap(Date.now());
             }}
+            numberOfTaps={2}
           >
-            {renderMessageContent(item)}
-            {item.type === "TEXT" && !item.isRevoked && (
-              <Text
-                variant="labelSmall"
-                style={{
-                  color: isMyMessage ? "rgba(255,255,255,0.7)" : "#666",
-                  fontSize: 10,
-                  marginTop: 4,
-                  textAlign: "right",
-                }}
-              >
-                {item.createdAt
-                  ? format(new Date(item.createdAt), "HH:mm")
-                  : ""}
-                {isTemp && item.status === "sending" && (
-                  <ActivityIndicator
-                    size="small"
-                    color={isMyMessage ? "rgba(255,255,255,0.7)" : "#666"}
-                    style={{ marginLeft: 4, display: "inline" }}
-                  />
-                )}
-              </Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                borderBottomLeftRadius: isMyMessage ? 16 : showAvatar ? 4 : 16,
+                borderBottomRightRadius: 16,
+                padding: item.type === "TEXT" ? 10 : 0,
+                overflow: "hidden",
+                alignSelf: isMyMessage ? "flex-end" : "flex-start",
+                marginLeft: isMyMessage ? 50 : 0,
+              }}
+              onLongPress={() => {
+                if (!isTemp) {
+                  setSelectedMessage(item);
+                  setShowMessageOptions(true);
+                }
+              }}
+            >
+              {renderMessageContent(item)}
+              {item.type === "TEXT" && !item.isRevoked && (
+                <Text
+                  variant="labelSmall"
+                  style={{
+                    color: isMyMessage ? "rgba(255,255,255,0.7)" : "#666",
+                    fontSize: 10,
+                    marginTop: 4,
+                    textAlign: "right",
+                  }}
+                >
+                  {item.createdAt
+                    ? format(new Date(item.createdAt), "HH:mm")
+                    : ""}
+                  {isTemp && item.status === "sending" && (
+                    <ActivityIndicator
+                      size="small"
+                      color={isMyMessage ? "rgba(255,255,255,0.7)" : "#666"}
+                      style={{ marginLeft: 4, display: "inline" }}
+                    />
+                  )}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </TapGestureHandler>
+
+          {/* Reactions display */}
+          {hasReactions && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginTop: -5,
+                backgroundColor: "rgba(255,255,255,0.9)",
+                borderRadius: 20,
+                alignSelf: isMyMessage ? "flex-end" : "flex-start",
+                borderWidth: 0.5,
+                borderColor: "rgba(0,0,0,0.1)",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 1,
+                elevation: 1,
+              }}
+            >
+              {Array.isArray(item.reactions)
+                ? // Handle array of reaction objects
+                  item.reactions.map((reactionObj, index) => {
+                    console.log(
+                      `Message ${item._id} - Reaction object:`,
+                      reactionObj
+                    );
+
+                    if (!reactionObj || !reactionObj.reaction) return null;
+
+                    // Check if current user has used this reaction
+                    const myId = currentUser?._id;
+                    const hasReacted = reactionObj.user === myId;
+
+                    return (
+                      <TouchableOpacity
+                        key={index}
+                        style={{
+                          marginHorizontal: 3,
+                          borderRadius: 8,
+                          border: "none",
+                        }}
+                        onPress={() => {
+                          if (hasReacted) {
+                            removeReaction(item._id);
+                          } else {
+                            handleReaction(item, reactionObj.reaction);
+                          }
+                        }}
+                      >
+                        <View
+                          style={{ flexDirection: "row", alignItems: "center" }}
+                        >
+                          <Text style={{ fontSize: 18 }}>
+                            {reactionObj.reaction}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                : // Handle old reaction format (if still needed)
+                  Object.entries(item.reactions || {}).map(
+                    ([reaction, userIds]) => {
+                      console.log(
+                        `Message ${item._id} - Reaction: ${reaction}, Users:`,
+                        userIds
+                      );
+
+                      // Make sure userIds is an array with contents
+                      if (!Array.isArray(userIds) || userIds.length === 0)
+                        return null;
+
+                      // Check if current user has used this reaction
+                      const myId = currentUser?._id;
+                      const hasReacted = userIds.includes(myId);
+
+                      return (
+                        <TouchableOpacity
+                          key={reaction}
+                          onPress={() => {
+                            if (hasReacted) {
+                              removeReaction(item._id);
+                            } else {
+                              handleReaction(item, reaction);
+                            }
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text style={{ fontSize: 18 }}>{reaction}</Text>
+                            {userIds.length > 1 && (
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  marginLeft: 2,
+                                  color: hasReacted ? "#0099ff" : "#666",
+                                  fontWeight: hasReacted ? "bold" : "normal",
+                                }}
+                              >
+                                {userIds.length}
+                              </Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    }
+                  )}
+            </View>
+          )}
         </View>
         {isMyMessage && (
           <View style={{ width: 28, height: 28, marginLeft: 8 }}>
@@ -1684,31 +1916,67 @@ const ChatDetailScreen = ({ navigation, route }) => {
     try {
       setSelectedMessage(message);
       const response = await chatService.getMyConversations();
+      console.log(
+        "Available conversations for forwarding:",
+        response.data?.length || 0
+      );
+
       if (response.data) {
+        // Log conversation data to help debug
+        response.data.forEach((conv, idx) => {
+          console.log(
+            `Conversation ${idx + 1}:`,
+            conv._id,
+            "name:",
+            conv.name,
+            "isGroup:",
+            conv.isGroup,
+            "members:",
+            conv.members?.length || 0
+          );
+        });
+
         const availableConversations = response.data
           .filter((conv) => conv._id !== conversation._id)
           .map((conv) => {
-            let name = conv.name;
-            let avatar = conv.avatar;
+            // Start with default values from the conversation
+            let name = conv.name || "Unnamed Group";
+            let avatar = conv.avatar || null;
 
-            if ((!name || !avatar) && conv.members && conv.members.length > 0) {
+            // For individual chats (not groups), find the other user's info
+            if (!conv.isGroup && conv.members && conv.members.length > 0) {
+              // Find the member who isn't the current user
               const otherMember = conv.members.find(
-                (m) => m._id !== currentUser._id
+                (member) => member.user && member.user._id !== currentUser?._id
               );
-              if (otherMember) {
-                name = `${otherMember.firstName} ${otherMember.lastName}`;
-                avatar = otherMember.avatar;
+
+              if (otherMember && otherMember.user) {
+                name = `${otherMember.user.firstName || ""} ${
+                  otherMember.user.lastName || ""
+                }`.trim();
+                avatar = otherMember.user.avatar;
+                console.log("Found other member:", name, otherMember.user._id);
               }
+            }
+
+            // For groups, use the group name
+            if (conv.isGroup) {
+              name = conv.name || "Group Chat";
+              avatar = conv.avatar || null;
             }
 
             return {
               _id: conv._id,
-              name: name || "Người dùng",
+              name: name || "Unnamed Conversation",
               avatar: avatar,
+              isGroup: conv.isGroup || false,
             };
-          })
-          .filter((conv) => conv.name !== "Người dùng");
+          });
 
+        console.log(
+          "Processed conversations for forwarding:",
+          availableConversations.length
+        );
         setFriends(availableConversations);
         setShowForwardModal(true);
         setShowMessageOptions(false);
@@ -1736,16 +2004,24 @@ const ChatDetailScreen = ({ navigation, route }) => {
         return;
       }
 
+      console.log("Forwarding message:", selectedMessage._id);
+      console.log(
+        "To conversations:",
+        selectedFriends.map((f) => `${f.name} (${f._id})`)
+      );
+
+      // Prepare data for forwarding
       const forwardData = {
         originalMessageId: selectedMessage._id,
         conversationIds: selectedFriends.map((f) => f._id),
-        sender: currentUser._id,
-        type: selectedMessage.type || "TEXT",
-        content: selectedMessage.content,
-        files: selectedMessage.files || [],
       };
 
+      console.log("Forward data:", JSON.stringify(forwardData));
+
+      // Send the forward request
       const response = await chatService.forwardMessage(forwardData);
+      console.log("Forward response:", response);
+
       if (response.success) {
         setShowForwardModal(false);
         setSelectedFriends([]);
@@ -1893,38 +2169,48 @@ const ChatDetailScreen = ({ navigation, route }) => {
             <FlatList
               data={friends}
               keyExtractor={(item) => item._id.toString()}
-              renderItem={({ item }) => (
-                <List.Item
-                  title={item.name || "Người dùng"}
-                  left={() => (
-                    <Avatar.Image
-                      size={40}
-                      source={
-                        item.avatar
-                          ? { uri: item.avatar }
-                          : require("../../../assets/chat/avatar.png")
-                      }
-                    />
-                  )}
-                  right={() =>
-                    selectedFriends.some((f) => f._id === item._id) && (
-                      <Avatar.Icon
-                        size={24}
-                        icon="check-circle"
-                        style={{ backgroundColor: "#0099ff" }}
+              renderItem={({ item }) => {
+                console.log(
+                  "Rendering conversation item:",
+                  item.name,
+                  item._id,
+                  "isGroup:",
+                  item.isGroup
+                );
+                return (
+                  <List.Item
+                    title={item.name || "Unnamed Conversation"}
+                    description={item.isGroup ? "Group Chat" : "Personal Chat"}
+                    left={() => (
+                      <Avatar.Image
+                        size={40}
+                        source={
+                          item.avatar
+                            ? { uri: item.avatar }
+                            : require("../../../assets/chat/avatar.png")
+                        }
                       />
-                    )
-                  }
-                  onPress={() => toggleSelectFriend(item)}
-                  style={{
-                    backgroundColor: selectedFriends.some(
-                      (f) => f._id === item._id
-                    )
-                      ? "#f0f8ff"
-                      : "transparent",
-                  }}
-                />
-              )}
+                    )}
+                    right={() =>
+                      selectedFriends.some((f) => f._id === item._id) && (
+                        <Avatar.Icon
+                          size={24}
+                          icon="check-circle"
+                          style={{ backgroundColor: "#0099ff" }}
+                        />
+                      )
+                    }
+                    onPress={() => toggleSelectFriend(item)}
+                    style={{
+                      backgroundColor: selectedFriends.some(
+                        (f) => f._id === item._id
+                      )
+                        ? "#f0f8ff"
+                        : "transparent",
+                    }}
+                  />
+                );
+              }}
             />
           ) : (
             <View
@@ -1949,6 +2235,405 @@ const ChatDetailScreen = ({ navigation, route }) => {
       </Portal>
     );
   };
+
+  const handleReaction = async (message, reaction) => {
+    try {
+      if (!message || !message._id) {
+        console.error("Invalid message for reaction");
+        return;
+      }
+      
+      console.log(`Adding reaction ${reaction} to message:`, message._id);
+      
+      // Make sure we're sending a clean message ID, not the whole message object
+      const messageId = message._id;
+      
+      // Immediately update UI with temporary reaction
+      const userId = currentUser?._id;
+      const tempReaction = {
+        reaction: reaction,
+        user: userId
+      };
+      
+      // Optimistically update UI before waiting for server response
+      setMessages((prevMessages) => 
+        prevMessages.map((msg) => {
+          if (msg._id === messageId) {
+            const updatedReactions = Array.isArray(msg.reactions) 
+              ? [...msg.reactions, tempReaction] 
+              : [tempReaction];
+            
+            return { ...msg, reactions: updatedReactions };
+          }
+          return msg;
+        })
+      );
+      
+      // Close reaction modal if open
+      setShowReactionModal(false);
+      setReactionMessage(null);
+      
+      // Call API to update reaction on server
+      const response = await chatService.reactToMessage(messageId, reaction);
+      
+      console.log("Reaction response from server:", JSON.stringify(response));
+      
+      if (response && !response.error) {
+        console.log("Reaction added successfully");
+        
+        // If socket doesn't handle the update, manually update with server response
+        if (response.reactions) {
+          setMessages((prevMessages) => 
+            prevMessages.map((msg) => 
+              msg._id === messageId ? { ...msg, reactions: response.reactions } : msg
+            )
+          );
+        }
+      } else {
+        console.error("Failed to add reaction:", response?.error);
+        
+        // Revert optimistic update if there was an error
+        setMessages((prevMessages) => 
+          prevMessages.map((msg) => 
+            msg._id === messageId ? { ...msg, reactions: message.reactions || [] } : msg
+          )
+        );
+        
+        Alert.alert("Error", "Unable to add reaction. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error adding reaction:", error);
+      Alert.alert("Error", "Unable to add reaction. Please try again.");
+    }
+  };
+
+  const removeReaction = async (messageId) => {
+    try {
+      const response = await chatService.removeReaction(messageId);
+
+      if (response) {
+        // Update the message with the removed reaction locally if needed
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === messageId
+              ? { ...msg, reactions: response.reactions }
+              : msg
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error removing reaction:", error);
+    }
+  };
+
+  // Add Reaction Modal component
+  const ReactionModal = () => {
+    if (!showReactionModal) return null;
+
+    const reactions = ["👍", "❤️", "😂", "😮", "😢", "😡"];
+
+    return (
+      <Portal>
+        <PaperModal
+          visible={showReactionModal}
+          onDismiss={() => {
+            setShowReactionModal(false);
+            setReactionMessage(null);
+          }}
+          contentContainerStyle={{
+            backgroundColor: "white",
+            borderRadius: 20,
+            padding: 16,
+            margin: 16,
+          }}
+        >
+          <Text
+            variant="titleMedium"
+            style={{ textAlign: "center", marginBottom: 10 }}
+          >
+            Thả cảm xúc
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-around",
+              padding: 10,
+            }}
+          >
+            {reactions.map((reaction) => (
+              <TouchableOpacity
+                key={reaction}
+                onPress={() => handleReaction(selectedMessage, reaction)}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                }}
+              >
+                <Text style={{ fontSize: 28 }}>{reaction}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Button
+            mode="text"
+            onPress={() => {
+              setShowReactionModal(false);
+              setReactionMessage(null);
+            }}
+            style={{ marginTop: 10 }}
+          >
+            Hủy
+          </Button>
+        </PaperModal>
+      </Portal>
+    );
+  };
+
+  // Replace the existing socket listener for reactions
+  useEffect(() => {
+    if (socket) {
+      // Define a robust handler for reaction events
+      const handleReactionEvent = (data) => {
+        console.log("Received reaction event via socket:", JSON.stringify(data));
+        
+        // Extract essential information from any possible format
+        let messageId = null;
+        let reactions = null;
+        
+        // Handle different possible data formats for messageId
+        if (data.messageId) {
+          messageId = data.messageId;
+        } else if (data.message && data.message._id) {
+          messageId = data.message._id;
+        } else if (data._id) {
+          messageId = data._id;
+        }
+        
+        // Extract reactions from different possible formats
+        if (data.reactions) {
+          reactions = data.reactions;
+        } else if (data.message && data.message.reactions) {
+          reactions = data.message.reactions;
+        }
+        
+        console.log(`Processing ${data.remove ? 'un-reaction' : 'reaction'} for messageId:`, messageId);
+        
+        if (messageId && reactions !== null) {
+          setMessages((prevMessages) => {
+            return prevMessages.map((msg) => {
+              if (msg._id === messageId) {
+                console.log("Updating message reactions from socket event for:", msg._id);
+                return { ...msg, reactions };
+              }
+              return msg;
+            });
+          });
+        }
+      };
+      
+      // Listen for various reaction event types
+      socket.off("messageReaction");
+      socket.off("reaction");
+      socket.off("reactionAdded");
+      socket.off("reactionRemoved");
+      socket.off("messageReactionUpdate");
+      
+      socket.on("messageReaction", handleReactionEvent);
+      socket.on("reaction", handleReactionEvent);
+      socket.on("reactionAdded", handleReactionEvent);
+      socket.on("reactionRemoved", handleReactionEvent);
+      socket.on("messageReactionUpdate", handleReactionEvent);
+      
+      return () => {
+        socket.off("messageReaction");
+        socket.off("reaction");
+        socket.off("reactionAdded");
+        socket.off("reactionRemoved");
+        socket.off("messageReactionUpdate");
+      };
+    }
+  }, [socket]);
+
+  // Also add this listener in the initializeChat function right after the newMessage handlers
+  useEffect(() => {
+    const initChats = async () => {
+      if (socket && conversation) {
+        console.log("Setting up specific reaction listeners for conversation:", conversation._id);
+        
+        // Listen for specific conversation reactions
+        socket.on("reactionInConversation", (data) => {
+          if (data.conversationId === conversation._id) {
+            console.log("Received specific conversation reaction:", JSON.stringify(data));
+            
+            const { messageId, reactions } = data;
+            
+            if (messageId && reactions) {
+              setMessages((prevMessages) => {
+                return prevMessages.map((msg) => {
+                  if (msg._id === messageId) {
+                    console.log("Updating message reactions in conversation:", msg._id);
+                    return { ...msg, reactions };
+                  }
+                  return msg;
+                });
+              });
+            }
+          }
+        });
+      }
+      
+      return () => {
+        if (socket) {
+          socket.off("reactionInConversation");
+        }
+      };
+    };
+    
+    initChats();
+  }, [socket, conversation]);
+
+  // Add function to load user details for a reaction
+  const showReactionDetails = async (reaction, userIds) => {
+    try {
+      setCurrentReactionDetails({
+        reaction,
+        users: userIds.map((id) => {
+          // Find user in conversation members if available
+          if (conversation?.members) {
+            const member = conversation.members.find(
+              (m) => m._id === id || (m.user && m.user._id === id)
+            );
+            if (member) {
+              return {
+                _id: id,
+                name: member.user
+                  ? `${member.user.firstName} ${member.user.lastName}`
+                  : member.name || "Unknown",
+                avatar: member.user ? member.user.avatar : member.avatar,
+              };
+            }
+          }
+          // Default user object if not found
+          return { _id: id, name: "Unknown", avatar: null };
+        }),
+      });
+      setShowReactionDetailsModal(true);
+    } catch (error) {
+      console.error("Error loading reaction details:", error);
+    }
+  };
+
+  // Add this ReactionDetailsModal component near the other modals
+  const ReactionDetailsModal = () => {
+    if (!showReactionDetailsModal) return null;
+
+    return (
+      <Portal>
+        <PaperModal
+          visible={showReactionDetailsModal}
+          onDismiss={() => setShowReactionDetailsModal(false)}
+          contentContainerStyle={{
+            backgroundColor: "white",
+            borderRadius: 20,
+            padding: 16,
+            margin: 16,
+            maxHeight: "70%",
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 16,
+            }}
+          >
+            <Text style={{ fontSize: 24, marginRight: 8 }}>
+              {currentReactionDetails.reaction}
+            </Text>
+            <Text variant="titleMedium">
+              {currentReactionDetails.users.length}{" "}
+              {currentReactionDetails.users.length === 1 ? "người" : "người"}
+            </Text>
+            <View style={{ flex: 1 }} />
+            <IconButton
+              icon="close"
+              onPress={() => setShowReactionDetailsModal(false)}
+            />
+          </View>
+
+          <FlatList
+            data={currentReactionDetails.users}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <List.Item
+                title={item.name}
+                left={() => (
+                  <Avatar.Image
+                    size={40}
+                    source={
+                      item.avatar
+                        ? { uri: item.avatar }
+                        : require("../../../assets/chat/avatar.png")
+                    }
+                  />
+                )}
+              />
+            )}
+          />
+        </PaperModal>
+      </Portal>
+    );
+  };
+
+  // Add a useEffect for socket reconnection at the top after the other useEffects
+  useEffect(() => {
+    // Function to ensure socket is connected
+    const ensureSocketConnected = () => {
+      const socketInstance = getSocket();
+      if (socketInstance && !socketInstance.connected && conversation) {
+        console.log("Socket not connected, reconnecting...");
+        socketInstance.connect();
+        
+        // After connecting, join the conversation room
+        socketInstance.once('connect', () => {
+          console.log("Socket reconnected, joining conversation room:", conversation._id);
+          if (currentUser && currentUser._id) {
+            socketInstance.emit("join", {
+              conversationId: conversation._id,
+              userId: currentUser._id,
+            });
+            socketInstance.emit("joinConversation", {
+              conversationId: conversation._id,
+              userId: currentUser._id,
+            });
+          }
+        });
+      } else if (socketInstance && socketInstance.connected && conversation) {
+        console.log("Socket already connected, joining conversation room:", conversation._id);
+        if (currentUser && currentUser._id) {
+          socketInstance.emit("join", {
+            conversationId: conversation._id,
+            userId: currentUser._id,
+          });
+          socketInstance.emit("joinConversation", {
+            conversationId: conversation._id,
+            userId: currentUser._id,
+          });
+        }
+      }
+    };
+    
+    // Run connection check immediately and periodically
+    ensureSocketConnected();
+    
+    // Check socket connection status every 10 seconds
+    const intervalId = setInterval(() => {
+      ensureSocketConnected();
+    }, 10000);
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [conversation, currentUser]);
 
   if (loading) {
     return (
@@ -2009,9 +2694,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   navigation.navigate("UserInfo", {
                     conversation: {
                       _id: conversation._id,
-                      name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
+                      name:
+                        conversation.name ||
+                        (otherUser
+                          ? `${otherUser.firstName} ${otherUser.lastName}`
+                          : "Chat"),
                       members: conversation.members || [],
-                      avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                      avatar:
+                        conversation.avatar ||
+                        (otherUser ? otherUser.avatar : null),
                       isGroup: conversation.isGroup || false,
                       isOnline: isOnline,
                       user: otherUser,
@@ -2025,12 +2716,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   size={36}
                   source={
                     conversation?.isGroup
-                      ? (conversation.avatar
-                          ? { uri: conversation.avatar }
-                          : require("../../../assets/chat/avatar.png"))
-                      : (otherUser?.avatar
-                          ? { uri: otherUser.avatar }
-                          : require("../../../assets/chat/avatar.png"))
+                      ? conversation.avatar
+                        ? { uri: conversation.avatar }
+                        : require("../../../assets/chat/avatar.png")
+                      : otherUser?.avatar
+                      ? { uri: otherUser.avatar }
+                      : require("../../../assets/chat/avatar.png")
                   }
                   style={{ marginHorizontal: 8 }}
                 />
@@ -2058,9 +2749,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   navigation.navigate("UserInfo", {
                     conversation: {
                       _id: conversation._id,
-                      name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
+                      name:
+                        conversation.name ||
+                        (otherUser
+                          ? `${otherUser.firstName} ${otherUser.lastName}`
+                          : "Chat"),
                       members: conversation.members || [],
-                      avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                      avatar:
+                        conversation.avatar ||
+                        (otherUser ? otherUser.avatar : null),
                       isGroup: conversation.isGroup || false,
                       isOnline: isOnline,
                       user: otherUser,
@@ -2075,14 +2772,19 @@ const ChatDetailScreen = ({ navigation, route }) => {
               >
                 {conversation?.isGroup
                   ? conversation.name || "Group Chat"
-                  : (otherUser
-                      ? otherUser.name || `${otherUser.firstName} ${otherUser.lastName}`
-                      : "Chat")}
+                  : otherUser
+                  ? otherUser.name ||
+                    `${otherUser.firstName} ${otherUser.lastName}`
+                  : "Chat"}
               </Text>
               <Text variant="bodySmall" style={{ color: "#fff", fontSize: 12 }}>
-                {conversation?.isGroup 
-                  ? (conversation.members ? `${conversation.members.length} members` : "Group chat")
-                  : (isOnline ? "Online" : "Offline")}
+                {conversation?.isGroup
+                  ? conversation.members
+                    ? `${conversation.members.length} members`
+                    : "Group chat"
+                  : isOnline
+                  ? "Online"
+                  : "Offline"}
               </Text>
             </TouchableOpacity>
             <View style={{ flexDirection: "row" }}>
@@ -2111,9 +2813,15 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     navigation.navigate("UserInfo", {
                       conversation: {
                         _id: conversation._id,
-                        name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
+                        name:
+                          conversation.name ||
+                          (otherUser
+                            ? `${otherUser.firstName} ${otherUser.lastName}`
+                            : "Chat"),
                         members: conversation.members || [],
-                        avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                        avatar:
+                          conversation.avatar ||
+                          (otherUser ? otherUser.avatar : null),
                         isGroup: conversation.isGroup || false,
                         isOnline: isOnline,
                         user: otherUser,
@@ -2260,6 +2968,34 @@ const ChatDetailScreen = ({ navigation, route }) => {
               margin: 16,
             }}
           >
+            {/* Add reaction section */}
+            <Text variant="titleMedium" style={{ marginBottom: 10 }}>
+              Reactions
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-around",
+                marginBottom: 16,
+              }}
+            >
+              {["👍", "❤️", "😂", "😮", "😢", "😡"].map((reaction) => (
+                <TouchableOpacity
+                  key={reaction}
+                  style={{ padding: 8 }}
+                  onPress={() => {
+                    handleReaction(selectedMessage, reaction);
+                    setShowMessageOptions(false);
+                  }}
+                >
+                  <Text style={{ fontSize: 24 }}>{reaction}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Divider style={{ marginVertical: 8 }} />
+
+            {/* Existing options */}
             <List.Item
               title="Ghim tin nhắn"
               left={() => <List.Icon icon="pin" />}
@@ -2286,6 +3022,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
         </Portal>
 
         <ForwardModal />
+        <ReactionModal />
+        <ReactionDetailsModal />
       </SafeAreaView>
     </PaperProvider>
   );

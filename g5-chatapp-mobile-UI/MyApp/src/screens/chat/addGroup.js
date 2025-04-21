@@ -48,6 +48,9 @@ const AddGroupScreen = ({ navigation }) => {
             console.log("[Socket] Setting up socket for AddGroupScreen");
             setSocket(socketInstance);
           }
+          
+          // Load friends after user data is available
+          await loadFriends();
         }
       } catch (error) {
         console.error("Error initializing data:", error);
@@ -55,7 +58,6 @@ const AddGroupScreen = ({ navigation }) => {
     };
     
     initializeData();
-    loadFriends();
   }, []);
 
   useEffect(() => {
@@ -68,24 +70,80 @@ const AddGroupScreen = ({ navigation }) => {
   const loadFriends = async () => {
     try {
       setIsLoading(true);
+      
+      // First, make sure we have current user data
+      if (!currentUser) {
+        const userData = await AsyncStorage.getItem("userData");
+        if (userData) {
+          const user = JSON.parse(userData);
+          setCurrentUser(user);
+        } else {
+          throw new Error("User data not found");
+        }
+      }
+      
+      console.log("Current user ID:", currentUser?._id);
+      
+      // Get contacts
       const response = await contactService.getMyContacts();
-      if (response.success) {
-        // Transform data to match expected format
-        const friendsList = response.data.map(contact => {
-          const friend = contact.user._id === currentUser?._id 
-            ? contact.contact 
-            : contact.user;
-          return {
-            _id: friend._id,
-            name: `${friend.firstName} ${friend.lastName}`,
-            avatar: friend.avatar,
-            email: friend.email,
-            contactId: contact._id
-          };
+      console.log("Contact service response:", response.success, "Count:", response.data?.length || 0);
+      
+      if (response.success && response.data) {
+        console.log("Formatted friends:", JSON.stringify(response.data));
+        
+        // Log each contact for debugging
+        response.data.forEach((contact, idx) => {
+          console.log(`Contact ${idx + 1}:`, 
+            contact.user?._id, 
+            `(${contact.user?.firstName} ${contact.user?.lastName})`,
+            "contact:", 
+            contact.contact?._id,
+            `(${contact.contact?.firstName} ${contact.contact?.lastName})`
+          );
         });
+        
+        // Extract all possible friends from both user and contact fields
+        let friendsList = [];
+        
+        response.data.forEach(contact => {
+          // The friend could be in either the 'user' or 'contact' field
+          // We need to check both and avoid duplicates
+          
+          // First check the 'user' field - if not the current user, add to list
+          if (contact.user && contact.user._id !== currentUser?._id) {
+            friendsList.push({
+              _id: contact.user._id,
+              name: `${contact.user.firstName} ${contact.user.lastName}`,
+              avatar: contact.user.avatar,
+              email: contact.user.email,
+              contactId: contact._id
+            });
+          }
+          
+          // Also check the 'contact' field - if not the current user, add to list
+          if (contact.contact && contact.contact._id !== currentUser?._id) {
+            // Check if this contact is already in our list to avoid duplicates
+            const alreadyAdded = friendsList.some(f => f._id === contact.contact._id);
+            
+            if (!alreadyAdded) {
+              friendsList.push({
+                _id: contact.contact._id,
+                name: `${contact.contact.firstName} ${contact.contact.lastName}`,
+                avatar: contact.contact.avatar,
+                email: contact.contact.email,
+                contactId: contact._id
+              });
+            }
+          }
+        });
+        
+        console.log("Processed friends list count:", friendsList.length);
+        console.log("Friend IDs:", friendsList.map(f => f._id));
+        
         setFriends(friendsList);
         setFilteredFriends(friendsList);
       } else {
+        console.error("Failed to load friends:", response.error || "Unknown error");
         Alert.alert("Error", "Failed to load friends");
       }
     } catch (error) {
@@ -209,6 +267,20 @@ const AddGroupScreen = ({ navigation }) => {
     }
   };
 
+  const handleOpenModal = async () => {
+    setModalVisible(true);
+    setIsLoading(true);
+    
+    // Always refresh the contact list when opening the modal
+    try {
+      await loadFriends();
+    } catch (error) {
+      console.error("Error loading friends:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const renderSelectedFriend = ({ item }) => (
     <View style={styles.selectedFriend}>
       <View style={styles.selectedFriendInfo}>
@@ -266,7 +338,7 @@ const AddGroupScreen = ({ navigation }) => {
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => setModalVisible(true)}
+        onPress={handleOpenModal}
       >
         <Icon name="account-multiple-plus" size={22} color="#333" style={styles.buttonIcon} />
         <Text style={styles.addButtonText}>Add Members ({selectedFriends.length})</Text>
@@ -326,41 +398,50 @@ const AddGroupScreen = ({ navigation }) => {
                 <FlatList
                   data={filteredFriends}
                   keyExtractor={(item) => item._id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.friendItem}
-                      onPress={() => toggleSelection(item)}
-                    >
-                      <View style={styles.friendInfo}>
-                        <Image 
-                          source={
-                            item.avatar 
-                              ? { uri: item.avatar.startsWith('http') ? item.avatar : `${API_URL}/uploads/${item.avatar}` }
-                              : require("../../../assets/chat/avatar.png")
-                          }
-                          style={styles.avatar}
-                        />
-                        <View>
-                          <Text style={styles.friendName}>{item.name}</Text>
-                          <Text style={styles.friendEmail}>{item.email}</Text>
+                  renderItem={({ item }) => {
+                    console.log("Rendering friend item:", item.name, item._id);
+                    return (
+                      <TouchableOpacity
+                        style={styles.friendItem}
+                        onPress={() => toggleSelection(item)}
+                      >
+                        <View style={styles.friendInfo}>
+                          <Image 
+                            source={
+                              item.avatar 
+                                ? { uri: item.avatar.startsWith('http') ? item.avatar : `${API_URL}/uploads/${item.avatar}` }
+                                : require("../../../assets/chat/avatar.png")
+                            }
+                            style={styles.avatar}
+                          />
+                          <View>
+                            <Text style={styles.friendName}>{item.name}</Text>
+                            <Text style={styles.friendEmail}>{item.email || 'No email'}</Text>
+                          </View>
                         </View>
-                      </View>
-                      <Icon
-                        name={
-                          selectedFriends.some(f => f._id === item._id)
-                            ? "checkbox-marked"
-                            : "checkbox-blank-outline"
-                        }
-                        size={24}
-                        color="#135CAF"
-                      />
-                    </TouchableOpacity>
-                  )}
+                        <Icon
+                          name={
+                            selectedFriends.some(f => f._id === item._id)
+                              ? "checkbox-marked"
+                              : "checkbox-blank-outline"
+                          }
+                          size={24}
+                          color="#135CAF"
+                        />
+                      </TouchableOpacity>
+                    );
+                  }}
                   ListEmptyComponent={
                     <View style={styles.emptyList}>
                       <Text style={styles.emptyListText}>
                         {searchText ? "No matching friends found" : "No friends available"}
                       </Text>
+                      <TouchableOpacity 
+                        style={styles.retryButton}
+                        onPress={loadFriends}
+                      >
+                        <Text style={styles.retryText}>Refresh</Text>
+                      </TouchableOpacity>
                     </View>
                   }
                 />
@@ -592,6 +673,19 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginVertical: 20,
+  },
+  retryButton: {
+    backgroundColor: "#135CAF",
+    padding: 8,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+    paddingHorizontal: 16,
+  },
+  retryText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
   },
 });
 

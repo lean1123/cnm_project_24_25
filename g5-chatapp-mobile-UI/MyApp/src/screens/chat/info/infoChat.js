@@ -90,11 +90,8 @@ const UserInfoScreen = ({ navigation, route }) => {
           }
         }
 
-        // Fetch user's contacts using contactService
-        const contactsResponse = await contactService.getMyContacts();
-        if (contactsResponse.success) {
-          setSearchResults(contactsResponse.data);
-        }
+        // We'll let handleShowAddMemberModal fetch the contacts when needed
+        // instead of loading them here
       } catch (error) {
         console.error('Error initializing:', error);
       } finally {
@@ -142,7 +139,26 @@ const UserInfoScreen = ({ navigation, route }) => {
       setLoading(true);
       const contactsResponse = await contactService.getMyContacts();
       if (contactsResponse.success) {
+        console.log('Contacts loaded successfully:', contactsResponse.data.length);
+        
+        // Log all contacts to see who's available
+        contactsResponse.data.forEach((contact, index) => {
+          // Extract the friend data - might be in user or contact field
+          const contactPerson = contact.contact._id === currentUser?._id ? contact.user : contact.contact;
+          console.log(`Contact ${index + 1}:`, 
+            contactPerson.firstName, 
+            contactPerson.lastName, 
+            `(ID: ${contactPerson._id})`
+          );
+        });
+        
+        // Log existing group members
+        console.log('Current group members:', 
+          groupMembers.map(m => `${m.user.firstName} ${m.user.lastName} (${m.user._id})`)
+        );
+        
         setSearchResults(contactsResponse.data);
+        setSelectedMembers([]);
       } else {
         Alert.alert("Error", "Failed to fetch contacts");
       }
@@ -157,18 +173,39 @@ const UserInfoScreen = ({ navigation, route }) => {
 
   const handleAddMembers = async () => {
     try {
+      if (selectedMembers.length === 0) {
+        Alert.alert("Info", "Please select members to add");
+        return;
+      }
+      
       setLoading(true);
-      const memberIds = selectedMembers.map(member => member._id);
+      
+      // Use the raw IDs without any processing - maintain the exact ObjectId format
+      const memberIds = selectedMembers.map(member => {
+        console.log(`Processing member: ${member.firstName} ${member.lastName} with ID: ${member._id}`);
+        return member._id;
+      });
+      
+      console.log("Adding members with IDs:", memberIds);
+      
+      // Log the structure we're sending to the API with the field name newMemberIds
+      console.log("Request payload:", { newMemberIds: memberIds });
+      
       const response = await chatService.addMembersToGroup(conversation._id, memberIds);
+      console.log("Add members response:", response);
+      
       if (response.success) {
         await refreshGroupMembers();
         setShowAddMemberModal(false);
         setSelectedMembers([]);
         setSearchQuery('');
+        Alert.alert("Success", "Members added successfully");
       } else {
+        console.error("Server error:", response.error);
         Alert.alert("Error", response.error || "Failed to add members");
       }
     } catch (error) {
+      console.error("Error adding members:", error);
       Alert.alert("Error", error.message || "Failed to add members");
     } finally {
       setLoading(false);
@@ -626,6 +663,7 @@ const UserInfoScreen = ({ navigation, route }) => {
 
           {selectedMembers.length > 0 && (
             <View style={styles.selectedMembers}>
+              <Text style={styles.sectionTitle}>Selected Members</Text>
               <FlatList
                 horizontal
                 data={selectedMembers}
@@ -644,35 +682,64 @@ const UserInfoScreen = ({ navigation, route }) => {
                   </View>
                 )}
                 keyExtractor={item => item._id}
+                showsHorizontalScrollIndicator={false}
               />
             </View>
           )}
 
           <FlatList
             data={searchResults}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={styles.searchResultItem}
-                onPress={() => {
-                  if (!selectedMembers.find(member => member._id === item._id)) {
-                    setSelectedMembers(prev => [...prev, item]);
-                  }
-                }}
-              >
-                <Image 
-                  source={
-                    item.avatar 
-                      ? { uri: item.avatar.startsWith('http') ? item.avatar : `${API_URL}/uploads/${item.avatar}` }
-                      : require("../../../../assets/chat/avatar.png")
-                  }
-                  style={styles.searchResultAvatar}
-                />
-                <Text style={styles.searchResultName}>
-                  {item.firstName} {item.lastName}
-                </Text>
-              </TouchableOpacity>
-            )}
-            keyExtractor={item => item._id}
+            renderItem={({ item }) => {
+              // Extract the contact details - this could be in user or contact field
+              // If the user._id is our ID, then the contact field contains the friend
+              // If the contact._id is our ID, then the user field contains the friend
+              const contactPerson = item.contact._id === currentUser?._id ? item.user : item.contact;
+              
+              console.log(`Processing potential member: ${contactPerson.firstName} ${contactPerson.lastName} (${contactPerson._id})`);
+              
+              // Skip if this is the current user
+              if (contactPerson._id === currentUser?._id) {
+                console.log(`Skipping self: ${contactPerson._id}`);
+                return null;
+              }
+              
+              // Check if already in group
+              const isMember = groupMembers.some(member => member.user._id === contactPerson._id);
+              console.log(`Contact ${contactPerson.firstName} is member: ${isMember}`);
+              
+              return (
+                <TouchableOpacity 
+                  style={styles.searchResultItem}
+                  onPress={() => {
+                    if (!isMember && !selectedMembers.some(member => member._id === contactPerson._id)) {
+                      setSelectedMembers(prev => [...prev, contactPerson]);
+                    }
+                  }}
+                  disabled={isMember}
+                >
+                  <Image 
+                    source={
+                      contactPerson.avatar 
+                        ? { uri: contactPerson.avatar.startsWith('http') ? contactPerson.avatar : `${API_URL}/uploads/${contactPerson.avatar}` }
+                        : require("../../../../assets/chat/avatar.png")
+                    }
+                    style={styles.searchResultAvatar}
+                  />
+                  <Text style={styles.searchResultName}>
+                    {contactPerson.firstName} {contactPerson.lastName}
+                  </Text>
+                  {isMember && <Text style={styles.memberStatus}>Already a member</Text>}
+                  {selectedMembers.some(member => member._id === contactPerson._id) && 
+                    <Text style={[styles.memberStatus, {color: '#135CAF'}]}>Selected</Text>}
+                </TouchableOpacity>
+              );
+            }}
+            keyExtractor={(item) => item._id}
+            ListEmptyComponent={
+              <Text style={{textAlign: 'center', padding: 20, color: '#666'}}>
+                No contacts available to add
+              </Text>
+            }
           />
 
           {selectedMembers.length > 0 && (
@@ -1057,6 +1124,11 @@ const styles = {
   },
   dissolveButton: {
     backgroundColor: '#e53935',
+  },
+  memberStatus: {
+    fontSize: 12,
+    color: '#999',
+    marginLeft: 8,
   },
 };
 
