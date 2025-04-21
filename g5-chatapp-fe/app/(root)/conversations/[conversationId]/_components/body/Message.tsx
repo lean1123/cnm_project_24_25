@@ -515,8 +515,8 @@ const Message = ({
             className={cn(
               "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
               {
-                "right-auto left-2": fromCurrentUser,
-                "right-2": !fromCurrentUser,
+                "right-auto left-2": !fromCurrentUser,
+                "right-2": fromCurrentUser,
               }
             )}
           >
@@ -535,7 +535,7 @@ const Message = ({
         {isHovered && (
           <div
             className={cn(
-              "absolute -right-[110px] bottom-0 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+              "absolute -right-[110px] bottom-6 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
               {
                 "right-auto -left-[110px]": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
               }

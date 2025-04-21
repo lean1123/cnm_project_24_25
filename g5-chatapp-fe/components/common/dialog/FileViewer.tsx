@@ -9,6 +9,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useConversationStore } from "@/store/useConversationStore";
+import { useMessageStore } from "@/store/useMessageStore";
 import { Eye } from "lucide-react";
 import mammoth from "mammoth";
 import { useEffect, useState } from "react";
