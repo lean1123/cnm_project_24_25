@@ -4,18 +4,20 @@ import { OngoingCall } from "@/types";
 
 interface CallStoreState {
   isCall: boolean;
-  conversationId: string | null;
+  callConversationId: string | null;
   ongoingCall: OngoingCall | null;
   isCallActive: boolean;
+  isCallWaiting: boolean;
   isCallAccepted: boolean;
+  isCallGroup: boolean;
   callType: string;
   callStatus: string;
   callDuration: number;
-  handleCall: (conversationId: string) => void;
-  handleAcceptCall: (conversationId: string) => void;
-  handleRejectCall: (conversationId: string) => void;
-  handleEndCall: (conversationId: string) => void;
-  handleCancelCall: (conversationId: string) => void;
+  handleCall: (conversationId: string, isGroup: boolean) => void;
+  handleAcceptCall: (callConversationId: string, isGroup: boolean) => void;
+  handleRejectCall: (conversationId: string, isGroup: boolean) => void;
+  handleEndCall: (conversationId: string, isGroup: boolean) => void;
+  handleCancelCall: (conversationId: string, isGroup: boolean) => void;
   subscribeCall: () => void;
   unsubscribeCall: () => void;
   subscribeAcceptCall: () => void;
@@ -32,60 +34,88 @@ interface CallStoreState {
 
 export const useCallStore = create<CallStoreState>((set, get) => ({
   call: null,
-  conversationId: null,
+  callConversationId: null,
   isCallActive: false,
+  isCallWaiting: false,
   isCallAccepted: false,
+  isCallGroup: false,
   callType: "",
   callStatus: "",
   callDuration: 0,
   ongoingCall: null,
   isCall: false,
-  handleCall: (conversationId: string) => {
+  handleCall: (conversationId: string, isGroup: boolean) => {
     set({ isCallActive: true });
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.emit("call", {
         conversationId,
         sender: useAuthStore.getState().user,
+        type: "video",
+        isGroup: isGroup,
       });
       set({
         isCallActive: true,
-        isCallAccepted: true,
-        conversationId,
-      });
-      socket.emit("joinCall", {
-        conversationId,
-        userId: useAuthStore.getState().user?._id,
+        isCallWaiting: true,
+        isCallAccepted: false,
+        isCallGroup: isGroup,
+        callType: "video",
+        callConversationId: conversationId,
       });
     }
   },
-  handleAcceptCall: (conversationId: string) => {
+  handleAcceptCall: (conversationId: string, isGroup: boolean) => {
     const socket = useAuthStore.getState().socket;
     if (socket) {
-      socket.emit("joinCall", {
+      socket.emit("acceptCall", {
         conversationId,
         userId: useAuthStore.getState().user?._id,
-      });
-      socket.emit("acceptCall", {
-        conversationId: "67fc19e48255723cbd575594",
-        sender: useAuthStore.getState().user?._id,
+        isGroup: isGroup,
       });
       set({
         isCallAccepted: true,
         isCallActive: true,
         ongoingCall: null,
-        conversationId,
+        isCallWaiting: false,
+        isCallGroup: isGroup,
+        callConversationId: conversationId,
       });
     }
   },
-  handleRejectCall: (conversationId: string) => {
-    set({  isCallAccepted: false, isCallActive: false });
+  handleRejectCall: (conversationId: string, isGroup: boolean) => {
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      socket.emit("rejectCall", {
+        conversationId: conversationId,
+        userId: useAuthStore.getState().user?._id,
+        isGroup: isGroup,
+      });
+    }
+    set({
+      callConversationId: conversationId,
+      isCallAccepted: false,
+      isCallActive: false,
+      ongoingCall: null,
+    });
   },
-  handleEndCall: (conversationId: string) => {
-    set({  isCallActive: false, isCallAccepted: false });
+  handleEndCall: (conversationId: string, isGroup: boolean) => {
+    set({ isCallActive: false, isCallAccepted: false });
   },
-  handleCancelCall: (conversationId: string) => {
-    set({  isCallActive: false });
+  handleCancelCall: (conversationId: string, isGroup: boolean) => {
+    set({
+      isCallActive: false,
+      isCallAccepted: false,
+      isCallWaiting: false,
+      callConversationId: null,
+    });
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      socket.emit("cancelCall", {
+        conversationId: conversationId,
+        userId: useAuthStore.getState().user?._id,
+        isGroup: isGroup,
+      });
+    }
   },
   subscribeCall: () => {
     const socket = useAuthStore.getState().socket;
@@ -96,9 +126,14 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
             ongoingCall: {
               sender: data.sender,
               isRinging: true,
+              type: data.type,
             },
           });
         }
+        set({
+          callConversationId: data.conversationId,
+          isCallGroup: data.isGroup,
+        });
       });
     }
   },
@@ -112,7 +147,13 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.on("acceptCall", (data) => {
-        set({  isCallAccepted: true });
+        if (get().isCallWaiting) {
+          set({
+            isCallAccepted: true,
+            isCallActive: true,
+            isCallWaiting: false,
+          });
+        }
       });
     }
   },
@@ -126,7 +167,14 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.on("rejectCall", (data) => {
-        set({  isCallAccepted: false });
+        if (!get().isCallWaiting || !get().isCallGroup) {
+          // set({
+          //   isCallActive: false,
+          //   isCallWaiting: true,
+          //   ongoingCall: null,
+          // });
+          set({ isCallAccepted: false, isCallWaiting: false });
+        }
       });
     }
   },
@@ -140,7 +188,7 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.on("endCall", (data) => {
-        set({  isCallActive: false });
+        set({ isCallActive: false });
       });
     }
   },
@@ -154,7 +202,7 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.on("cancelCall", (data) => {
-        set({  isCallActive: false });
+        set({ isCallActive: false, ongoingCall: null });
       });
     }
   },

@@ -11,20 +11,18 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { ContactResponseDto } from 'src/contact/dto/contactResponse.dto';
-import { ConversationService } from 'src/conversation/conversation.service';
-import { MessageRequest } from 'src/message/dtos/requests/message.request';
-import { MessageService } from 'src/message/message.service';
-import { Message } from '../schema/messege.chema';
-import { TypinationRequest } from '../dtos/requests/typination.request';
-import { UserService } from 'src/user/user.service';
-import { ContactService } from '../../contact/contact.service';
-import { User } from 'src/user/schema/user.schema';
 import { Convensation } from 'src/conversation/schema/convensation.schema';
-import { HandleConversation } from './handleConvsersation';
-import { HandleConnection } from './handleConnection';
-import { HandleMessage } from './handleMessage';
-import { HandleContact } from './handleContact';
+import { MessageRequest } from 'src/message/dtos/requests/message.request';
+import { User } from 'src/user/schema/user.schema';
+import { ContactService } from '../../contact/contact.service';
+import { TypinationRequest } from '../dtos/requests/typination.request';
+import { Message } from '../schema/messege.chema';
 import { HandleCall } from './handleCall';
+import { HandleConnection } from './handleConnection';
+import { HandleContact } from './handleContact';
+import { HandleConversation } from './handleConvsersation';
+import { HandleMessage } from './handleMessage';
+import { Contact } from 'src/contact/schema/contact.schema';
 
 @WebSocketGateway({
   cors: {
@@ -46,12 +44,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private logger: Logger = new Logger(ChatGateway.name);
 
   constructor(
-    private readonly chatService: MessageService,
-    private readonly conversationService: ConversationService,
-    private readonly userService: UserService,
-    @Inject(forwardRef(() => ContactService))
-    private readonly contactService: ContactService,
-    private conversationHandler: HandleConversation,
+    private readonly conversationHandler: HandleConversation,
     private handleConnectionService: HandleConnection,
     private handleMessageService: HandleMessage,
     private handleContact: HandleContact,
@@ -245,22 +238,55 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
   }
 
+  handleAcceptRequestContact(
+    @MessageBody()
+    contact: Contact,
+    conversation: string,
+  ) {
+    this.handleContact.handleAcceptRequestContact(
+      contact,
+      this.server,
+      conversation,
+    );
+  }
+
   // call
   @SubscribeMessage('call')
   handleCall(
     @MessageBody()
-    { sender, conversationId }: { sender: User; conversationId: string },
+    {
+      sender,
+      conversationId,
+      type,
+      isGroup,
+    }: {
+      sender: User;
+      conversationId: string;
+      type: string;
+      isGroup: boolean;
+    },
   ) {
-    this.handleCallService.handleCall({ sender, conversationId }, this.server);
+    this.handleCallService.handleCall(
+      { sender, conversationId, type, isGroup },
+      this.server,
+    );
   }
 
   @SubscribeMessage('joinCall')
   handleJoinCall(
     @MessageBody()
-    { userId, conversationId }: { userId: string; conversationId: string },
+    {
+      userId,
+      conversationId,
+      isGroup,
+    }: {
+      userId: string;
+      conversationId: string;
+      isGroup: boolean;
+    },
   ) {
     this.handleCallService.handleJoinCall(
-      { userId, conversationId },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }
@@ -268,10 +294,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('acceptCall')
   handleAcceptCall(
     @MessageBody()
-    { userId, conversationId }: { userId: string; conversationId: string },
+    {
+      userId,
+      conversationId,
+      isGroup,
+    }: {
+      userId: string;
+      conversationId: string;
+      isGroup: boolean;
+    },
   ) {
     this.handleCallService.handleAcceptCall(
-      { userId, conversationId },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }
@@ -281,33 +315,25 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     {
       userId,
       conversationId,
-      callData,
+      isGroup,
     }: {
       userId: string;
       conversationId: string;
-      callData: any;
+      isGroup: boolean;
     },
   ) {
     this.handleCallService.handleRejectCall(
-      { userId, conversationId, callData },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }
   @SubscribeMessage('endCall')
   handleEndCall(
     @MessageBody()
-    {
-      userId,
-      conversationId,
-      callData,
-    }: {
-      userId: string;
-      conversationId: string;
-      callData: any;
-    },
+    { userId, conversationId }: { userId: string; conversationId: string },
   ) {
     this.handleCallService.handleEndCall(
-      { userId, conversationId, callData },
+      { userId, conversationId },
       this.server,
     );
   }
@@ -317,15 +343,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     {
       userId,
       conversationId,
-      callData,
+      isGroup,
     }: {
       userId: string;
       conversationId: string;
-      callData: any;
+      isGroup: boolean;
     },
   ) {
     this.handleCallService.handleCancelCall(
-      { userId, conversationId, callData },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }
@@ -376,9 +402,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleUnReactToMessage(@MessageBody() message: Message) {
     this.handleMessageService.handleUnReactToMessage(message, this.server);
   }
-
+  @SubscribeMessage('createGroupConversation')
   handleCreateConversationForGroup(@MessageBody() conversation: Convensation) {
-    this.conversationHandler.handleCreateConversationForGroup(
+    this.conversationHandler.handleCreateConversationForGroupEvent(
       conversation,
       this.server,
     );

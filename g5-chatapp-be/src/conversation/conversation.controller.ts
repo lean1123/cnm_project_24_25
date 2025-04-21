@@ -2,9 +2,11 @@ import {
   Body,
   Controller,
   Delete,
+  forwardRef,
   Get,
   HttpException,
   HttpStatus,
+  Inject,
   Param,
   Post,
   Put,
@@ -26,6 +28,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 export class ConvensationController {
   constructor(
     private convensationService: ConversationService,
+    @Inject(forwardRef(() => ChatGateway))
     private readonly chatGateWay: ChatGateway,
   ) {}
 
@@ -85,6 +88,23 @@ export class ConvensationController {
         userPayload,
         conversationId,
         memberRemove.memberId,
+      );
+
+    this.chatGateWay.handleUpdateConversation(updatedConversation);
+
+    return updatedConversation;
+  }
+
+  @Post('leave/:conversationId')
+  @UseGuards(AuthGuard('jwt'))
+  async leaveGroupConversation(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('conversationId') conversationId: string,
+  ) {
+    const updatedConversation =
+      await this.convensationService.leaveFromConversation(
+        userPayload,
+        conversationId,
       );
 
     this.chatGateWay.handleUpdateConversation(updatedConversation);

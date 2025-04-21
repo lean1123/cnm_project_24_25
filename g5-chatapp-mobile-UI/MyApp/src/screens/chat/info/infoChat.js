@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome5";
 import MaterialIcon from "react-native-vector-icons/MaterialCommunityIcons";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { chatService } from "../../../services/chat.service";
 import { API_URL } from "../../../config/constants";
 import { contactService } from "../../../services/contact.service";
@@ -27,14 +27,21 @@ const UserInfoScreen = ({ navigation, route }) => {
   const [mediaMessages, setMediaMessages] = useState({
     images: [],
     videos: [],
-    files: []
+    files: [],
   });
   const [groupMembers, setGroupMembers] = useState([]);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [showMemberActions, setShowMemberActions] = useState(null);
+  
+  // Add new state variables for modals
+  const [showLeaveGroupModal, setShowLeaveGroupModal] = useState(false);
+  const [showAssignOwnerModal, setShowAssignOwnerModal] = useState(false);
+  const [showDissolveGroupModal, setShowDissolveGroupModal] = useState(false);
+  const [showOwnerSelectionModal, setShowOwnerSelectionModal] = useState(false);
+  const [potentialOwners, setPotentialOwners] = useState([]);
   
   const conversation = route.params?.conversation;
   const isGroup = conversation?.isGroup || false;
@@ -43,16 +50,16 @@ const UserInfoScreen = ({ navigation, route }) => {
   // Check if current user is admin
   const checkIsAdmin = () => {
     if (!currentUser || !groupMembers) return false;
-    const currentMember = groupMembers.find(member => 
-      member.user._id === currentUser._id
+    const currentMember = groupMembers.find(
+      (member) => member.user._id === currentUser._id
     );
-    return currentMember?.role === 'ADMIN';
+    return currentMember?.role === "ADMIN";
   };
 
   useEffect(() => {
     const initialize = async () => {
       try {
-        const userData = await AsyncStorage.getItem('userData');
+        const userData = await AsyncStorage.getItem("userData");
         if (userData) {
           setCurrentUser(JSON.parse(userData));
         }
@@ -64,20 +71,29 @@ const UserInfoScreen = ({ navigation, route }) => {
         if (conversation?._id) {
           const response = await chatService.getMessages(conversation._id);
           if (response?.data) {
-            const messages = Array.isArray(response.data) ? response.data : response.data.data;
-            
+            const messages = Array.isArray(response.data)
+              ? response.data
+              : response.data.data;
+
             const images = [];
             const videos = [];
             const files = [];
 
-            messages.forEach(message => {
+            messages.forEach((message) => {
               if (message.files && message.files.length > 0) {
-                message.files.forEach(file => {
-                  const fileType = file.type || file.fileName?.split('.').pop()?.toLowerCase();
-                  
-                  if (message.type === 'IMAGE' || /\.(jpg|jpeg|png|gif)$/i.test(file.fileName)) {
+                message.files.forEach((file) => {
+                  const fileType =
+                    file.type || file.fileName?.split(".").pop()?.toLowerCase();
+
+                  if (
+                    message.type === "IMAGE" ||
+                    /\.(jpg|jpeg|png|gif)$/i.test(file.fileName)
+                  ) {
                     images.push(file);
-                  } else if (message.type === 'VIDEO' || /\.(mp4|mov|avi)$/i.test(file.fileName)) {
+                  } else if (
+                    message.type === "VIDEO" ||
+                    /\.(mp4|mov|avi)$/i.test(file.fileName)
+                  ) {
                     videos.push(file);
                   } else {
                     files.push(file);
@@ -93,7 +109,7 @@ const UserInfoScreen = ({ navigation, route }) => {
         // We'll let handleShowAddMemberModal fetch the contacts when needed
         // instead of loading them here
       } catch (error) {
-        console.error('Error initializing:', error);
+        console.error("Error initializing:", error);
       } finally {
         setLoading(false);
       }
@@ -107,7 +123,7 @@ const UserInfoScreen = ({ navigation, route }) => {
       const conversationDetails = await chatService.getMyConversations();
       if (conversationDetails?.success && conversationDetails?.data) {
         const currentConv = conversationDetails.data.find(
-          conv => conv._id === conversation._id
+          (conv) => conv._id === conversation._id
         );
         if (currentConv && currentConv.members) {
           setGroupMembers(currentConv.members || []);
@@ -123,9 +139,9 @@ const UserInfoScreen = ({ navigation, route }) => {
       const response = await chatService.searchUsers(query);
       if (response?.success) {
         // Filter out existing members
-        const existingMemberIds = groupMembers.map(member => member.user._id);
+        const existingMemberIds = groupMembers.map((member) => member.user._id);
         const filteredResults = response.data.filter(
-          user => !existingMemberIds.includes(user._id)
+          (user) => !existingMemberIds.includes(user._id)
         );
         setSearchResults(filteredResults);
       }
@@ -139,24 +155,34 @@ const UserInfoScreen = ({ navigation, route }) => {
       setLoading(true);
       const contactsResponse = await contactService.getMyContacts();
       if (contactsResponse.success) {
-        console.log('Contacts loaded successfully:', contactsResponse.data.length);
-        
+        console.log(
+          "Contacts loaded successfully:",
+          contactsResponse.data.length
+        );
+
         // Log all contacts to see who's available
         contactsResponse.data.forEach((contact, index) => {
           // Extract the friend data - might be in user or contact field
-          const contactPerson = contact.contact._id === currentUser?._id ? contact.user : contact.contact;
-          console.log(`Contact ${index + 1}:`, 
-            contactPerson.firstName, 
-            contactPerson.lastName, 
+          const contactPerson =
+            contact.contact._id === currentUser?._id
+              ? contact.user
+              : contact.contact;
+          console.log(
+            `Contact ${index + 1}:`,
+            contactPerson.firstName,
+            contactPerson.lastName,
             `(ID: ${contactPerson._id})`
           );
         });
-        
+
         // Log existing group members
-        console.log('Current group members:', 
-          groupMembers.map(m => `${m.user.firstName} ${m.user.lastName} (${m.user._id})`)
+        console.log(
+          "Current group members:",
+          groupMembers.map(
+            (m) => `${m.user.firstName} ${m.user.lastName} (${m.user._id})`
+          )
         );
-        
+
         setSearchResults(contactsResponse.data);
         setSelectedMembers([]);
       } else {
@@ -177,28 +203,33 @@ const UserInfoScreen = ({ navigation, route }) => {
         Alert.alert("Info", "Please select members to add");
         return;
       }
-      
+
       setLoading(true);
-      
+
       // Use the raw IDs without any processing - maintain the exact ObjectId format
-      const memberIds = selectedMembers.map(member => {
-        console.log(`Processing member: ${member.firstName} ${member.lastName} with ID: ${member._id}`);
+      const memberIds = selectedMembers.map((member) => {
+        console.log(
+          `Processing member: ${member.firstName} ${member.lastName} with ID: ${member._id}`
+        );
         return member._id;
       });
-      
+
       console.log("Adding members with IDs:", memberIds);
-      
+
       // Log the structure we're sending to the API with the field name newMemberIds
       console.log("Request payload:", { newMemberIds: memberIds });
-      
-      const response = await chatService.addMembersToGroup(conversation._id, memberIds);
+
+      const response = await chatService.addMembersToGroup(
+        conversation._id,
+        memberIds
+      );
       console.log("Add members response:", response);
-      
+
       if (response.success) {
         await refreshGroupMembers();
         setShowAddMemberModal(false);
         setSelectedMembers([]);
-        setSearchQuery('');
+        setSearchQuery("");
         Alert.alert("Success", "Members added successfully");
       } else {
         console.error("Server error:", response.error);
@@ -228,7 +259,10 @@ const UserInfoScreen = ({ navigation, route }) => {
   const handleChangeRole = async (memberId) => {
     try {
       setLoading(true);
-      const response = await chatService.changeRoleMember(conversation._id, memberId);
+      const response = await chatService.changeRoleMember(
+        conversation._id,
+        memberId
+      );
       if (response.success) {
         await refreshGroupMembers();
       } else {
@@ -255,7 +289,7 @@ const UserInfoScreen = ({ navigation, route }) => {
             try {
               setLoading(true);
               await chatService.removeMemberFromGroup(conversation._id, currentUser._id);
-              navigation.navigate("Home_Chat");
+              navigation.goBack();
             } catch (error) {
               Alert.alert("Error", error.message || "Failed to leave group");
               setLoading(false);
@@ -266,36 +300,56 @@ const UserInfoScreen = ({ navigation, route }) => {
     );
   };
 
-  const handleDissolveGroup = async () => {
-    Alert.alert(
-      "Dissolve Group",
-      "Are you sure you want to dissolve this group? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Dissolve",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await chatService.dissolveGroup(conversation._id);
-              navigation.navigate("Home_Chat");
-            } catch (error) {
-              Alert.alert("Error", error.message || "Failed to dissolve group");
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+  const assignNewOwnerAndLeave = async (memberId) => {
+    try {
+      setLoading(true);
+      console.log("Assigning new owner:", memberId);
+      
+      // Change the selected member's role to OWNER
+      const roleChangeResult = await chatService.changeRoleMember(
+        conversation._id,
+        memberId,
+        "OWNER" // Pass the new role explicitly
+      );
+
+      console.log("Role change result:", roleChangeResult);
+
+      if (roleChangeResult.success) {
+        // Leave the group after assigning new owner
+        await chatService.leaveGroup(conversation._id);
+        setShowOwnerSelectionModal(false);
+        navigation.navigate("Home_Chat");
+      } else {
+        throw new Error("Failed to assign new owner");
+      }
+    } catch (error) {
+      console.error("Error assigning new owner:", error);
+      Alert.alert("Error", error.message || "Failed to assign new owner and leave group");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const dissolveGroup = async () => {
+    try {
+      setLoading(true);
+      await chatService.dissolveGroup(conversation._id);
+      setShowDissolveGroupModal(false);
+      navigation.navigate("Home_Chat");
+    } catch (error) {
+      console.error("Error dissolving group:", error);
+      Alert.alert("Error", error.message || "Failed to dissolve group");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderMediaGrid = ({ item }) => {
-    const isVideo = item.type === 'video' || /\.(mp4|mov|avi)$/i.test(item.fileName);
-    
+    const isVideo =
+      item.type === "video" || /\.(mp4|mov|avi)$/i.test(item.fileName);
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.mediaItem}
         onPress={() => {
           if (isVideo) {
@@ -305,10 +359,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           }
         }}
       >
-        <Image 
-          source={{ uri: item.url }} 
-          style={styles.mediaThumbnail}
-        />
+        <Image source={{ uri: item.url }} style={styles.mediaThumbnail} />
         {isVideo && (
           <View style={styles.videoOverlay}>
             <Icon name="play" size={18} color="#fff" />
@@ -319,7 +370,7 @@ const UserInfoScreen = ({ navigation, route }) => {
   };
 
   const renderFileItem = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.fileItem}
       onPress={() => {
         // Handle file opening
@@ -327,40 +378,42 @@ const UserInfoScreen = ({ navigation, route }) => {
     >
       <Icon name="file" size={22} color="#0099ff" />
       <Text style={styles.fileName} numberOfLines={2}>
-        {item.fileName || 'Unnamed file'}
+        {item.fileName || "Unnamed file"}
       </Text>
     </TouchableOpacity>
   );
 
   const renderMemberItem = ({ item }) => {
     const user = item.user || {};
-    const isAdmin = item.role === 'ADMIN';
+    const isAdmin = item.role === "ADMIN";
     const isSelf = user._id === currentUser?._id;
-    
+
     return (
       <View style={styles.memberItem}>
         <View style={styles.memberInfo}>
-          <Image 
+          <Image
             source={
-              user.avatar 
-                ? { uri: user.avatar.startsWith('http') ? user.avatar : `${API_URL}/uploads/${user.avatar}` }
+              user.avatar
+                ? {
+                    uri: user.avatar.startsWith("http")
+                      ? user.avatar
+                      : `${API_URL}/uploads/${user.avatar}`,
+                  }
                 : require("../../../../assets/chat/avatar.png")
-            } 
-            style={styles.memberAvatar} 
+            }
+            style={styles.memberAvatar}
           />
           <View>
             <Text style={styles.memberName}>
               {user.firstName} {user.lastName}
-              {isSelf ? ' (You)' : ''}
+              {isSelf ? " (You)" : ""}
             </Text>
-            {isAdmin && (
-              <Text style={styles.adminBadge}>Admin</Text>
-            )}
+            {isAdmin && <Text style={styles.adminBadge}>Admin</Text>}
           </View>
         </View>
-        
+
         {!isSelf && checkIsAdmin() && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.memberAction}
             onPress={() => setShowMemberActions(user._id)}
           >
@@ -371,7 +424,7 @@ const UserInfoScreen = ({ navigation, route }) => {
         {showMemberActions === user._id && (
           <View style={styles.memberActionsMenu}>
             {!isAdmin && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.memberActionItem}
                 onPress={() => handleChangeRole(user._id)}
               >
@@ -379,12 +432,14 @@ const UserInfoScreen = ({ navigation, route }) => {
                 <Text style={styles.memberActionText}>Make Owner</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.memberActionItem, styles.removeAction]}
               onPress={() => handleRemoveMember(user._id)}
             >
               <MaterialIcon name="account-remove" size={20} color="#e53935" />
-              <Text style={[styles.memberActionText, styles.removeText]}>Remove</Text>
+              <Text style={[styles.memberActionText, styles.removeText]}>
+                Remove
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -395,26 +450,31 @@ const UserInfoScreen = ({ navigation, route }) => {
   const renderGroupHeader = () => (
     <>
       <View style={styles.avatarSection}>
-        <Image 
+        <Image
           source={
-            conversation.avatar 
-              ? { uri: conversation.avatar.startsWith('http') ? conversation.avatar : `${API_URL}/uploads/${conversation.avatar}` }
+            conversation.avatar
+              ? {
+                  uri: conversation.avatar.startsWith("http")
+                    ? conversation.avatar
+                    : `${API_URL}/uploads/${conversation.avatar}`,
+                }
               : require("../../../../assets/chat/avatar.png")
-          } 
-          style={styles.avatarLarge} 
+          }
+          style={styles.avatarLarge}
         />
         <Text style={styles.name}>{conversation.name || "Group Chat"}</Text>
-        <Text style={styles.memberCount}>
-          {groupMembers.length} members
-        </Text>
+        <Text style={styles.memberCount}>{groupMembers.length} members</Text>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleShowAddMemberModal}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleShowAddMemberModal}
+          >
             <MaterialIcon name="account-plus" size={22} color="#fff" />
             <Text style={styles.actionText}>Add</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.actionButton, styles.leaveButton]}
             onPress={handleLeaveGroup}
           >
@@ -425,7 +485,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           {checkIsAdmin() && (
             <TouchableOpacity 
               style={[styles.actionButton, styles.dissolveButton]}
-              onPress={handleDissolveGroup}
+              onPress={() => setShowDissolveGroupModal(true)}
             >
               <MaterialIcon name="delete" size={22} color="#fff" />
               <Text style={styles.actionText}>Dissolve</Text>
@@ -443,7 +503,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           scrollEnabled={false}
         />
       </View>
-      
+
       {mediaMessages.images.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shared Photos</Text>
@@ -461,7 +521,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           )}
         </View>
       )}
-      
+
       {mediaMessages.videos.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shared Videos</Text>
@@ -479,7 +539,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           )}
         </View>
       )}
-      
+
       {mediaMessages.files.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shared Files</Text>
@@ -502,13 +562,17 @@ const UserInfoScreen = ({ navigation, route }) => {
   const renderIndividualHeader = () => (
     <>
       <View style={styles.avatarSection}>
-        <Image 
+        <Image
           source={
-            otherUser?.avatar 
-              ? { uri: otherUser.avatar.startsWith('http') ? otherUser.avatar : `${API_URL}/uploads/${otherUser.avatar}` }
+            otherUser?.avatar
+              ? {
+                  uri: otherUser.avatar.startsWith("http")
+                    ? otherUser.avatar
+                    : `${API_URL}/uploads/${otherUser.avatar}`,
+                }
               : require("../../../../assets/chat/avatar.png")
-          } 
-          style={styles.avatarLarge} 
+          }
+          style={styles.avatarLarge}
         />
         <Text style={styles.name}>
           {otherUser?.firstName} {otherUser?.lastName}
@@ -518,13 +582,15 @@ const UserInfoScreen = ({ navigation, route }) => {
         ) : (
           <Text style={styles.offlineStatus}>Offline</Text>
         )}
-        
+
         <View style={styles.userInfoSection}>
           <View style={styles.infoRow}>
             <MaterialIcon name="email-outline" size={20} color="#666" />
-            <Text style={styles.infoText}>{otherUser?.email || "No email"}</Text>
+            <Text style={styles.infoText}>
+              {otherUser?.email || "No email"}
+            </Text>
           </View>
-          
+
           {otherUser?.phone && (
             <View style={styles.infoRow}>
               <MaterialIcon name="phone-outline" size={20} color="#666" />
@@ -532,19 +598,19 @@ const UserInfoScreen = ({ navigation, route }) => {
             </View>
           )}
         </View>
-        
+
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.actionButton}>
             <MaterialIcon name="phone" size={22} color="#fff" />
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionButton}>
             <MaterialIcon name="video" size={22} color="#fff" />
             <Text style={styles.actionText}>Video</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.actionButton, styles.blockButton]}
             onPress={() => {
               Alert.alert(
@@ -552,14 +618,14 @@ const UserInfoScreen = ({ navigation, route }) => {
                 "Are you sure you want to block this user?",
                 [
                   { text: "Cancel", style: "cancel" },
-                  { 
-                    text: "Block", 
+                  {
+                    text: "Block",
                     style: "destructive",
                     onPress: () => {
                       // Handle block user logic
                       navigation.goBack();
-                    }
-                  }
+                    },
+                  },
                 ]
               );
             }}
@@ -569,14 +635,14 @@ const UserInfoScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <View style={styles.privacySection}>
         <View style={styles.privacyOption}>
           <View style={styles.privacyOptionInfo}>
             <MaterialIcon name="bell-outline" size={24} color="#333" />
             <Text style={styles.privacyOptionText}>Mute notifications</Text>
           </View>
-          <Switch 
+          <Switch
             value={false}
             onValueChange={() => {}}
             trackColor={{ false: "#d3d3d3", true: "#135CAF" }}
@@ -584,7 +650,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           />
         </View>
       </View>
-      
+
       {mediaMessages.images.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shared Photos</Text>
@@ -602,7 +668,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           )}
         </View>
       )}
-      
+
       {mediaMessages.videos.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shared Videos</Text>
@@ -620,7 +686,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           )}
         </View>
       )}
-      
+
       {mediaMessages.files.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shared Files</Text>
@@ -650,11 +716,11 @@ const UserInfoScreen = ({ navigation, route }) => {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Add Members</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
                 setShowAddMemberModal(false);
                 setSelectedMembers([]);
-                setSearchQuery('');
+                setSearchQuery("");
               }}
             >
               <MaterialIcon name="close" size={24} color="#666" />
@@ -673,15 +739,21 @@ const UserInfoScreen = ({ navigation, route }) => {
                       {item.firstName} {item.lastName}
                     </Text>
                     <TouchableOpacity
-                      onPress={() => setSelectedMembers(prev => 
-                        prev.filter(member => member._id !== item._id)
-                      )}
+                      onPress={() =>
+                        setSelectedMembers((prev) =>
+                          prev.filter((member) => member._id !== item._id)
+                        )
+                      }
                     >
-                      <MaterialIcon name="close-circle" size={18} color="#666" />
+                      <MaterialIcon
+                        name="close-circle"
+                        size={18}
+                        color="#666"
+                      />
                     </TouchableOpacity>
                   </View>
                 )}
-                keyExtractor={item => item._id}
+                keyExtractor={(item) => item._id}
                 showsHorizontalScrollIndicator={false}
               />
             </View>
@@ -693,34 +765,52 @@ const UserInfoScreen = ({ navigation, route }) => {
               // Extract the contact details - this could be in user or contact field
               // If the user._id is our ID, then the contact field contains the friend
               // If the contact._id is our ID, then the user field contains the friend
-              const contactPerson = item.contact._id === currentUser?._id ? item.user : item.contact;
-              
-              console.log(`Processing potential member: ${contactPerson.firstName} ${contactPerson.lastName} (${contactPerson._id})`);
-              
+              const contactPerson =
+                item.contact._id === currentUser?._id
+                  ? item.user
+                  : item.contact;
+
+              console.log(
+                `Processing potential member: ${contactPerson.firstName} ${contactPerson.lastName} (${contactPerson._id})`
+              );
+
               // Skip if this is the current user
               if (contactPerson._id === currentUser?._id) {
                 console.log(`Skipping self: ${contactPerson._id}`);
                 return null;
               }
-              
+
               // Check if already in group
-              const isMember = groupMembers.some(member => member.user._id === contactPerson._id);
-              console.log(`Contact ${contactPerson.firstName} is member: ${isMember}`);
-              
+              const isMember = groupMembers.some(
+                (member) => member.user._id === contactPerson._id
+              );
+              console.log(
+                `Contact ${contactPerson.firstName} is member: ${isMember}`
+              );
+
               return (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.searchResultItem}
                   onPress={() => {
-                    if (!isMember && !selectedMembers.some(member => member._id === contactPerson._id)) {
-                      setSelectedMembers(prev => [...prev, contactPerson]);
+                    if (
+                      !isMember &&
+                      !selectedMembers.some(
+                        (member) => member._id === contactPerson._id
+                      )
+                    ) {
+                      setSelectedMembers((prev) => [...prev, contactPerson]);
                     }
                   }}
                   disabled={isMember}
                 >
-                  <Image 
+                  <Image
                     source={
-                      contactPerson.avatar 
-                        ? { uri: contactPerson.avatar.startsWith('http') ? contactPerson.avatar : `${API_URL}/uploads/${contactPerson.avatar}` }
+                      contactPerson.avatar
+                        ? {
+                            uri: contactPerson.avatar.startsWith("http")
+                              ? contactPerson.avatar
+                              : `${API_URL}/uploads/${contactPerson.avatar}`,
+                          }
                         : require("../../../../assets/chat/avatar.png")
                     }
                     style={styles.searchResultAvatar}
@@ -728,28 +818,212 @@ const UserInfoScreen = ({ navigation, route }) => {
                   <Text style={styles.searchResultName}>
                     {contactPerson.firstName} {contactPerson.lastName}
                   </Text>
-                  {isMember && <Text style={styles.memberStatus}>Already a member</Text>}
-                  {selectedMembers.some(member => member._id === contactPerson._id) && 
-                    <Text style={[styles.memberStatus, {color: '#135CAF'}]}>Selected</Text>}
+                  {isMember && (
+                    <Text style={styles.memberStatus}>Already a member</Text>
+                  )}
+                  {selectedMembers.some(
+                    (member) => member._id === contactPerson._id
+                  ) && (
+                    <Text style={[styles.memberStatus, { color: "#135CAF" }]}>
+                      Selected
+                    </Text>
+                  )}
                 </TouchableOpacity>
               );
             }}
             keyExtractor={(item) => item._id}
             ListEmptyComponent={
-              <Text style={{textAlign: 'center', padding: 20, color: '#666'}}>
+              <Text style={{ textAlign: "center", padding: 20, color: "#666" }}>
                 No contacts available to add
               </Text>
             }
           />
 
           {selectedMembers.length > 0 && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addButton}
               onPress={handleAddMembers}
             >
               <Text style={styles.addButtonText}>Add Selected Members</Text>
             </TouchableOpacity>
           )}
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderLeaveGroupModal = () => (
+    <Modal
+      visible={showLeaveGroupModal}
+      animationType="slide"
+      transparent={true}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Leave Group</Text>
+            <TouchableOpacity onPress={() => setShowLeaveGroupModal(false)}>
+              <MaterialIcon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalMessage}>
+            Are you sure you want to leave this group?
+          </Text>
+          
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={() => setShowLeaveGroupModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.confirmButton]}
+              onPress={confirmLeaveGroup}
+            >
+              <Text style={styles.confirmButtonText}>Leave</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderAssignOwnerModal = () => (
+    <Modal
+      visible={showAssignOwnerModal}
+      animationType="slide"
+      transparent={true}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Assign New Owner</Text>
+            <TouchableOpacity onPress={() => setShowAssignOwnerModal(false)}>
+              <MaterialIcon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalMessage}>
+            Before leaving the group, you must assign another member as owner.
+          </Text>
+          
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={() => setShowAssignOwnerModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.confirmButton]}
+              onPress={showOwnerSelection}
+            >
+              <Text style={styles.confirmButtonText}>Select New Owner</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderOwnerSelectionModal = () => (
+    <Modal
+      visible={showOwnerSelectionModal}
+      animationType="slide"
+      transparent={true}
+    >
+      <View style={styles.modalContainer}>
+        <View style={[styles.modalContent, { maxHeight: "70%" }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select New Owner</Text>
+            <TouchableOpacity onPress={() => setShowOwnerSelectionModal(false)}>
+              <MaterialIcon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalMessage}>
+            Choose a member to be the new owner:
+          </Text>
+          
+          <FlatList
+            data={potentialOwners}
+            keyExtractor={(item) => item.user._id}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.memberSelectionItem}
+                onPress={() => assignNewOwnerAndLeave(item.user._id)}
+              >
+                <Image 
+                  source={
+                    item.user.avatar 
+                      ? { uri: item.user.avatar.startsWith("http") 
+                          ? item.user.avatar 
+                          : `${API_URL}/uploads/${item.user.avatar}` }
+                      : require("../../../../assets/chat/avatar.png")
+                  } 
+                  style={styles.memberSelectionAvatar} 
+                />
+                <Text style={styles.memberSelectionName}>
+                  {item.user.firstName} {item.user.lastName}
+                </Text>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <Text style={{ textAlign: "center", padding: 20, color: "#666" }}>
+                No other members to assign as owner.
+              </Text>
+            }
+          />
+          
+          <TouchableOpacity 
+            style={[styles.modalButton, styles.cancelButton, { marginTop: 10 }]}
+            onPress={() => setShowOwnerSelectionModal(false)}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderDissolveGroupModal = () => (
+    <Modal
+      visible={showDissolveGroupModal}
+      animationType="slide"
+      transparent={true}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Dissolve Group</Text>
+            <TouchableOpacity onPress={() => setShowDissolveGroupModal(false)}>
+              <MaterialIcon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.modalMessage}>
+            You are the only member in this group. Do you want to dissolve it?
+          </Text>
+          
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={() => setShowDissolveGroupModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.dissolveButton]}
+              onPress={dissolveGroup}
+            >
+              <Text style={styles.confirmButtonText}>Dissolve Group</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -774,12 +1048,16 @@ const UserInfoScreen = ({ navigation, route }) => {
         </Text>
         <View style={{ width: 20 }} />
       </View>
-      
+
       <ScrollView contentContainerStyle={styles.contentContainer}>
         {isGroup ? renderGroupHeader() : renderIndividualHeader()}
       </ScrollView>
 
       {renderAddMemberModal()}
+      {renderLeaveGroupModal()}
+      {renderAssignOwnerModal()}
+      {renderOwnerSelectionModal()}
+      {renderDissolveGroupModal()}
     </SafeAreaView>
   );
 };
@@ -787,43 +1065,43 @@ const UserInfoScreen = ({ navigation, route }) => {
 const styles = {
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
   },
   header: {
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
     paddingVertical: 16,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
   contentContainer: {
     flexGrow: 1,
     paddingBottom: 20,
   },
   avatarSection: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e4e4e4',
+    borderBottomColor: "#e4e4e4",
     marginBottom: 8,
   },
   avatarLarge: {
@@ -834,137 +1112,137 @@ const styles = {
   },
   name: {
     fontSize: 22,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
   },
   onlineStatus: {
     fontSize: 14,
-    color: '#4CAF50',
+    color: "#4CAF50",
     marginBottom: 12,
   },
   offlineStatus: {
     fontSize: 14,
-    color: '#999',
+    color: "#999",
     marginBottom: 12,
   },
   memberCount: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 12,
   },
   actionButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 10,
-    width: '100%',
-    justifyContent: 'space-around',
+    width: "100%",
+    justifyContent: "space-around",
   },
   actionButton: {
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     minWidth: 80,
   },
   blockButton: {
-    backgroundColor: '#e53935',
+    backgroundColor: "#e53935",
   },
   leaveButton: {
-    backgroundColor: '#e53935',
+    backgroundColor: "#e53935",
   },
   actionText: {
-    color: '#fff',
+    color: "#fff",
     marginTop: 5,
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   userInfoSection: {
-    width: '100%',
+    width: "100%",
     marginTop: 15,
     marginBottom: 5,
   },
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   infoText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   privacySection: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginBottom: 8,
     padding: 15,
   },
   privacyOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 8,
   },
   privacyOptionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   privacyOptionText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   section: {
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     marginTop: 8,
     borderRadius: 8,
     marginHorizontal: 8,
     elevation: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 12,
   },
   mediaItem: {
-    flex: 1/3,
+    flex: 1 / 3,
     aspectRatio: 1,
     margin: 2,
-    position: 'relative',
+    position: "relative",
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   mediaThumbnail: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 8,
   },
   videoOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     marginVertical: 4,
     elevation: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -972,31 +1250,31 @@ const styles = {
   fileName: {
     marginLeft: 12,
     fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
     flex: 1,
   },
   viewAllButton: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 12,
     padding: 8,
   },
   viewAllText: {
-    color: '#135CAF',
-    fontWeight: '600',
+    color: "#135CAF",
+    fontWeight: "600",
     fontSize: 14,
   },
   memberItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   memberAvatar: {
     width: 40,
@@ -1006,43 +1284,43 @@ const styles = {
   },
   memberName: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
   },
   adminBadge: {
     fontSize: 12,
-    color: '#135CAF',
-    fontWeight: '500',
+    color: "#135CAF",
+    fontWeight: "500",
   },
   memberAction: {
     padding: 6,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 16,
     paddingBottom: 30,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 16,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   searchInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
@@ -1051,9 +1329,9 @@ const styles = {
     marginBottom: 16,
   },
   selectedMemberChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e3f2fd',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e3f2fd",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1061,14 +1339,14 @@ const styles = {
   },
   selectedMemberName: {
     marginRight: 4,
-    color: '#135CAF',
+    color: "#135CAF",
   },
   searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   searchResultAvatar: {
     width: 40,
@@ -1078,57 +1356,107 @@ const styles = {
   },
   searchResultName: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   addButton: {
-    backgroundColor: '#135CAF',
+    backgroundColor: "#135CAF",
     borderRadius: 8,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
   },
   addButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   memberActionsMenu: {
-    position: 'absolute',
+    position: "absolute",
     right: 40,
     top: 0,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 8,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
   memberActionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 8,
     borderRadius: 4,
   },
   memberActionText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   removeAction: {
     marginTop: 4,
   },
   removeText: {
-    color: '#e53935',
+    color: "#e53935",
   },
   dissolveButton: {
-    backgroundColor: '#e53935',
+    backgroundColor: "#e53935",
   },
   memberStatus: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
     marginLeft: 8,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: "#333",
+    marginVertical: 20,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#f0f0f0",
+  },
+  confirmButton: {
+    backgroundColor: "#135CAF",
+  },
+  cancelButtonText: {
+    color: "#333",
+    fontWeight: "500",
+  },
+  confirmButtonText: {
+    color: "#fff",
+    fontWeight: "500",
+  },
+  memberSelectionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  memberSelectionAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  memberSelectionName: {
+    fontSize: 16,
+    color: "#333",
   },
 };
 

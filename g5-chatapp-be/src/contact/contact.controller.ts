@@ -28,7 +28,17 @@ export class ContactController {
     @UserDecorator() userPayload: JwtPayload,
     @Param('contactId') contactId: string,
   ) {
-    return await this.contactService.acceptContact(userPayload, contactId);
+    const acceptedContact = await this.contactService.acceptContact(
+      userPayload,
+      contactId,
+    );
+
+    this.chatGateway.handleAcceptRequestContact(
+      acceptedContact.updatedContact,
+      acceptedContact.newConversationId,
+    );
+
+    return acceptedContact.updatedContact;
   }
 
   @Get('my-contact')

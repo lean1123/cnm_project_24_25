@@ -1,13 +1,19 @@
 import api from "@/api/api";
 import { getSocket } from "@/lib/socket";
-import { Conversation, CreateGroupRequest, Message, MessageRequest, User } from "@/types";
+import {
+  Conversation,
+  CreateGroupRequest,
+  Message,
+  MessageRequest,
+  User,
+} from "@/types";
 import { toast } from "sonner";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 
 interface iConversationStore {
   conversations: Conversation[];
-  updateConversations: (conversations: Conversation []) => void;
+  updateConversations: (conversations: Conversation[]) => void;
   selectedConversation: Conversation | null;
   userSelected: User | null;
   fetchingUser: (userId: string) => Promise<void>;
@@ -20,6 +26,8 @@ interface iConversationStore {
   addMemberCreateGroup: (member: User) => void;
   removeMemberCreateGroup: (member: User) => void;
   createGroup: (group: CreateGroupRequest) => Promise<void>;
+  subscribeNewGroup: () => void;
+  unsubscribeNewGroup: () => void;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -95,10 +103,34 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       toast.success("Group created successfully!");
       set({ membersCreateGroup: [] });
       get().getConversations(useAuthStore.getState().user?._id as string);
+      const socket = getSocket();
+      if (socket) {
+        socket.emit("joinNewConversation", {
+          conversationId: data.data._id,
+          userId: useAuthStore.getState().user?._id,
+        });
+      }
     } catch (error) {
       set({ error: "Failed to create group" });
     } finally {
       set({ isLoading: false });
+    }
+  },
+  subscribeNewGroup: () => {
+    const socket = getSocket();
+    if (socket) {
+      socket.on("createConversationForGroup", (data: Conversation) => {
+        console.log("New group created:", data);
+        set((state) => ({
+          conversations: [...state.conversations, data],
+        }));
+      });
+    }
+  },
+  unsubscribeNewGroup: () => {
+    const socket = getSocket();
+    if (socket) {
+      socket.off("createConversationForGroup");
     }
   },
 }));
