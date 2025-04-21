@@ -38,7 +38,7 @@ const Header = () => {
             <Icon name="magnify" size={20} color="#666" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Tìm kiếm..."
+              placeholder="Search for friends..."
               placeholderTextColor="#666"
               autoFocus
             />
@@ -47,7 +47,7 @@ const Header = () => {
             style={styles.cancelButton} 
             onPress={() => setIsSearching(false)}
           >
-            <Text style={styles.cancelText}>Hủy</Text>
+            <Text style={styles.cancelText}>X</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -183,7 +183,13 @@ const styles = StyleSheet.create({
   cancelText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "bold",
     fontWeight: "500",
+    borderColor: "#fff",
+    borderRadius: 100,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   modalOverlay: {
     flex: 1,

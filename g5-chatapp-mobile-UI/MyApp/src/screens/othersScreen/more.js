@@ -54,6 +54,9 @@ const SettingsScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Settings</Text>
+          <TouchableOpacity style={styles.headerButton}>
+              <Icon name="cog" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.contentContainer}>
@@ -163,14 +166,22 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    backgroundColor: "#135CAF",
-    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#135CAF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#fff",
+  },
+  headerButton: {
+    padding: 8,
   },
   contentContainer: {
     flex: 1,
