@@ -934,7 +934,7 @@ const chatService = {
       );
 
       const response = await axiosInstance.delete(
-        `/conversation/dissolve/${conversationId}`
+        `/conversation/${conversationId}`
       );
 
       console.log("[chatService] Dissolve group response:", response.data);

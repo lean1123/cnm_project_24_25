@@ -342,7 +342,38 @@ export const subscribeToChatEvents = (callbacks) => {
     
     // Conversation events
     if (callbacks.onNewGroupConversation) {
-      socket.on('createConversationForGroup', callbacks.onNewGroupConversation);
+      socket.on('createConversationForGroup', (data) => {
+        // Auto-join conversation để đảm bảo nhận messages
+        if (data && data.conversation && data.conversation._id) {
+          const userData = AsyncStorage.getItem('userData')
+            .then(userData => {
+              if (userData) {
+                const user = JSON.parse(userData);
+                const userId = user._id || user.id;
+                
+                if (userId) {
+                  console.log('[Socket] Auto-joining from global handler:', data.conversation._id);
+                  
+                  // Join vào conversation mới
+                  socket.emit('joinNewConversation', {
+                    conversationId: data.conversation._id,
+                    userId: userId
+                  });
+                  
+                  // Join room thông thường
+                  socket.emit('join', {
+                    conversationId: data.conversation._id,
+                    userId: userId
+                  });
+                }
+              }
+            })
+            .catch(err => console.error('[Socket] Error getting user data for auto-join:', err));
+        }
+        
+        // Gọi callback đã định nghĩa
+        callbacks.onNewGroupConversation(data);
+      });
     }
     if (callbacks.onUpdateConversation) {
       socket.on('updateConversation', callbacks.onUpdateConversation);
@@ -458,5 +489,46 @@ export const unsubscribeFromChatEvents = () => {
     // Typing indicators
     socket.off('typing');
     socket.off('stopTyping');
+  }
+};
+
+// NEW CONVERSATION EVENTS
+export const subscribeToNewConversations = (userId, callback) => {
+  const socket = getSocket();
+  if (socket) {
+    console.log('[Socket] Setting up subscription for new conversations');
+    
+    // Lắng nghe sự kiện khi có group mới được tạo
+    socket.on('createConversationForGroup', (data) => {
+      console.log('[Socket] New group conversation detected:', data.conversation?._id);
+      
+      // Tự động join vào phòng của conversation mới
+      if (data.conversation && data.conversation._id) {
+        // Join conversation để nhận được tin nhắn mới
+        socket.emit('joinNewConversation', {
+          conversationId: data.conversation._id,
+          userId: userId
+        });
+        
+        // Join room thông thường
+        socket.emit('join', {
+          conversationId: data.conversation._id,
+          userId: userId
+        });
+        
+        console.log('[Socket] Auto-joined new conversation:', data.conversation._id);
+      }
+      
+      // Gọi callback nếu được cung cấp
+      if (callback) callback(data);
+    });
+  }
+};
+
+export const unsubscribeFromNewConversations = () => {
+  const socket = getSocket();
+  if (socket) {
+    console.log('[Socket] Unsubscribing from new conversation events');
+    socket.off('createConversationForGroup');
   }
 };

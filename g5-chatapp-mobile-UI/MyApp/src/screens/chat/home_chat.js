@@ -17,7 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from "../../config/axiosInstance";
 import { formatDistanceToNow } from 'date-fns';
-import { getSocket, initSocket, reconnectSocket, subscribeToChatEvents, unsubscribeFromChatEvents } from "../../services/socket";
+import { getSocket, initSocket, reconnectSocket, subscribeToChatEvents, unsubscribeFromChatEvents, subscribeToNewConversations, unsubscribeFromNewConversations } from "../../services/socket";
 import { Ionicons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
@@ -28,6 +28,7 @@ const HomeScreen = () => {
   const [userId, setUserId] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const navigation = useNavigation();
+
 
   const renderLastMessage = (lastMessage) => {
     if (!lastMessage) return "Bắt đầu cuộc trò chuyện!";
@@ -223,6 +224,28 @@ const HomeScreen = () => {
         // Group events
         onNewGroupConversation: (data) => {
           console.log('[HomeChat] New group conversation:', data);
+          
+          // Tự động join vào conversation mới qua socket
+          if (data && data.conversation && data.conversation._id) {
+            const socket = getSocket();
+            if (socket && socket.connected) {
+              console.log('[HomeChat] Auto-joining new conversation:', data.conversation._id);
+              
+              // Join conversation
+              socket.emit('joinNewConversation', {
+                conversationId: data.conversation._id,
+                userId: userId
+              });
+              
+              // Cũng cần join room thông thường để nhận tin nhắn
+              socket.emit('join', {
+                conversationId: data.conversation._id,
+                userId: userId
+              });
+            }
+          }
+          
+          // Vẫn fetch lại để cập nhật UI
           fetchConversations();
         },
         onUpdateConversation: (data) => {
@@ -266,12 +289,20 @@ const HomeScreen = () => {
       // Subscribe to all events
       subscribeToChatEvents(chatCallbacks);
       
+      // Thêm đăng ký riêng cho conversations mới
+      // Sử dụng callback để xử lý UI khi có conversation mới
+      subscribeToNewConversations(userId, (data) => {
+        console.log('[HomeChat] New conversation callback triggered:', data?.conversation?._id);
+        fetchConversations();
+      });
+      
       // Fetch initial data
       fetchConversations();
       
       return () => {
         // Unsubscribe from all events when component unmounts
         unsubscribeFromChatEvents();
+        unsubscribeFromNewConversations();
       };
     }
   }, [userId]);
@@ -288,6 +319,8 @@ const HomeScreen = () => {
       </SafeAreaView>
     );
   }
+
+  
 
   const renderConversation = ({ item }) => (
     <TouchableOpacity
@@ -308,7 +341,7 @@ const HomeScreen = () => {
     >
       <View style={styles.avatarContainer}>
         <Image 
-          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/avatar.png")}
+          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/group.jpg")}
           style={styles.avatar} 
         />
         {item.isOnline && <View style={styles.onlineIndicator} />}
