@@ -248,12 +248,9 @@ const chatService = {
         });
       }
 
-      console.log(
-        "Sending formData:",
-        JSON.stringify(Object.fromEntries(formData._parts))
-      );
-
-      const response = await axiosInstance.post("/conversation", formData, {
+      console.log("Sending formData:", JSON.stringify(Object.fromEntries(formData._parts)));
+      
+      const response = await axiosInstance.post("/conversation/create-group", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -929,14 +926,10 @@ const chatService = {
   // Dissolve group (only for group owner)
   dissolveGroup: async (conversationId) => {
     try {
-      console.log(
-        `[chatService] Dissolving group conversation ${conversationId}`
-      );
-
-      const response = await axiosInstance.delete(
-        `/conversation/dissolve/${conversationId}`
-      );
-
+      console.log(`[chatService] Dissolving group conversation ${conversationId}`);
+      
+      const response = await axiosInstance.delete(`/conversation/dissolve-group/${conversationId}`);
+      
       console.log("[chatService] Dissolve group response:", response.data);
 
       return {
@@ -1009,11 +1002,9 @@ const chatService = {
   leaveGroup: async (conversationId) => {
     try {
       console.log(`[chatService] Leaving group conversation ${conversationId}`);
-
-      const response = await axiosInstance.post(
-        `/conversation/leave/${conversationId}`
-      );
-
+      
+      const response = await axiosInstance.delete(`/conversation/leave-group/${conversationId}`);
+      
       console.log("[chatService] Leave group response:", response.data);
 
       return {
