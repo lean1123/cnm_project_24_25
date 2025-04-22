@@ -3,6 +3,8 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { useAuth } from "../contexts/AuthContext";
 import { ActivityIndicator, View } from "react-native";
 import { createNavigationContainerRef } from '@react-navigation/native';
+import { getSocket, reconnectSocket, initSocket, emitLogin } from "../services/socket";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Export navigation reference and helper functions
 export const navigationRef = createNavigationContainerRef();
@@ -58,7 +60,6 @@ import SignInScreen from "../screens/auth/login";
 import VerifyOTPScreen from "../screens/auth/verifyOTP";
 import ForgotPasswordScreen from "../screens/account/forgotPassword";
 import { useNavigation } from "@react-navigation/native";
-import { getSocket, reconnectSocket } from "../services/socket";
 
 const Stack = createStackNavigator();
 
@@ -67,18 +68,56 @@ const MainNavigator = () => {
 
   const navigation = useNavigation();
 
-useEffect(() => {
-  if (user) {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Home_Chat' }],
-    });
-  }
-}, [user]);
+  useEffect(() => {
+    if (user) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home_Chat' }],
+      });
+    }
+  }, [user]);
 
-useEffect(() => {
-  reconnectSocket()
-}, []);
+  // Initialize socket and maintain connection
+  useEffect(() => {
+    const setupSocket = async () => {
+      try {
+        console.log("[Navigator] Setting up socket connection");
+        
+        // Initialize socket if not already initialized
+        await initSocket();
+        
+        // Get current user data
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user && user._id) {
+            console.log(`[Navigator] Found user ${user._id}, emitting login event`);
+            
+            // Emit login event
+            emitLogin(user._id);
+            
+            // Setup periodic reconnection check
+            const intervalId = setInterval(async () => {
+              const socket = getSocket();
+              if (socket && !socket.connected) {
+                console.log("[Navigator] Socket disconnected, attempting to reconnect");
+                await reconnectSocket();
+                emitLogin(user._id);
+              }
+            }, 10000);
+            
+            return () => {
+              clearInterval(intervalId);
+            };
+          }
+        }
+      } catch (error) {
+        console.error('[Navigator] Error setting up socket:', error);
+      }
+    };
+    
+    setupSocket();
+  }, []);
 
   if (loading) {
     return (

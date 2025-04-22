@@ -16,7 +16,10 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { contactService } from "../../services/contact.service";
 import { chatService } from "../../services/chat.service";
-import { getSocket } from "../../services/socket";
+import { 
+  getSocket, 
+  emitCreateGroupConversation
+} from "../../services/socket";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "../../config/constants";
@@ -242,14 +245,8 @@ const AddGroupScreen = ({ navigation }) => {
       const response = await chatService.createGroup(groupData, groupImage);
       
       if (response.success) {
-        // Emit socket event to notify group members
-        if (socket) {
-          console.log("[Socket] Emitting createGroupConversation event");
-          socket.emit("createGroupConversation", {
-            conversation: response.data,
-            creatorId: currentUser?._id
-          });
-        }
+        // Use the new socket service to emit group creation event
+        emitCreateGroupConversation(response.data);
         
         Alert.alert(
           "Success", 
