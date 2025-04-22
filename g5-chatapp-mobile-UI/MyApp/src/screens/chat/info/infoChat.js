@@ -26,6 +26,7 @@ import {
   emitRemoveMemberFromGroup,
   emitDeleteConversation
 } from "../../../services/socket";
+import useAuthStore from "../../../store/useAuthStore";
 
 const UserInfoScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
@@ -54,6 +55,9 @@ const UserInfoScreen = ({ navigation, route }) => {
   const [showAdminSelectionModal, setShowAdminSelectionModal] = useState(false);
   const [potentialAdmins, setPotentialAdmins] = useState([]);
   
+  // Lấy danh sách người dùng đang hoạt động từ useAuthStore
+  const { activeUsers } = useAuthStore();
+  
   const conversation = route.params?.conversation;
   
   // Validate conversation data at the start
@@ -74,6 +78,12 @@ const UserInfoScreen = ({ navigation, route }) => {
   
   const isGroup = conversation?.isGroup || false;
   const otherUser = isGroup ? null : conversation?.user;
+
+  // Kiểm tra xem người dùng có đang online không
+  const isUserOnline = userId => {
+    if (!userId || !activeUsers || !activeUsers.length) return false;
+    return activeUsers.includes(userId);
+  };
 
   // Check if current user is admin
   const checkIsAdmin = () => {
@@ -462,7 +472,7 @@ const UserInfoScreen = ({ navigation, route }) => {
 
   const handleLeaveGroup = async () => {
     try {
-      // Check if current user is admin
+ 
       const isAdmin = checkIsAdmin();
       console.log("Current user is admin:", isAdmin);
   
@@ -685,7 +695,7 @@ const UserInfoScreen = ({ navigation, route }) => {
               }
               style={styles.memberAvatar}
             />
-            {user.isOnline && <View style={styles.memberOnlineIndicator} />}
+            {isUserOnline(user._id) && <View style={styles.memberOnlineIndicator} />}
           </View>
           <View>
             <Text style={styles.memberName}>
@@ -912,7 +922,7 @@ const UserInfoScreen = ({ navigation, route }) => {
               }
               style={styles.avatarLarge}
             />
-            {otherUser?.isOnline && (
+            {isUserOnline(otherUser._id) && (
               <View style={styles.onlineIndicator} />
             )}
           </View>
@@ -921,7 +931,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           </Text>
           
           <View style={styles.statusBadge}>
-            {otherUser?.isOnline ? (
+            {isUserOnline(otherUser._id) ? (
               <>
                 <View style={styles.statusDot} />
                 <Text style={styles.onlineStatus}>Active now</Text>

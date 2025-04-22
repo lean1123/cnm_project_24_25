@@ -58,6 +58,7 @@
     "react-native-video": "^6.12.0",
     "react-native-webview": "13.12.5",
     "socket.io-client": "^4.8.1",
+    "zego-express-engine-reactnative": "^3.20.2",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

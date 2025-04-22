@@ -249,7 +249,7 @@ const chatService = {
 
       console.log("Sending formData:", JSON.stringify(Object.fromEntries(formData._parts)));
       
-      const response = await axiosInstance.post("/conversation/create-group", formData, {
+      const response = await axiosInstance.post("/conversation", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -895,7 +895,7 @@ const chatService = {
     try {
       console.log(`[chatService] Dissolving group conversation ${conversationId}`);
       
-      const response = await axiosInstance.delete(`/conversation/dissolve-group/${conversationId}`);
+      const response = await axiosInstance.delete(`/conversation/${conversationId}`);
       
       console.log("[chatService] Dissolve group response:", response.data);
       
@@ -962,7 +962,7 @@ const chatService = {
     try {
       console.log(`[chatService] Leaving group conversation ${conversationId}`);
       
-      const response = await axiosInstance.delete(`/conversation/leave-group/${conversationId}`);
+      const response = await axiosInstance.post(`/conversation/leave/${conversationId}`);
       
       console.log("[chatService] Leave group response:", response.data);
       

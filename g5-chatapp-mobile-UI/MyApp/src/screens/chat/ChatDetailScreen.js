@@ -44,7 +44,6 @@ import {
 import { format } from "date-fns";
 import ChatOptions from "../chat/components/ChatOptions";
 import { chatService } from "../../services/chat.service";
-import useAuthStore from "../../store/useAuthStore";
 import { Video } from "expo-av";
 import { Audio } from "expo-av";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -2761,10 +2760,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
     };
 
-    // Run connection check immediately and periodically
     ensureSocketConnected();
 
-    // Check socket connection status every 10 seconds
     const intervalId = setInterval(() => {
       ensureSocketConnected();
     }, 10000);
@@ -2774,7 +2771,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
     };
   }, [conversation, currentUser]);
 
-  // Add typing indicator functionality
+
   useEffect(() => {
     return () => {
       // Clear timeout on cleanup
@@ -3003,7 +3000,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     iconColor="#fff"
                     size={24}
                     onPress={() => {
-                      navigation.navigate("TestCallScreen", {
+                      navigation.navigate("TestCall", {
                         roomID: conversation._id,
                         userID: currentUser.id, // từ context
                         userName: `${currentUser.firstName} ${currentUser.lastName}`

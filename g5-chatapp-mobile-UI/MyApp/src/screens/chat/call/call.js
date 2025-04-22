@@ -12,21 +12,27 @@ import {
 import { Audio } from "expo-av";
 import * as Animatable from "react-native-animatable";
 import Icon from "react-native-vector-icons/FontAwesome5";
+import useCallStore from "../../../store/useCallStore";
 
-const CallScreen = ({ navigation }) => {
-  const userData = {
-    id: 1,
-    name: "Nguyen Duc Nhat",
-    phone: "(+84) 123 456 789",
-  };
+const CallScreen = ({ navigation, route }) => {
+  const { conversationData } = route.params || {};
+  const { ongoingCall, callConversationId, isCallGroup, handleAcceptCall, handleRejectCall } = useCallStore();
 
   const [sound, setSound] = useState(null);
   const [scaleValue] = useState(new Animated.Value(1));
 
+  // Get caller info either from ongoingCall or passed params
+  const callerName = ongoingCall?.sender?.firstName 
+    ? `${ongoingCall.sender.firstName} ${ongoingCall.sender.lastName}` 
+    : conversationData?.name || "Unknown";
+  
+  const callerAvatar = ongoingCall?.sender?.avatar || conversationData?.profilePicture || "https://i.pravatar.cc/150?img=5";
+  const callType = ongoingCall?.type || "video";
+
   useEffect(() => {
-    // Bắt đầu phát nhạc chuông
+    // Play ringtone
     playRingtone();
-    // Bắt đầu rung (dừng khi người dùng chấp nhận/từ chối cuộc gọi)
+    // Start vibration
     Vibration.vibrate([1000, 500, 1000], true);
     animateAvatar();
 
@@ -36,7 +42,7 @@ const CallScreen = ({ navigation }) => {
     };
   }, []);
 
-  // Hiệu ứng sáng avatar
+  // Avatar pulse animation
   const animateAvatar = () => {
     Animated.loop(
       Animated.sequence([
@@ -54,7 +60,7 @@ const CallScreen = ({ navigation }) => {
     ).start();
   };
 
-  // Phát nhạc chuông
+  // Play ringtone
   const playRingtone = async () => {
     try {
       const { sound } = await Audio.Sound.createAsync(
@@ -64,11 +70,11 @@ const CallScreen = ({ navigation }) => {
       setSound(sound);
       await sound.playAsync();
     } catch (error) {
-      console.error("Lỗi phát nhạc chuông:", error);
+      console.error("Error playing ringtone:", error);
     }
   };
 
-  // Dừng nhạc chuông
+  // Stop ringtone
   const stopRingtone = async () => {
     if (sound) {
       await sound.stopAsync();
@@ -76,43 +82,57 @@ const CallScreen = ({ navigation }) => {
     }
   };
 
-  // Chấp nhận cuộc gọi
-  const handleAcceptCall = () => {
+  // Accept call
+  const handleAccept = () => {
     stopRingtone();
     Vibration.cancel();
-    navigation.navigate("CallingScreen", { userData });
+    
+    if (callConversationId) {
+      handleAcceptCall(callConversationId, isCallGroup);
+      
+      // Navigate to TestCall screen with the proper parameters
+      navigation.replace('TestCall', {
+        roomID: callConversationId,
+        userID: ongoingCall?.sender?._id || conversationData?.id,
+        userName: callerName,
+        callType: callType
+      });
+    }
   };
 
-  // Từ chối cuộc gọi
-  const handleCancelCall = () => {
+  // Reject call
+  const handleReject = () => {
     stopRingtone();
     Vibration.cancel();
+    
+    if (callConversationId) {
+      handleRejectCall(callConversationId, isCallGroup);
+    }
     navigation.goBack();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text>
-            <Icon name="chevron-left" size={24} color="#fff" />
-          </Text>
+        <TouchableOpacity onPress={handleReject}>
+          <Icon name="chevron-left" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.text_header}>Incoming Call...</Text>
+        <Text style={styles.text_header}>
+          {callType === 'video' ? 'Video Call' : 'Voice Call'}
+        </Text>
       </View>
 
-      {/* Avatar với hiệu ứng sáng */}
+      {/* Avatar with pulse animation */}
       <View style={styles.avatarSection}>
         <Animated.View style={[{ transform: [{ scale: scaleValue }] }]}>
           <Image
-            source={{ uri: "https://i.pravatar.cc/150?img=5" }}
+            source={{ uri: callerAvatar }}
             style={styles.avatarLarge}
           />
         </Animated.View>
-        <Text style={styles.name}>{userData.name}</Text>
-        <Text style={styles.phone}>{userData.phone}</Text>
+        <Text style={styles.name}>{callerName}</Text>
 
-        {/* Hiệu ứng chữ Ringing... */}
+        {/* Animated "Ringing..." text */}
         <Animatable.Text
           animation="pulse"
           iterationCount="infinite"
@@ -121,10 +141,10 @@ const CallScreen = ({ navigation }) => {
           Ringing...
         </Animatable.Text>
 
-        {/* Nút chấp nhận & từ chối */}
+        {/* Accept & reject buttons */}
         <View style={styles.callOptions}>
           <TouchableOpacity
-            onPress={handleCancelCall}
+            onPress={handleReject}
             style={styles.callCancel}
           >
             <Image
@@ -133,7 +153,7 @@ const CallScreen = ({ navigation }) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={handleAcceptCall}
+            onPress={handleAccept}
             style={styles.callAccept}
           >
             <Image
@@ -149,7 +169,7 @@ const CallScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#black",
+    backgroundColor: "#000",
     width: "100%",
     height: "100%",
   },
@@ -171,56 +191,52 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: "center",
     height: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: "#1a1a1a",
+    paddingTop: 50,
   },
   avatarLarge: {
     width: 150,
     height: 150,
     borderRadius: 75,
     borderWidth: 2,
-    borderColor: "#007AFF",
-    marginTop: 20,
+    borderColor: "#3498db",
   },
   name: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
-    marginTop: 10,
-  },
-  phone: {
-    fontSize: 16,
-    color: "#888",
-    marginTop: 3,
+    color: "#fff",
+    marginTop: 20,
   },
   ringingText: {
     fontSize: 18,
-    color: "red",
+    color: "#e74c3c",
     fontWeight: "bold",
-    marginTop: 10,
+    marginTop: 30,
   },
   callOptions: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 20,
+    marginTop: 50,
     width: "80%",
   },
   callCancel: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 10,
+    backgroundColor: "#e74c3c",
+    padding: 20,
     borderRadius: 50,
   },
   callAccept: {
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 10,
+    backgroundColor: "#2ecc71",
+    padding: 20,
     borderRadius: 50,
   },
   iconCall: {
-    width: 70,
-    height: 70,
+    width: 50,
+    height: 50,
+    tintColor: "#fff",
   },
 });
 

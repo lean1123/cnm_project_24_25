@@ -54,14 +54,14 @@ import FileViewer from "../screens/chat/components/FileViewer";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
+import IncomingCall from "../screens/chat/call/IncomingCall";
+import TestCall from "../screens/chat/call/testCall";
 // Login/Register without API
 import SignUpScreen from "../screens/auth/register";
 import SignInScreen from "../screens/auth/login";
 import VerifyOTPScreen from "../screens/auth/verifyOTP";
 import ForgotPasswordScreen from "../screens/account/forgotPassword";
 import { useNavigation } from "@react-navigation/native";
-
-import TestCallScreen from "../screens/chat/call/testCall";
 
 const Stack = createStackNavigator();
 
@@ -173,6 +173,22 @@ const MainNavigator = () => {
         component={Introduce}
       />
 
+      {/* Screens that should be accessible regardless of login state */}
+      <Stack.Screen
+        name="IncomingCall"
+        component={IncomingCall}
+        options={{
+          gestureEnabled: false
+        }}
+      />
+      <Stack.Screen
+        name="TestCall"
+        component={TestCall}
+        options={{
+          gestureEnabled: false
+        }}
+      />
+
       {/* Main App Screens - Only accessible when logged in */}
       {user && (
         <>
@@ -239,10 +255,6 @@ const MainNavigator = () => {
           <Stack.Screen
             name="FileViewer"
             component={FileViewer}
-          />
-          <Stack.Screen
-            name="TestCallScreen"
-            component={TestCallScreen}
           />
         </>
       )}
