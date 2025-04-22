@@ -34,11 +34,6 @@ export class CallService {
             currentParticipants: [new Types.ObjectId(callerId)],
         });
         await call.save();
-        const message = await this.messageService.createCallMessage(
-            callerId,
-            type,
-            conversationId
-        )
     }
     
     async cancelCall(callId: string) {
@@ -48,7 +43,6 @@ export class CallService {
         }
         call.status = CallStatus.CANCELLED;
         await call.save();
-        // await this.messageService.updateCallMessage(callId, CallStatus.CANCELLED);
     }
 
     async endCall(callId: string, userId: string) {
