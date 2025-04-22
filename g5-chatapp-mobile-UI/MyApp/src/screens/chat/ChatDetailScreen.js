@@ -49,7 +49,7 @@ import { Video } from "expo-av";
 import { Audio } from "expo-av";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_URL } from "../../config/constants";
-
+import { TapGestureHandler, State } from "react-native-gesture-handler";
 import {
   Provider as PaperProvider,
   Surface,
@@ -67,8 +67,8 @@ import {
   Badge,
 } from "react-native-paper";
 
-// Add this at the beginning of the file after other imports
-import { TapGestureHandler, State } from "react-native-gesture-handler";
+
+
 
 const customTheme = {
   colors: {
@@ -469,6 +469,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
     reaction: "",
     users: [],
   });
+  // Add memberCount state
+  const [memberCount, setMemberCount] = useState(0);
   // Add this at the top of the component after other useRef declarations
   const typingTimeoutRef = useRef(null);
 
@@ -1222,6 +1224,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
         ? item.content.split(",").map(Number)
         : [0, 0];
 
+      // Get Google Maps API key from app.json
+      const googleMapsApiKey = "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus";
+
       return wrapForwardedContent(
         <View
           style={{
@@ -1230,19 +1235,51 @@ const ChatDetailScreen = ({ navigation, route }) => {
             borderRadius: 12,
             overflow: "hidden",
           }}
-          onPress={() =>
-            navigation.navigate("Location", {
-              conversation: conversation,
-              initialLocation: { latitude, longitude },
-            })
-          }
         >
-          <Image
-            source={{
-              uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=200x150&markers=color:red|${latitude},${longitude}&key=YOUR_API_KEY`,
-            }}
-            style={{ width: "100%", height: 120 }}
-          />
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("Location", {
+                conversation: conversation,
+                initialLocation: { latitude, longitude },
+              })
+            }
+          >
+            <View style={{ width: "100%", height: 120, backgroundColor: "#f0f0f0", justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+              <Image 
+                source={{ 
+                  uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=14&size=200x120&markers=color:red|${latitude},${longitude}&key=${googleMapsApiKey}`
+                }}
+                style={{ width: "100%", height: "100%" }}
+                // Fallback to OSM if Google fails
+                onError={() => {
+                  console.log("Google Maps image failed, using OpenStreetMap");
+                  // We don't actually need to do anything here since the marker will show regardless
+                }}
+              />
+              
+              {/* This marker overlay will always be shown, regardless of whether the map loads */}
+              <View style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0, 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.1)'
+              }}>
+                <Avatar.Icon
+                  size={36}
+                  icon="map-marker"
+                  style={{
+                    backgroundColor: isMyMessage
+                      ? "rgba(0,105,217,0.8)"
+                      : "rgba(102,102,102,0.8)",
+                  }}
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
           <View
             style={{ flexDirection: "row", alignItems: "center", padding: 8 }}
           >
@@ -1458,53 +1495,108 @@ const ChatDetailScreen = ({ navigation, route }) => {
           fileUrl
         )}&embedded=true`;
 
+        const isPreviewableFile = /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt)$/i.test(fileName);
+
         return wrapForwardedContent(
-          <TouchableOpacity
+          <View
             style={{
               marginVertical: 4,
               backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
               borderRadius: 12,
               padding: 8,
-              flexDirection: "row",
-              alignItems: "center",
               maxWidth: 280,
               minWidth: 200,
             }}
-            onPress={() => Linking.openURL(viewerUrl)}
           >
-            <Avatar.Icon
-              size={28}
-              icon={getFileIcon(fileName)}
+            <View
               style={{
-                backgroundColor: isMyMessage
-                  ? "rgba(255,255,255,0.2)"
-                  : "rgba(102,102,102,0.1)",
-                marginRight: 10,
+                flexDirection: "row",
+                alignItems: "center",
               }}
-            />
-            <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text
-                variant="bodyMedium"
+            >
+              <Avatar.Icon
+                size={28}
+                icon={getFileIcon(fileName)}
                 style={{
-                  color: isMyMessage ? "#fff" : "#333",
-                  fontSize: 15,
-                  fontWeight: "500",
-                  lineHeight: 20,
+                  backgroundColor: isMyMessage
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(102,102,102,0.1)",
+                  marginRight: 10,
                 }}
-                numberOfLines={2}
-                ellipsizeMode="tail"
-              >
-                {decodeURIComponent(fileName)}
-              </Text>
-            </View>
-            {isTemp && item.status === "sending" && (
-              <ActivityIndicator
-                size="small"
-                color={isMyMessage ? "#fff" : "#666"}
-                style={{ marginLeft: 10 }}
               />
-            )}
-          </TouchableOpacity>
+              <View style={{ flex: 1, justifyContent: "center" }}>
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    color: isMyMessage ? "#fff" : "#333",
+                    fontSize: 15,
+                    fontWeight: "500",
+                    lineHeight: 20,
+                  }}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {decodeURIComponent(fileName)}
+                </Text>
+              </View>
+              {isTemp && item.status === "sending" && (
+                <ActivityIndicator
+                  size="small"
+                  color={isMyMessage ? "#fff" : "#666"}
+                  style={{ marginLeft: 10 }}
+                />
+              )}
+            </View>
+
+            {/* Preview and download buttons */}
+            <View style={{ 
+              flexDirection: "row", 
+              justifyContent: "space-between", 
+              marginTop: 8,
+              borderTopWidth: 1,
+              borderTopColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+              paddingTop: 8,
+            }}>
+              {isPreviewableFile && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("FileViewer", { 
+                    uri: fileUrl,
+                    fileName: fileName 
+                  })}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 4,
+                  }}
+                >
+                  <Feather name="eye" size={14} color={isMyMessage ? "#fff" : "#333"} style={{ marginRight: 4 }} />
+                  <Text style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 12 }}>
+                    Xem trước
+                  </Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity
+                onPress={() => Linking.openURL(fileUrl)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 4,
+                }}
+              >
+                <Feather name="download" size={14} color={isMyMessage ? "#fff" : "#333"} style={{ marginRight: 4 }} />
+                <Text style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 12 }}>
+                  Tải xuống
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         );
       default:
         if (item.isRevoked) {
@@ -2470,6 +2562,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
           conversation._id
         );
 
+        // Set initial member count
+        if (conversation?.members && Array.isArray(conversation.members)) {
+          setMemberCount(conversation.members.length);
+        }
+
         // Listen for specific conversation reactions
         socket.on("reactionInConversation", (data) => {
           if (data.conversationId === conversation._id) {
@@ -2496,11 +2593,45 @@ const ChatDetailScreen = ({ navigation, route }) => {
             }
           }
         });
+
+        // Listen for conversation updates to track member count
+        socket.on("updateConversation", (data) => {
+          if (data.conversation?._id === conversation._id) {
+            console.log("[ChatDetail] Conversation updated:", data.conversation);
+            // Update member count if members array exists
+            if (data.conversation.members && Array.isArray(data.conversation.members)) {
+              setMemberCount(data.conversation.members.length);
+            }
+          }
+        });
+
+        // Listen for member removal
+        socket.on("removedGroupByAdmin", (data) => {
+          if (data.conversationId === conversation._id) {
+            console.log("[ChatDetail] Member removed from group");
+            // Decrement member count
+            setMemberCount(prev => Math.max(0, prev - 1));
+          }
+        });
+
+        // Add listener for new members added
+        socket.on("createConversationForGroup", (data) => {
+          if (data.conversation?._id === conversation._id) {
+            console.log("[ChatDetail] Members added to group");
+            // Update member count if members array exists
+            if (data.conversation.members && Array.isArray(data.conversation.members)) {
+              setMemberCount(data.conversation.members.length);
+            }
+          }
+        });
       }
 
       return () => {
         if (socket) {
           socket.off("reactionInConversation");
+          socket.off("updateConversation");
+          socket.off("removedGroupByAdmin");
+          socket.off("createConversationForGroup");
         }
       };
     };
@@ -2682,6 +2813,36 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
+  // Add this useEffect to handle screen focus events and update the member count
+  useEffect(() => {
+    // Create a subscription that will update the member count when the screen is focused
+    const unsubscribe = navigation.addListener('focus', async () => {
+      console.log("[ChatDetail] Screen focused, refreshing member count");
+      
+      try {
+        // Fetch latest conversation data to get the updated member count
+        if (conversation?._id) {
+          const response = await chatService.getMyConversations();
+          if (response?.success && response?.data) {
+            // Find our conversation in the response
+            const updatedConversation = response.data.find(conv => conv._id === conversation._id);
+            if (updatedConversation && updatedConversation.members) {
+              console.log(`[ChatDetail] Updated member count: ${updatedConversation.members.length}`);
+              setMemberCount(updatedConversation.members.length);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[ChatDetail] Error refreshing member count:", error);
+      }
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => {
+      unsubscribe();
+    };
+  }, [navigation, conversation]);
+
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
@@ -2826,8 +2987,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
               </Text>
               <Text variant="bodySmall" style={{ color: "#fff", fontSize: 12 }}>
                 {conversation?.isGroup
-                  ? conversation.members
-                    ? `${conversation.members.length} members`
+                  ? memberCount > 0
+                    ? `${memberCount} members`
                     : "Group chat"
                   : isOnline
                   ? "Online"
