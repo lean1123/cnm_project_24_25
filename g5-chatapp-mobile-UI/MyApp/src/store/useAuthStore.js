@@ -154,23 +154,30 @@ const useAuthStore = create(
         console.log('Connecting socket from useAuthStore for user:', user._id);
         const socket = getSocket(); // This will initialize if needed
         
-        if (socket) {
-          // Only emit login if socket is already connected
-          if (socket.connected) {
-            console.log('Socket already connected, sending login event');
-            socket.emit('login', {
-              userId: user._id,
-            });
-          }
-          
-          // Store socket reference in state
-          set({ socket });
+        // Connect socket
+        if (!socket.connected) {
+          socket.connect();
         }
+        
+        socket.on('connect', () => {
+          console.log('Socket connected, sending login event for user:', user._id);
+          socket.emit('login', {
+            userId: user._id,
+          });
+          
+          // Đăng ký lắng nghe sự kiện activeUsers khi kết nối thành công
+          get().subscribeActiveUsers();
+        });
+        
+        // Store socket reference in state
+        set({ socket });
       },
 
       disconnectSocket: () => {
         const { socket } = get();
         if (socket) {
+          // Hủy đăng ký sự kiện trước khi ngắt kết nối
+          get().unsubscribeActiveUsers();
           socket.disconnect();
           console.log('Socket disconnected from useAuthStore');
         }
@@ -178,7 +185,28 @@ const useAuthStore = create(
       },
 
       setActiveUsers: (activeUsers) => {
+        console.log('Setting active users:', activeUsers);
         set({ activeUsers });
+      },
+      
+      // Thêm các phương thức này giống như bên website
+      subscribeActiveUsers: () => {
+        const socket = getSocket();
+        if (socket) {
+          console.log('Subscribing to active users events...');
+          socket.on('activeUsers', (data) => {
+            console.log('Received active users:', data.activeUsers);
+            get().setActiveUsers(data.activeUsers);
+          });
+        }
+      },
+      
+      unsubscribeActiveUsers: () => {
+        const socket = getSocket();
+        if (socket) {
+          console.log('Unsubscribing from active users events...');
+          socket.off('activeUsers');
+        }
       },
 
       checkAuth: async () => {
