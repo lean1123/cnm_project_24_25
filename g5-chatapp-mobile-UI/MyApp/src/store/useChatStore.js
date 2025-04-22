@@ -286,6 +286,14 @@ const useChatStore = create(
       setupSocketListeners: (conversationId, userId) => {
         set({ currentConversationId: conversationId, currentUserId: userId });
 
+        const socket = getSocket();
+        if (!socket) {
+          initSocket(userId);
+        }
+
+
+
+
         // Join conversation room
         socket.emit('join-conversation', { conversationId, userId });
 
@@ -308,6 +316,10 @@ const useChatStore = create(
 
       cleanupSocketListeners: (conversationId, userId) => {
         // Leave conversation room
+        const socket = getSocket();
+        if(socket){
+          socket.disconnect();
+        }
         socket.emit('leave-conversation', { conversationId, userId });
 
         // Remove listeners
