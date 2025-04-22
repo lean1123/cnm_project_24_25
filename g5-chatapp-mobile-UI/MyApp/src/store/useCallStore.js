@@ -142,3 +142,5 @@ const useCallStore = create((set, get) => ({
     }
   },
 }));
+
+export default useCallStore;
