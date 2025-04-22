@@ -27,7 +27,20 @@ import * as Location from "expo-location";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getSocket } from "../../services/socket";
+import { 
+  getSocket, 
+  emitJoinConversation, 
+  emitSendMessage, 
+  emitDeleteMessage, 
+  emitRevokeMessage, 
+  emitForwardMessage, 
+  emitReactToMessage, 
+  emitUnReactToMessage, 
+  emitTyping, 
+  emitStopTyping,
+  subscribeToChatEvents,
+  unsubscribeFromChatEvents
+} from "../../services/socket";
 import { format } from "date-fns";
 import ChatOptions from "../chat/components/ChatOptions";
 import { chatService } from "../../services/chat.service";
@@ -631,86 +644,104 @@ const ChatDetailScreen = ({ navigation, route }) => {
           if (socketInstance) {
             setSocket(socketInstance);
             setIsOnline(socketInstance.connected);
-
-            socketInstance.emit("join", {
-              conversationId: conversation._id,
-              userId: currentUserData._id,
-            });
-            socketInstance.emit("joinConversation", {
-              conversationId: conversation._id,
-              userId: currentUserData._id,
-            });
-
-            // For individual chats, setup user status events
-            if (!conversation.isGroup) {
-              socketInstance.on("userStatusUpdate", (data) => {
-                if (otherUser && data.userId === otherUser._id) {
-                  setIsOnline(data.isOnline);
-                }
-              });
-
-              socketInstance.on("activeUsers", (data) => {
-                if (
-                  otherUser &&
-                  data.activeUsers &&
-                  data.activeUsers.includes(otherUser._id)
-                ) {
-                  setIsOnline(true);
-                }
-              });
-            }
-
-            const handleNewMessage = (data) => {
-              const messageData = data.message || data;
-              const messageConvId =
-                messageData.conversation?._id || messageData.conversation;
-
-              if (messageConvId === conversation._id) {
-                setMessages((prevMessages) => {
-                  const messageExists = prevMessages.some(
-                    (msg) => msg._id === messageData._id
-                  );
-                  if (!messageExists) {
-                    const updatedMessages = [...prevMessages, messageData].sort(
-                      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            
+            // Join the conversation
+            emitJoinConversation(conversation._id, currentUserData._id);
+            
+            // Setup chat event listeners
+            const chatEventHandlers = {
+              // Handle new messages
+              onNewMessage: (data) => {
+                const messageData = data.message || data;
+                const messageConvId = messageData.conversation?._id || messageData.conversation;
+                
+                if (messageConvId === conversation._id) {
+                  setMessages((prevMessages) => {
+                    const messageExists = prevMessages.some(
+                      (msg) => msg._id === messageData._id
                     );
-                    requestAnimationFrame(() => {
-                      if (flatListRef.current) {
-                        flatListRef.current.scrollToEnd({ animated: true });
-                      }
-                    });
-                    return updatedMessages;
-                  }
-                  return prevMessages;
-                });
+                    if (!messageExists) {
+                      const updatedMessages = [...prevMessages, messageData].sort(
+                        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+                      );
+                      requestAnimationFrame(() => {
+                        if (flatListRef.current) {
+                          flatListRef.current.scrollToEnd({ animated: true });
+                        }
+                      });
+                      return updatedMessages;
+                    }
+                    return prevMessages;
+                  });
+                }
+              },
+              
+              // Handle message deletions
+              onDeleteMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, deletedFor: message.deletedFor } : msg
+                  )
+                );
+              },
+              
+              // Handle message revocations
+              onRevokeMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, isRevoked: true } : msg
+                  )
+                );
+              },
+              
+              // Handle reactions
+              onReactToMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, reactions: message.reactions } : msg
+                  )
+                );
+              },
+              
+              onUnReactToMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, reactions: message.reactions } : msg
+                  )
+                );
+              },
+              
+              // Handle typing indicators
+              onTyping: (data) => {
+                if (data.conversationId === conversation._id && 
+                    data.userId !== currentUserData._id) {
+                  // Handle typing indicator UI
+                  console.log(`User ${data.userId} is typing...`);
+                }
+              },
+              
+              onStopTyping: (data) => {
+                if (data.conversationId === conversation._id && 
+                    data.userId !== currentUserData._id) {
+                  // Handle typing indicator UI
+                  console.log(`User ${data.userId} stopped typing`);
+                }
+              },
+              
+              // User status
+              onActiveUsers: (data) => {
+                if (data.activeUsers && otherUser) {
+                  setIsOnline(data.activeUsers.includes(otherUser._id));
+                }
               }
             };
-
-            socketInstance.off("messageReceived");
-            socketInstance.off("newMessage");
-            socketInstance.off("receiveMessage");
-            socketInstance.off("receiveMessageGroup");
-
-            socketInstance.on("newMessage", handleNewMessage);
-            socketInstance.on("messageReceived", handleNewMessage);
-            socketInstance.on("receiveMessage", handleNewMessage);
-            socketInstance.on("receiveMessageGroup", handleNewMessage);
-
-            socketInstance.on("connect", () => {
-              setIsOnline(true);
-              socketInstance.emit("join", {
-                conversationId: conversation._id,
-                userId: currentUserData._id,
-              });
-              socketInstance.emit("joinConversation", {
-                conversationId: conversation._id,
-                userId: currentUserData._id,
-              });
-            });
-
-            socketInstance.on("disconnect", () => {
-              setIsOnline(false);
-            });
+            
+            // Subscribe to events
+            subscribeToChatEvents(chatEventHandlers);
           }
 
           await fetchMessages();
@@ -727,24 +758,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
     initializeChat();
 
     return () => {
-      const socketInstance = getSocket();
-      if (socketInstance && conversation?._id && currentUser?._id) {
-        socketInstance.emit("leave", {
-          conversationId: conversation._id,
-          userId: currentUser._id,
-        });
-        socketInstance.emit("leaveConversation", {
-          conversationId: conversation._id,
-          userId: currentUser._id,
-        });
-
-        socketInstance.off("messageReceived");
-        socketInstance.off("newMessage");
-        socketInstance.off("receiveMessage");
-        socketInstance.off("receiveMessageGroup");
-        socketInstance.off("connect");
-        socketInstance.off("disconnect");
-      }
+      // Cleanup function when component unmounts
+      unsubscribeFromChatEvents();
     };
   }, [conversation]);
 
@@ -845,9 +860,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     if (
       (!newMessage.trim() &&
-        !messageData?.files?.length &&
-        !messageData?.content &&
-        !isLocationMessage) ||
+      !messageData?.files?.length &&
+      !messageData?.content &&
+      !isLocationMessage) ||
       !socket ||
       !currentUser ||
       !conversation?._id
@@ -970,17 +985,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
           },
         };
 
-        socket.emit("sendMessageToServer", {
-          message: newMessage,
-          conversationId: conversation._id,
-          senderId: currentUser._id,
-        });
-
-        socket.emit("sendMessage", {
-          message: newMessage,
-          conversationId: conversation._id,
-          senderId: currentUser._id,
-        });
+        // Use the new socket service to send message
+        emitSendMessage(conversation._id, currentUser, messagePayload, files);
       } else {
         throw new Error(response.error || "Không thể gửi tin nhắn");
       }
@@ -2023,6 +2029,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
       console.log("Forward response:", response);
 
       if (response.success) {
+        // Use socket service to notify
+        if (response.messages && Array.isArray(response.messages)) {
+          emitForwardMessage(response.messages);
+        }
+        
         setShowForwardModal(false);
         setSelectedFriends([]);
         alert("Đã chuyển tiếp tin nhắn thành công");
@@ -2057,13 +2068,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.on("revokeMessage", (deletedMessage) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? deletedMessage : msg
-          )
-        );
-      });
+      // Use socket service to notify
+      emitRevokeMessage(message);
 
       setShowMessageOptions(false);
     } catch (error) {
@@ -2071,22 +2077,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       alert("Không thể xóa tin nhắn. Vui lòng thử lại.");
     }
   };
-
-  useEffect(() => {
-    if (socket) {
-      socket.on("revokeMessage", (deletedMessage) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? deletedMessage : msg
-          )
-        );
-      });
-
-      return () => {
-        socket.off("revokeMessage");
-      };
-    }
-  }, [socket]);
 
   const handleDeleteForMe = async (message) => {
     try {
@@ -2104,13 +2094,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.on("deleteMessage", (deletedMessage) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? deletedMessage : msg
-          )
-        );
-      });
+      // Use socket service to notify
+      emitDeleteMessage(message);
 
       setShowMessageOptions(false);
     } catch (error) {
@@ -2276,21 +2261,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
       // Call API to update reaction on server
       const response = await chatService.reactToMessage(messageId, reaction);
 
-      console.log("Reaction response from server:", JSON.stringify(response));
-
+      // Use socket service to notify
       if (response && !response.error) {
-        console.log("Reaction added successfully");
-
-        // If socket doesn't handle the update, manually update with server response
-        if (response.reactions) {
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg._id === messageId
-                ? { ...msg, reactions: response.reactions }
-                : msg
-            )
-          );
-        }
+        // Updated message with new reactions
+        const updatedMessage = {
+          ...message,
+          reactions: response.reactions || message.reactions
+        };
+        emitReactToMessage(updatedMessage);
       } else {
         console.error("Failed to add reaction:", response?.error);
 
@@ -2316,14 +2294,27 @@ const ChatDetailScreen = ({ navigation, route }) => {
       const response = await chatService.removeReaction(messageId);
 
       if (response) {
-        // Update the message with the removed reaction locally if needed
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === messageId
-              ? { ...msg, reactions: response.reactions }
-              : msg
-          )
-        );
+        // Get the message being updated
+        const messageToUpdate = messages.find(msg => msg._id === messageId);
+        if (messageToUpdate) {
+          // Updated message with removed reaction
+          const updatedMessage = {
+            ...messageToUpdate,
+            reactions: response.reactions || []
+          };
+          
+          // Update local state
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg._id === messageId
+                ? updatedMessage
+                : msg
+            )
+          );
+          
+          // Use socket service to notify
+          emitUnReactToMessage(updatedMessage);
+        }
       }
     } catch (error) {
       console.error("Error removing reaction:", error);
@@ -2613,41 +2604,26 @@ const ChatDetailScreen = ({ navigation, route }) => {
     // Function to ensure socket is connected
     const ensureSocketConnected = () => {
       const socketInstance = getSocket();
-      if (socketInstance && !socketInstance.connected && conversation) {
-        console.log("Socket not connected, reconnecting...");
+      if (socketInstance && !socketInstance.connected && conversation && currentUser) {
+        console.log("[ChatDetail] Socket not connected, reconnecting...");
         socketInstance.connect();
 
-        // After connecting, join the conversation room
         socketInstance.once("connect", () => {
           console.log(
-            "Socket reconnected, joining conversation room:",
+            "[ChatDetail] Socket reconnected, joining conversation:",
             conversation._id
           );
-          if (currentUser && currentUser._id) {
-            socketInstance.emit("join", {
-              conversationId: conversation._id,
-              userId: currentUser._id,
-            });
-            socketInstance.emit("joinConversation", {
-              conversationId: conversation._id,
-              userId: currentUser._id,
-            });
+          if (currentUser._id) {
+            emitJoinConversation(conversation._id, currentUser._id);
           }
         });
-      } else if (socketInstance && socketInstance.connected && conversation) {
+      } else if (socketInstance && socketInstance.connected && conversation && currentUser) {
         console.log(
-          "Socket already connected, joining conversation room:",
+          "[ChatDetail] Socket already connected, joining conversation:",
           conversation._id
         );
-        if (currentUser && currentUser._id) {
-          socketInstance.emit("join", {
-            conversationId: conversation._id,
-            userId: currentUser._id,
-          });
-          socketInstance.emit("joinConversation", {
-            conversationId: conversation._id,
-            userId: currentUser._id,
-          });
+        if (currentUser._id) {
+          emitJoinConversation(conversation._id, currentUser._id);
         }
       }
     };
@@ -2664,6 +2640,50 @@ const ChatDetailScreen = ({ navigation, route }) => {
       clearInterval(intervalId);
     };
   }, [conversation, currentUser]);
+
+  // Add typing indicator functionality
+  useEffect(() => {
+    let typingTimeout = null;
+    
+    // Create a debounced handler for text input changes
+    const handleTextChange = (text) => {
+      if (!socket || !conversation?._id || !currentUser?._id) return;
+      
+      // Update the state
+      setNewMessage(text);
+      
+      // Clear any existing timeout
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+      
+      // Send typing event if user is entering text
+      if (text.length > 0) {
+        emitTyping(currentUser._id, conversation._id);
+      }
+      
+      // Set timeout to send stop typing after 2 seconds of inactivity
+      typingTimeout = setTimeout(() => {
+        emitStopTyping(currentUser._id, conversation._id);
+      }, 2000);
+    };
+    
+    // Override the standard input handler with our typing-aware version
+    const originalSetNewMessage = setNewMessage;
+    setNewMessage = handleTextChange;
+    
+    return () => {
+      // Restore original function and clear timeout on cleanup
+      setNewMessage = originalSetNewMessage;
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        // Make sure we send stop typing when component unmounts
+        if (socket && conversation?._id && currentUser?._id) {
+          emitStopTyping(currentUser._id, conversation._id);
+        }
+      }
+    };
+  }, [socket, conversation, currentUser]);
 
   if (loading) {
     return (

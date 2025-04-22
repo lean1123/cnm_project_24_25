@@ -20,6 +20,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { chatService } from "../../../services/chat.service";
 import { API_URL } from "../../../config/constants";
 import { contactService } from "../../../services/contact.service";
+import { 
+  getSocket, 
+  emitUpdateConversation,
+  emitRemoveMemberFromGroup,
+  emitDeleteConversation
+} from "../../../services/socket";
 
 const UserInfoScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
@@ -113,9 +119,42 @@ const UserInfoScreen = ({ navigation, route }) => {
 
         // We'll let handleShowAddMemberModal fetch the contacts when needed
         // instead of loading them here
+
+        // Add socket event listeners for group-related events
+        const socket = getSocket();
+        if (socket && conversation?._id) {
+          socket.on('updateConversation', (data) => {
+            if (data.conversation?._id === conversation._id) {
+              console.log('[InfoChat] Conversation updated, refreshing members');
+              refreshGroupMembers();
+            }
+          });
+          
+          socket.on('removedGroupByAdmin', (data) => {
+            if (data.conversationId === conversation._id && 
+                data.memberId === currentUser?._id) {
+              console.log('[InfoChat] You were removed from the group');
+              Alert.alert(
+                "Removed from Group",
+                "You have been removed from this group by an admin",
+                [{ text: "OK", onPress: () => navigation.navigate("Home_Chat") }]
+              );
+            }
+          });
+          
+          socket.on('dissolvedGroup', (data) => {
+            if (data.conversation?._id === conversation._id) {
+              console.log('[InfoChat] Group has been dissolved');
+              Alert.alert(
+                "Group Dissolved",
+                `This group has been dissolved by ${data.adminId === currentUser?._id ? 'you' : 'an admin'}`,
+                [{ text: "OK", onPress: () => navigation.navigate("Home_Chat") }]
+              );
+            }
+          });
+        }
       } catch (error) {
         console.error("Error initializing:", error);
-      } finally {
         setLoading(false);
       }
     };
@@ -130,8 +169,13 @@ const UserInfoScreen = ({ navigation, route }) => {
     };
     
     return () => {
-      // Cleanup function
-      setShowMemberActions(null);
+      // Clean up socket listeners
+      const socket = getSocket();
+      if (socket) {
+        socket.off('updateConversation');
+        socket.off('removedGroupByAdmin');
+        socket.off('dissolvedGroup');
+      }
     };
   }, [conversation]);
 
@@ -150,7 +194,6 @@ const UserInfoScreen = ({ navigation, route }) => {
       console.error("Error fetching group members:", error);
     }
   };
-
 
   const handleShowAddMemberModal = async () => {
     try {
@@ -250,12 +293,23 @@ const UserInfoScreen = ({ navigation, route }) => {
       setIsProcessingAction(true);
       console.log(`[handleRemoveMember] Starting - memberId: ${memberId}, conversation: ${conversation._id}`);
       setLoading(true);
-      const response = await chatService.removeMemberFromGroup(conversation._id, memberId);
+      const response = await chatService.removeMember(
+        conversation._id,
+        memberId
+      );
       
       console.log('[handleRemoveMember] Response:', response);
       
       if (response.success) {
         console.log("[handleRemoveMember] Member removed successfully");
+        
+        // Emit socket event to notify the removed member
+        const adminRemoveMember = {
+          memberId: memberId,
+          conversationId: conversation._id
+        };
+        emitRemoveMemberFromGroup(adminRemoveMember);
+        
         await refreshGroupMembers();
         Alert.alert("Success", "Member has been removed from the group");
       } else {
@@ -423,9 +477,17 @@ const UserInfoScreen = ({ navigation, route }) => {
   const dissolveGroup = async () => {
     try {
       setLoading(true);
-      await chatService.dissolveGroup(conversation._id);
-      setShowDissolveGroupModal(false);
-      navigation.navigate("Home_Chat");
+      const response = await chatService.dissolveGroup(conversation._id);
+      
+      if (response.success) {
+        // Emit socket event to notify all group members about dissolution
+        emitDeleteConversation(conversation, currentUser?._id);
+        
+        setShowDissolveGroupModal(false);
+        navigation.navigate("Home_Chat");
+      } else {
+        throw new Error(response.error || "Failed to dissolve group");
+      }
     } catch (error) {
       console.error("Error dissolving group:", error);
       Alert.alert("Error", error.message || "Failed to dissolve group");

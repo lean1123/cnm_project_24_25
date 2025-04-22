@@ -16,7 +16,15 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { contactService } from "../../services/contact.service";
 import { searchUsers } from "../../services/user/userService";
-import { getSocket } from "../../services/socket";
+import { 
+  getSocket, 
+  subscribeToChatEvents, 
+  unsubscribeFromChatEvents,
+  emitSendRequestContact,
+  emitCancelRequestContact,
+  emitRejectRequestContact,
+  emitAcceptRequestContact 
+} from "../../services/socket";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../config/constants";
 import Footer from "../../components/Footer";
@@ -46,53 +54,50 @@ const FriendsListScreen = ({ navigation }) => {
       if (userData) {
         const user = JSON.parse(userData);
         setCurrentUser(user);
-        const socketInstance = getSocket();
-
-        if (socketInstance) {
-          console.log(
-            "[Socket] Setting up socket event listeners for FriendsListScreen"
-          );
-          setSocket(socketInstance);
-
-          socketInstance.on("newRequestContact", (data) => {
-            console.log("[Socket] Received newRequestContact event:", data);
+        
+        // Setup socket event listeners using the new socket service
+        console.log("[FriendsListScreen] Setting up socket event handlers");
+        
+        const chatEventHandlers = {
+          // Friend request events
+          onNewRequestContact: (data) => {
+            console.log("[FriendsListScreen] Received new friend request:", data);
             fetchPendingRequests();
             Alert.alert(
               "New Friend Request",
               `${data.user?.firstName} ${data.user?.lastName} sent you a friend request`
             );
-          });
-
-          socketInstance.on("acceptRequestContact", (data) => {
-            console.log("[Socket] Received acceptRequestContact event:", data);
+          },
+          
+          onAcceptRequestContact: (data) => {
+            console.log("[FriendsListScreen] Friend request accepted:", data);
             fetchFriends();
             fetchOutgoingRequests();
             Alert.alert(
               "Friend Request Accepted",
-              `${data.name || "Someone"} accepted your friend request`
+              `Your friend request was accepted`
             );
-          });
-
-          socketInstance.on("cancelRequestContact", (data) => {
-            console.log("[Socket] Received cancelRequestContact event:", data);
+          },
+          
+          onCancelRequestContact: (contactId) => {
+            console.log("[FriendsListScreen] Friend request cancelled:", contactId);
             fetchPendingRequests();
-            Alert.alert(
-              "Friend Request Cancelled",
-              `${data.name || "Someone"} cancelled their friend request`
-            );
-          });
-
-          socketInstance.on("rejectRequestContact", (data) => {
-            console.log("[Socket] Received rejectRequestContact event:", data);
+          },
+          
+          onRejectRequestContact: (data) => {
+            console.log("[FriendsListScreen] Friend request rejected:", data);
             fetchOutgoingRequests();
-            Alert.alert(
-              "Friend Request Rejected",
-              `${data.name || "Someone"} rejected your friend request`
-            );
-          });
-        } else {
-          console.log("[Socket] Socket instance not available");
-        }
+            if (data.name) {
+              Alert.alert(
+                "Friend Request Rejected",
+                `${data.name} rejected your friend request`
+              );
+            }
+          }
+        };
+        
+        // Subscribe to events
+        subscribeToChatEvents(chatEventHandlers);
       }
     };
 
@@ -102,15 +107,8 @@ const FriendsListScreen = ({ navigation }) => {
     fetchOutgoingRequests();
 
     return () => {
-      if (socket) {
-        console.log(
-          "[Socket] Removing socket event listeners from FriendsListScreen"
-        );
-        socket.off("newRequestContact");
-        socket.off("acceptRequestContact");
-        socket.off("cancelRequestContact");
-        socket.off("rejectRequestContact");
-      }
+      // Unsubscribe from all events when component unmounts
+      unsubscribeFromChatEvents();
     };
   }, []);
 
@@ -251,143 +249,145 @@ const FriendsListScreen = ({ navigation }) => {
 
   const handleAddFriend = async (userId) => {
     try {
-      const userToAdd = searchResults.find((user) => user._id === userId);
-      const userName = userToAdd
-        ? `${userToAdd.firstName} ${userToAdd.lastName}`
-        : "";
-
-      console.log(`[Socket] Sending request to user: ${userId} (${userName})`);
-
+      setIsLoading(true);
       const response = await contactService.createContact(userId);
+      
       if (response.success) {
-        Alert.alert("Success", "Friend request sent successfully");
-
-        if (socket && socket.connected) {
-          socket.emit("sendRequestContact", {
-            receiverId: userId,
-            contact: response.data,
-          });
+        const contact = response.data;
+        
+        // Use the socket service to emit friend request event
+        if (currentUser) {
+          emitSendRequestContact(userId, contact);
         }
-
+        
+        Alert.alert("Success", "Friend request sent successfully");
         fetchOutgoingRequests();
       } else {
-        Alert.alert(
-          "Error",
-          response.message || "Failed to send friend request"
-        );
+        Alert.alert("Error", response.message || "Failed to send friend request");
       }
     } catch (error) {
-      console.error("Error sending friend request:", error);
-      Alert.alert("Error", "Failed to send friend request");
+      console.error("Error adding friend:", error);
+      Alert.alert("Error", error.message || "Failed to send friend request");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleAcceptRequest = async (contactId) => {
     try {
       const response = await contactService.acceptContact(contactId);
+      
       if (response.success) {
-        if (socket) {
-          socket.emit("acceptFriendRequest", {
-            contactId,
-            accepterId: currentUser._id,
-          });
-        }
-        fetchPendingRequests();
+        // Use the socket service to emit accept request event
+        const contact = response.data;
+        const conversationId = response.conversation || "";
+        
+        emitAcceptRequestContact(contact, conversationId);
+        
+        Alert.alert("Success", "Friend request accepted");
         fetchFriends();
+        fetchPendingRequests();
+      } else {
+        Alert.alert("Error", response.message || "Failed to accept friend request");
       }
     } catch (error) {
-      console.error("Error accepting request:", error);
-      Alert.alert("Error", "Failed to accept request");
+      console.error("Error accepting friend request:", error);
+      Alert.alert("Error", error.message || "Failed to accept friend request");
     }
   };
 
   const handleRejectRequest = async (contactId) => {
     try {
-      const requestToReject = pendingRequests.find(
-        (req) => req._id === contactId
+      setSelectedContactId(contactId);
+      
+      Alert.alert(
+        "Reject Friend Request",
+        "Are you sure you want to reject this friend request?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Reject",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const contact = pendingRequests.find(req => req._id === contactId);
+                const receiverId = contact?.user?._id;
+                const name = currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "";
+                
+                const response = await contactService.rejectContact(contactId);
+                
+                if (response.success) {
+                  // Use the socket service to emit reject request event
+                  if (receiverId) {
+                    emitRejectRequestContact(receiverId, name, contactId);
+                  }
+                  
+                  Alert.alert("Success", "Friend request rejected");
+                  fetchPendingRequests();
+                } else {
+                  Alert.alert("Error", response.message || "Failed to reject friend request");
+                }
+              } catch (error) {
+                console.error("Error rejecting friend request:", error);
+                Alert.alert("Error", error.message || "Failed to reject friend request");
+              }
+            },
+          },
+        ]
       );
-      const senderId = requestToReject?.user?._id;
-      const senderName = requestToReject?.user
-        ? `${requestToReject.user.firstName} ${requestToReject.user.lastName}`
-        : "";
-
-      if (!senderId) {
-        console.error("[Socket] Cannot find sender for contact ID:", contactId);
-      } else {
-        console.log(
-          `[Socket] Sending rejectRequestContact to sender: ${senderId} (${senderName})`
-        );
-      }
-
-      if (socket && socket.connected && senderId) {
-        socket.emit("rejectRequestContact", {
-          receiverId: senderId,
-          contactId: contactId,
-          name: senderName,
-        });
-      }
-
-      setPendingRequests((prev) => prev.filter((req) => req._id !== contactId));
-
-      const response = await contactService.rejectContact(contactId);
-
-      if (!response.success) {
-        Alert.alert("Error", "Failed to reject request, please try again");
-        fetchPendingRequests();
-      }
     } catch (error) {
-      console.error("Error rejecting request:", error);
-      Alert.alert("Error", "Failed to reject request");
-      fetchPendingRequests();
+      console.error("Error rejecting friend request:", error);
+      Alert.alert("Error", error.message || "Failed to reject friend request");
     }
   };
 
   const handleCancelRequest = async (contactId) => {
     try {
-      const requestToCancel = outgoingRequests.find(
-        (req) => req._id === contactId
+      setSelectedContactId(contactId);
+      
+      Alert.alert(
+        "Cancel Friend Request",
+        "Are you sure you want to cancel this friend request?",
+        [
+          {
+            text: "No",
+            style: "cancel",
+          },
+          {
+            text: "Yes",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const contact = outgoingRequests.find(req => req._id === contactId);
+                const receiverId = contact?.contact?._id;
+                
+                const response = await contactService.cancelPendingContact(contactId);
+                
+                if (response.success) {
+                  // Use the socket service to emit cancel request event
+                  if (receiverId) {
+                    emitCancelRequestContact(receiverId, contactId);
+                  }
+                  
+                  Alert.alert("Success", "Friend request cancelled");
+                  fetchOutgoingRequests();
+                } else {
+                  Alert.alert("Error", response.message || "Failed to cancel friend request");
+                }
+              } catch (error) {
+                console.error("Error cancelling friend request:", error);
+                Alert.alert("Error", error.message || "Failed to cancel friend request");
+              }
+            },
+          },
+        ]
       );
-      const recipientId = requestToCancel?.contact?._id;
-      const recipientName = requestToCancel?.contact
-        ? `${requestToCancel.contact.firstName} ${requestToCancel.contact.lastName}`
-        : "";
-
-      if (!recipientId) {
-        console.error(
-          "[Socket] Cannot find recipient for contact ID:",
-          contactId
-        );
-      } else {
-        console.log(
-          `[Socket] Sending cancelRequestContact to recipient: ${recipientId} (${recipientName})`
-        );
-      }
-
-      if (socket && socket.connected && recipientId) {
-        socket.emit("cancelRequestContact", {
-          receiverId: recipientId,
-          contactId: contactId,
-          name: recipientName,
-        });
-      }
-
-      setOutgoingRequests((prev) =>
-        prev.filter((req) => req._id !== contactId)
-      );
-
-      const response = await contactService.cancelContact(contactId);
-
-      if (response.success) {
-        Alert.alert("Success", "Friend request cancelled");
-        fetchOutgoingRequests();
-      } else {
-        Alert.alert("Error", response.message || "Failed to cancel request");
-        fetchOutgoingRequests();
-      }
     } catch (error) {
-      console.error("Error cancelling request:", error);
-      Alert.alert("Error", "Failed to cancel request");
-      fetchOutgoingRequests();
+      console.error("Error cancelling friend request:", error);
+      Alert.alert("Error", error.message || "Failed to cancel friend request");
     }
   };
 

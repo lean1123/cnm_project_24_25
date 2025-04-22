@@ -17,7 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from "../../config/axiosInstance";
 import { formatDistanceToNow } from 'date-fns';
-import { getSocket, initSocket, reconnectSocket } from "../../services/socket";
+import { getSocket, initSocket, reconnectSocket, subscribeToChatEvents, unsubscribeFromChatEvents } from "../../services/socket";
 import { Ionicons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
@@ -32,7 +32,7 @@ const HomeScreen = () => {
   const renderLastMessage = (lastMessage) => {
     if (!lastMessage) return "Bắt đầu cuộc trò chuyện!";
 
-    const isMyMessage = lastMessage.sender._id === userId;
+    const isMyMessage = lastMessage.sender?._id === userId;
     let prefix = isMyMessage ? "Bạn: " : "";
 
     // Check if it's a location message either by content format or isLocation flag
@@ -66,14 +66,17 @@ const HomeScreen = () => {
         return `${prefix}Đã thả ${lastMessage.content}`;
       case "CALL":
         return `Cuộc gọi ${lastMessage.content}`;
-      case "AUDIO":
-        return `${prefix}Đã gửi tin nhắn thoại`;
       default:
         return `${prefix}${lastMessage.content}`;
     }
   };
 
-  const updateConversationWithNewMessage = (conversationId, message, senderId) => {
+  const updateConversationWithNewMessage = (message) => {
+    const conversationId = message.conversation?.toString();
+    if (!conversationId) return;
+
+    const senderId = message.sender?._id?.toString();
+    
     setConversations(prevConversations => {
       // Find the conversation to update
       const conversationToUpdate = prevConversations.find(c => c._id === conversationId);
@@ -157,10 +160,9 @@ const HomeScreen = () => {
     }
   };
   
-
   useEffect(() => {
-    // Socket connection management - simplified approach
-    const setupSocket = async () => {
+    // Setup user data and socket connection
+    const setupUserAndSocket = async () => {
       try {
         const userData = await AsyncStorage.getItem('userData');
         if (userData) {
@@ -168,28 +170,31 @@ const HomeScreen = () => {
           const currentUserId = user._id || user.id;
           setUserId(currentUserId);
           
-          // Simplified socket initialization
+          // Initialize socket
+          await reconnectSocket();
           const socket = getSocket();
           
           if (socket) {
-            console.log('Socket initialized in home_chat');
+            setSocketConnected(socket.connected);
             
-            // Simple approach for tracking connection status
+            // Handle socket connection events
             const handleConnect = () => {
-              console.log('Socket connected event received in home_chat');
+              console.log('[HomeChat] Socket connected');
               setSocketConnected(true);
+              
+              // Emit login when reconnected
+              if (currentUserId) {
+                socket.emit('login', { userId: currentUserId });
+              }
             };
             
             const handleDisconnect = () => {
-              console.log('Socket disconnected event received in home_chat');
+              console.log('[HomeChat] Socket disconnected');
               setSocketConnected(false);
             };
             
             socket.on('connect', handleConnect);
             socket.on('disconnect', handleDisconnect);
-            
-            // Set initial state based on current connection
-            setSocketConnected(socket.connected);
             
             return () => {
               socket.off('connect', handleConnect);
@@ -198,121 +203,78 @@ const HomeScreen = () => {
           }
         }
       } catch (error) {
-        console.error('Error setting up socket in home_chat:', error);
+        console.error('[HomeChat] Error setting up user and socket:', error);
       }
     };
     
-    setupSocket();
+    setupUserAndSocket();
   }, []);
 
   useEffect(() => {
-    const socket = getSocket();
-    if (socket && socketConnected && userId) {
-      const handleNewMessage = async (data) => {
-        console.log('[Socket] New message received:', data);
-        if (data.conversationId && data.message) {
-          updateConversationWithNewMessage(data.conversationId, data.message, data.message.sender);
+    if (userId) {
+      // Setup chat event listeners
+      const chatCallbacks = {
+        // Message events
+        onNewMessage: (message) => {
+          console.log('[HomeChat] New message received:', message);
+          updateConversationWithNewMessage(message);
+        },
+        
+        // Group events
+        onNewGroupConversation: (data) => {
+          console.log('[HomeChat] New group conversation:', data);
+          fetchConversations();
+        },
+        onUpdateConversation: (data) => {
+          console.log('[HomeChat] Conversation updated:', data);
+          fetchConversations();
+        },
+        onRemovedFromGroup: (data) => {
+          console.log('[HomeChat] Removed from group:', data);
+          fetchConversations();
+        },
+        onDissolvedGroup: (data) => {
+          console.log('[HomeChat] Group dissolved:', data);
+          fetchConversations();
+        },
+        
+        // Friend/contact events
+        onAcceptRequestContact: (data) => {
+          console.log('[HomeChat] Friend request accepted:', data);
+          fetchConversations();
+        },
+
+        // User status
+        onActiveUsers: (data) => {
+          console.log('[HomeChat] Active users updated:', data);
+          if (data && data.activeUsers) {
+            setConversations(prevConversations => {
+              const updatedConversations = prevConversations.map(conv => {
+                if (conv.otherUserId && data.activeUsers.includes(conv.otherUserId)) {
+                  return { ...conv, isOnline: true };
+                } else if (conv.otherUserId) {
+                  return { ...conv, isOnline: false };
+                }
+                return conv;
+              });
+              return updatedConversations;
+            });
+          }
         }
       };
-
-      const handleMessageRead = (data) => {
-        console.log('[Socket] Message read event received:', data);
-        if (data.conversationId) {
-          setConversations(prevConversations => {
-            const updatedConversations = prevConversations.map(conv =>
-              conv._id === data.conversationId
-                ? { ...conv, unreadCount: 0 }
-                : conv
-            );
-            return [...updatedConversations]; // Create new array to trigger re-render
-          });
-        }
-      };
-
-      const handleUserOnlineStatus = ({ userId: targetUserId, isOnline }) => {
-        console.log('[Socket] User online status update:', targetUserId, isOnline);
-        setConversations(prevConversations => {
-          const updatedConversations = prevConversations.map(conv => {
-            // Check if this conversation involves the user whose status changed
-            if (conv.otherUserId === targetUserId) {
-              return {
-                ...conv,
-                isOnline: isOnline
-              };
-            }
-            return conv;
-          });
-          return [...updatedConversations]; // Create new array to trigger re-render
-        });
-      };
-
-      // Remove old event listeners before adding new ones
-      socket.off('newMessage');
-      socket.off('messageReceived');
-      socket.off('receiveMessage');
-      socket.off('receiveMessageGroup');
-      socket.off('messageRead');
-      socket.off('messageSeen');
-      socket.off('userOnline');
-      socket.off('userOffline');
-      socket.off('userOnlineStatus');
       
-      // Add event listeners for both old and new event names
-      socket.on('newMessage', handleNewMessage);
-      socket.on('messageReceived', handleNewMessage);
-      socket.on('receiveMessage', handleNewMessage);
-      socket.on('receiveMessageGroup', handleNewMessage);
+      // Subscribe to all events
+      subscribeToChatEvents(chatCallbacks);
       
-      socket.on('messageRead', handleMessageRead);
-      socket.on('messageSeen', handleMessageRead);
+      // Fetch initial data
+      fetchConversations();
       
-      socket.on('userOnline', handleUserOnlineStatus);
-      socket.on('userOffline', data => handleUserOnlineStatus({ ...data, isOnline: false }));
-      socket.on('userOnlineStatus', data => handleUserOnlineStatus({ 
-        userId: data.userId, 
-        isOnline: data.status 
-      }));
-
       return () => {
-        socket.off('newMessage');
-        socket.off('messageReceived');
-        socket.off('receiveMessage');
-        socket.off('receiveMessageGroup');
-        socket.off('messageRead');
-        socket.off('messageSeen');
-        socket.off('userOnline');
-        socket.off('userOffline');
-        socket.off('userOnlineStatus');
+        // Unsubscribe from all events when component unmounts
+        unsubscribeFromChatEvents();
       };
     }
-  }, [userId, socketConnected]);
-
-  useEffect(() => {
-    const initializeData = async () => {
-      try {
-        const userData = await AsyncStorage.getItem('userData');
-        if (userData) {
-          const user = JSON.parse(userData);
-          setUserId(user._id || user.id);
-        }
-        await fetchConversations();
-      } catch (error) {
-        console.error('Error initializing:', error);
-        setLoading(false);
-      }
-    };
-
-    initializeData();
-
-    // Reduce polling frequency to prevent excessive API calls
-    const refreshInterval = setInterval(() => {
-      if (!refreshing) {
-        fetchConversations();
-      }
-    }, 5000);  // Changed from 2000 to 5000ms
-
-    return () => clearInterval(refreshInterval);
-  }, []);
+  }, [userId]);
 
   if (loading) {
     return (

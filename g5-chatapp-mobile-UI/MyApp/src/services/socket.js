@@ -34,14 +34,14 @@ export const initSocket = async () => {
       socket = null;
     }
     
-    // Simple socket configuration similar to web version but optimized for iOS
+    // Socket configuration optimized for mobile
     const config = {
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       timeout: 15000,
-      transports: ['websocket', 'polling'], // iOS prefers websocket, but allow fallback
+      transports: ['websocket', 'polling'],
       forceNew: true
     };
     
@@ -62,14 +62,6 @@ export const initSocket = async () => {
     
     socket.on("connect_error", (error) => {
       console.log(`[Socket] Connection error: ${error.message}`);
-      
-      // iOS specific recommendation
-      if (Platform.OS === 'ios') {
-        console.log('[Socket] On iOS, check that:');
-        console.log('1. Your backend allows connections from all origins (CORS)');
-        console.log('2. Your backend IP is correctly set and accessible from your iOS device');
-        console.log('3. Your backend and iOS device are on the same network');
-      }
     });
     
     socket.on("disconnect", (reason) => {
@@ -102,7 +94,7 @@ export const reconnectSocket = async () => {
   return initSocket();
 };
 
-// Simple socket events functions
+// MESSAGE EVENTS
 export const subscribeToMessages = (callback) => {
   const socket = getSocket();
   if (socket) {
@@ -119,6 +111,7 @@ export const unsubscribeFromMessages = () => {
   }
 };
 
+// USER STATUS EVENTS
 export const subscribeToActiveUsers = (callback) => {
   const socket = getSocket();
   if (socket) {
@@ -135,6 +128,7 @@ export const unsubscribeFromActiveUsers = () => {
   }
 };
 
+// CONNECTION EVENTS
 export const emitLogin = (userId) => {
   const socket = getSocket();
   if (socket && socket.connected) {
@@ -145,65 +139,270 @@ export const emitLogin = (userId) => {
   }
 };
 
-export const emitJoinConversation = (conversationId) => {
+export const emitJoinConversation = (conversationId, userId) => {
   const socket = getSocket();
   if (socket && socket.connected) {
     console.log(`[Socket] Joining conversation: ${conversationId}`);
-    socket.emit('join', { conversationId });
+    socket.emit('join', { conversationId, userId });
   }
 };
 
-export const emitLeaveConversation = (conversationId) => {
+export const emitJoinNewConversation = (conversationId, userId) => {
   const socket = getSocket();
   if (socket && socket.connected) {
-    console.log(`[Socket] Leaving conversation: ${conversationId}`);
-    socket.emit('leave', { conversationId });
+    console.log(`[Socket] Joining new conversation: ${conversationId}`);
+    socket.emit('joinNewConversation', { conversationId, userId });
   }
 };
 
-// Group-related socket events
-export const emitCreateGroupConversation = (conversation, creatorId) => {
+// MESSAGE ACTIONS
+export const emitSendMessage = (conversationId, user, messageDto, files = []) => {
   const socket = getSocket();
   if (socket && socket.connected) {
-    console.log(`[Socket] Emitting createGroupConversation event with conversation: ${conversation._id}`);
-    socket.emit('createGroupConversation', {
-      conversation,
-      creatorId
-    });
-  } else {
-    console.log(`[Socket] Cannot emit createGroupConversation: socket ${socket ? 'not connected' : 'is null'}`);
+    console.log(`[Socket] Sending message to conversation: ${conversationId}`);
+    socket.emit('handleMessage', { conversationId, user, messageDto, files });
   }
 };
 
-export const subscribeToNewGroupConversation = (callback) => {
+export const emitDeleteMessage = (message) => {
   const socket = getSocket();
-  if (socket) {
-    console.log('[Socket] Subscribing to newGroupConversation events');
-    socket.on('newGroupConversation', callback);
+  if (socket && socket.connected) {
+    console.log(`[Socket] Deleting message: ${message._id}`);
+    socket.emit('handleDeleteMessage', message);
   }
 };
 
-export const unsubscribeFromNewGroupConversation = () => {
+export const emitRevokeMessage = (message) => {
   const socket = getSocket();
-  if (socket) {
-    console.log('[Socket] Unsubscribing from newGroupConversation events');
-    socket.off('newGroupConversation');
+  if (socket && socket.connected) {
+    console.log(`[Socket] Revoking message: ${message._id}`);
+    socket.emit('handleRevokeMessage', message);
   }
 };
 
+export const emitForwardMessage = (messages) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Forwarding ${messages.length} messages`);
+    socket.emit('handleForwardMessage', messages);
+  }
+};
+
+export const emitReactToMessage = (message) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Reacting to message: ${message._id}`);
+    socket.emit('handleReactToMessage', message);
+  }
+};
+
+export const emitUnReactToMessage = (message) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Removing reaction from message: ${message._id}`);
+    socket.emit('handleUnReactToMessage', message);
+  }
+};
+
+// TYPING EVENTS
+export const emitTyping = (userId, conversationId) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    socket.emit('typing', { userId, conversationId });
+  }
+};
+
+export const emitStopTyping = (userId, conversationId) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    socket.emit('stopTyping', { userId, conversationId });
+  }
+};
+
+// CONTACT/FRIEND EVENTS
+export const emitSendRequestContact = (receiverId, contact) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Sending friend request to: ${receiverId}`);
+    socket.emit('sendRequestContact', { receiverId, contact });
+  }
+};
+
+export const emitCancelRequestContact = (receiverId, contactId) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Cancelling friend request: ${contactId}`);
+    socket.emit('cancelRequestContact', { receiverId, contactId });
+  }
+};
+
+export const emitRejectRequestContact = (receiverId, name, contactId) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Rejecting friend request: ${contactId}`);
+    socket.emit('rejectRequestContact', { receiverId, name, contactId });
+  }
+};
+
+export const emitAcceptRequestContact = (contact, conversation) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Accepting friend request: ${contact._id}`);
+    socket.emit('handleAcceptRequestContact', contact, conversation);
+  }
+};
+
+// GROUP CONVERSATION EVENTS
+export const emitCreateGroupConversation = (conversation) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Creating group conversation: ${conversation._id}`);
+    socket.emit('createGroupConversation', conversation);
+  }
+};
+
+export const emitUpdateConversation = (conversation) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Updating conversation: ${conversation._id}`);
+    socket.emit('handleUpdateConversation', conversation);
+  }
+};
+
+export const emitRemoveMemberFromGroup = (adminRemoveMember) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Removing member ${adminRemoveMember.memberId} from group ${adminRemoveMember.conversationId}`);
+    socket.emit('handleRemoveMemberFromConversation', adminRemoveMember);
+  }
+};
+
+export const emitDeleteConversation = (conversation, adminId) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Deleting conversation: ${conversation._id}`);
+    socket.emit('handleDeleteConversation', { conversation, adminId });
+  }
+};
+
+// CALL EVENTS
+export const emitCall = (sender, conversationId, type, isGroup) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] Initiating ${type} call in conversation: ${conversationId}`);
+    socket.emit('call', { sender, conversationId, type, isGroup });
+  }
+};
+
+export const emitJoinCall = (userId, conversationId, isGroup) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] User ${userId} joining call in conversation: ${conversationId}`);
+    socket.emit('joinCall', { userId, conversationId, isGroup });
+  }
+};
+
+export const emitAcceptCall = (userId, conversationId, isGroup) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] User ${userId} accepting call in conversation: ${conversationId}`);
+    socket.emit('acceptCall', { userId, conversationId, isGroup });
+  }
+};
+
+export const emitRejectCall = (userId, conversationId, isGroup) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] User ${userId} rejecting call in conversation: ${conversationId}`);
+    socket.emit('rejectCall', { userId, conversationId, isGroup });
+  }
+};
+
+export const emitEndCall = (userId, conversationId) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] User ${userId} ending call in conversation: ${conversationId}`);
+    socket.emit('endCall', { userId, conversationId });
+  }
+};
+
+export const emitCancelCall = (userId, conversationId, isGroup) => {
+  const socket = getSocket();
+  if (socket && socket.connected) {
+    console.log(`[Socket] User ${userId} cancelling call in conversation: ${conversationId}`);
+    socket.emit('cancelCall', { userId, conversationId, isGroup });
+  }
+};
+
+// COMBINED SUBSCRIPTION
 export const subscribeToChatEvents = (callbacks) => {
   const socket = getSocket();
   if (socket) {
     console.log('[Socket] Setting up all chat-related event listeners');
     
-    // Messages
+    // Conversation events
+    if (callbacks.onNewGroupConversation) {
+      socket.on('createConversationForGroup', callbacks.onNewGroupConversation);
+    }
+    if (callbacks.onUpdateConversation) {
+      socket.on('updateConversation', callbacks.onUpdateConversation);
+    }
+    if (callbacks.onRemovedFromGroup) {
+      socket.on('removedGroupByAdmin', callbacks.onRemovedFromGroup);
+    }
+    if (callbacks.onDissolvedGroup) {
+      socket.on('dissolvedGroup', callbacks.onDissolvedGroup);
+    }
+    
+    // Message events
     if (callbacks.onNewMessage) {
       socket.on('newMessage', callbacks.onNewMessage);
     }
+    if (callbacks.onDeleteMessage) {
+      socket.on('deleteMessage', callbacks.onDeleteMessage);
+    }
+    if (callbacks.onRevokeMessage) {
+      socket.on('revokeMessage', callbacks.onRevokeMessage);
+    }
+    if (callbacks.onReactToMessage) {
+      socket.on('reactToMessage', callbacks.onReactToMessage);
+    }
+    if (callbacks.onUnReactToMessage) {
+      socket.on('unReactToMessage', callbacks.onUnReactToMessage);
+    }
     
-    // Group conversations
-    if (callbacks.onNewGroupConversation) {
-      socket.on('newGroupConversation', callbacks.onNewGroupConversation);
+    // Contact events
+    if (callbacks.onNewRequestContact) {
+      socket.on('newRequestContact', callbacks.onNewRequestContact);
+    }
+    if (callbacks.onCancelRequestContact) {
+      socket.on('cancelRequestContact', callbacks.onCancelRequestContact);
+    }
+    if (callbacks.onRejectRequestContact) {
+      socket.on('rejectRequestContact', callbacks.onRejectRequestContact);
+    }
+    if (callbacks.onAcceptRequestContact) {
+      socket.on('acceptRequestContact', callbacks.onAcceptRequestContact);
+    }
+    
+    // Call events
+    if (callbacks.onCall) {
+      socket.on('call', callbacks.onCall);
+    }
+    if (callbacks.onJoinCall) {
+      socket.on('joinCall', callbacks.onJoinCall);
+    }
+    if (callbacks.onAcceptCall) {
+      socket.on('acceptCall', callbacks.onAcceptCall);
+    }
+    if (callbacks.onRejectCall) {
+      socket.on('rejectCall', callbacks.onRejectCall);
+    }
+    if (callbacks.onEndCall) {
+      socket.on('endCall', callbacks.onEndCall);
+    }
+    if (callbacks.onCancelCall) {
+      socket.on('cancelCall', callbacks.onCancelCall);
     }
     
     // User status
@@ -215,7 +414,6 @@ export const subscribeToChatEvents = (callbacks) => {
     if (callbacks.onTyping) {
       socket.on('typing', callbacks.onTyping);
     }
-    
     if (callbacks.onStopTyping) {
       socket.on('stopTyping', callbacks.onStopTyping);
     }
@@ -226,9 +424,38 @@ export const unsubscribeFromChatEvents = () => {
   const socket = getSocket();
   if (socket) {
     console.log('[Socket] Removing all chat-related event listeners');
+    
+    // Conversation events
+    socket.off('createConversationForGroup');
+    socket.off('updateConversation');
+    socket.off('removedGroupByAdmin');
+    socket.off('dissolvedGroup');
+    
+    // Message events
     socket.off('newMessage');
-    socket.off('newGroupConversation');
+    socket.off('deleteMessage');
+    socket.off('revokeMessage');
+    socket.off('reactToMessage');
+    socket.off('unReactToMessage');
+    
+    // Contact events
+    socket.off('newRequestContact');
+    socket.off('cancelRequestContact');
+    socket.off('rejectRequestContact');
+    socket.off('acceptRequestContact');
+    
+    // Call events
+    socket.off('call');
+    socket.off('joinCall');
+    socket.off('acceptCall');
+    socket.off('rejectCall');
+    socket.off('endCall');
+    socket.off('cancelCall');
+    
+    // User status
     socket.off('activeUsers');
+    
+    // Typing indicators
     socket.off('typing');
     socket.off('stopTyping');
   }
