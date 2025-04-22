@@ -22,12 +22,12 @@ const nav = [
     title: "Friends list",
     path: "/friends",
   },
-  {
-    id: "4d5e6f",
-    icon: <UsersRound />,
-    title: "Joined groups",
-    path: "/groups",
-  },
+  // {
+  //   id: "4d5e6f",
+  //   icon: <UsersRound />,
+  //   title: "Joined groups",
+  //   path: "/groups",
+  // },
   {
     id: "7g8h9i",
     icon: <UserRoundPlus />,

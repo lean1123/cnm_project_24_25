@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { chatService } from '../services/chat.service';
-import { getSocket, initSocket } from '../config/socket';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { chatService } from "../services/chat.service";
+import { getSocket, initSocket } from "../config/socket";
 
 /**
  * Store for managing chat messages state
@@ -20,14 +20,14 @@ const useChatStore = create(
         set((state) => {
           const conversationId = message.conversation;
           const conversationMessages = state.messages[conversationId] || [];
-          
+
           // Check if message already exists to avoid duplicates
           const messageExists = conversationMessages.some(
             (msg) => msg._id === message._id
           );
-          
+
           if (messageExists) return state;
-          
+
           return {
             messages: {
               ...state.messages,
@@ -43,11 +43,11 @@ const useChatStore = create(
         set((state) => {
           const conversationId = message.conversation;
           const conversationMessages = state.messages[conversationId] || [];
-          
+
           const updatedMessages = conversationMessages.map((msg) =>
             msg._id === message._id ? message : msg
           );
-          
+
           return {
             messages: {
               ...state.messages,
@@ -63,11 +63,11 @@ const useChatStore = create(
         set((state) => {
           const conversationId = message.conversation;
           const conversationMessages = state.messages[conversationId] || [];
-          
+
           const updatedMessages = conversationMessages.filter(
             (msg) => msg._id !== message._id
           );
-          
+
           return {
             messages: {
               ...state.messages,
@@ -90,7 +90,7 @@ const useChatStore = create(
       setTyping: (conversationId, userId) => {
         set((state) => {
           const typingUsersInConvo = state.typingUsers[conversationId] || [];
-          
+
           if (!typingUsersInConvo.includes(userId)) {
             return {
               typingUsers: {
@@ -99,7 +99,7 @@ const useChatStore = create(
               },
             };
           }
-          
+
           return state;
         });
       },
@@ -107,11 +107,13 @@ const useChatStore = create(
       clearTyping: (conversationId, userId) => {
         set((state) => {
           const typingUsersInConvo = state.typingUsers[conversationId] || [];
-          
+
           return {
             typingUsers: {
               ...state.typingUsers,
-              [conversationId]: typingUsersInConvo.filter((id) => id !== userId),
+              [conversationId]: typingUsersInConvo.filter(
+                (id) => id !== userId
+              ),
             },
           };
         });
@@ -129,24 +131,25 @@ const useChatStore = create(
       currentUserId: null,
 
       // Actions
-      setCurrentConversation: (conversationId) => set({ currentConversationId: conversationId }),
+      setCurrentConversation: (conversationId) =>
+        set({ currentConversationId: conversationId }),
       setCurrentUser: (userId) => set({ currentUserId: userId }),
 
       addTempMessage: (message) => {
-        set(state => ({ tempMessages: [...state.tempMessages, message] }));
+        set((state) => ({ tempMessages: [...state.tempMessages, message] }));
       },
 
       removeTempMessage: (messageId) => {
-        set(state => ({
-          tempMessages: state.tempMessages.filter(m => m._id !== messageId)
+        set((state) => ({
+          tempMessages: state.tempMessages.filter((m) => m._id !== messageId),
         }));
       },
 
       markMessageAsError: (messageId) => {
-        set(state => ({
-          tempMessages: state.tempMessages.map(m => 
-            m._id === messageId ? { ...m, status: 'error' } : m
-          )
+        set((state) => ({
+          tempMessages: state.tempMessages.map((m) =>
+            m._id === messageId ? { ...m, status: "error" } : m
+          ),
         }));
       },
 
@@ -168,13 +171,14 @@ const useChatStore = create(
       clearTempMessages: () => set({ tempMessages: [] }),
 
       // Reset entire store
-      reset: () => set({
-        messages: {},
-        tempMessages: [],
-        isLoadingMessages: false,
-        isSendingMessage: false,
-        isOnline: false
-      }),
+      reset: () =>
+        set({
+          messages: {},
+          tempMessages: [],
+          isLoadingMessages: false,
+          isSendingMessage: false,
+          isOnline: false,
+        }),
 
       // API Actions
       fetchMessages: async (conversationId) => {
@@ -182,10 +186,12 @@ const useChatStore = create(
         try {
           const response = await chatService.getMessages(conversationId);
           if (response?.success) {
-            set({ messages: { ...get().messages, [conversationId]: response.data } });
+            set({
+              messages: { ...get().messages, [conversationId]: response.data },
+            });
           }
         } catch (error) {
-          console.error('Error fetching messages:', error);
+          console.error("Error fetching messages:", error);
         } finally {
           set({ isLoadingMessages: false });
         }
@@ -206,7 +212,7 @@ const useChatStore = create(
             conversation: conversationId,
             createdAt: new Date().toISOString(),
             isTemp: true,
-            status: 'sending'
+            status: "sending",
           };
 
           // Add temp message immediately
@@ -216,7 +222,7 @@ const useChatStore = create(
           const response = await chatService.sendMessage(conversationId, {
             content: messageData.content,
             type: messageData.type,
-            sender: currentUserId
+            sender: currentUserId,
           });
 
           if (response?.success) {
@@ -224,27 +230,27 @@ const useChatStore = create(
             get().removeTempMessage(tempId);
             get().addMessage({
               ...response.data,
-              status: 'sent'
+              status: "sent",
             });
 
             // Emit socket event
             try {
               const socket = getSocket();
               if (socket) {
-                socket.emit('new-message', {
+                socket.emit("new-message", {
                   message: response.data,
                   conversationId,
-                  sender: currentUserId
+                  sender: currentUserId,
                 });
               }
             } catch (error) {
-              console.error('Error emitting socket event:', error);
+              console.error("Error emitting socket event:", error);
             }
           } else {
-            throw new Error('Failed to send message');
+            throw new Error("Failed to send message");
           }
         } catch (error) {
-          console.error('Error sending message:', error);
+          console.error("Error sending message:", error);
           get().markMessageAsError(messageData._id);
           throw error;
         } finally {
@@ -256,20 +262,22 @@ const useChatStore = create(
       handleNewMessage: (data) => {
         const { messages, currentConversationId } = get();
         const message = data?.message || data;
-        
+
         if (!message || !message._id) {
-          console.log('Invalid message data received:', data);
+          console.log("Invalid message data received:", data);
           return;
         }
 
         // Check if message belongs to current conversation
         if (message.conversation === currentConversationId) {
           // Check if message already exists
-          const messageExists = messages[currentConversationId].some(msg => msg._id === message._id);
+          const messageExists = messages[currentConversationId].some(
+            (msg) => msg._id === message._id
+          );
           if (!messageExists) {
             get().addMessage({
               ...message,
-              status: 'received'
+              status: "received",
             });
           }
         }
@@ -290,22 +298,18 @@ const useChatStore = create(
         if (!socket) {
           initSocket(userId);
         }
-
-
-
-
         // Join conversation room
-        socket.emit('join-conversation', { conversationId, userId });
+        socket.emit("join-conversation", { conversationId, userId });
 
         // Set up listeners
-        socket.on('new-message', get().handleNewMessage);
-        socket.on('user-online', get().handleOnlineStatus);
-        socket.on('user-offline', get().handleOnlineStatus);
+        socket.on("new-message", get().handleNewMessage);
+        socket.on("user-online", get().handleOnlineStatus);
+        socket.on("user-offline", get().handleOnlineStatus);
 
         // Set up ping interval to maintain connection
         const pingInterval = setInterval(() => {
           if (socket.connected) {
-            socket.emit('ping');
+            socket.emit("ping");
           }
         }, 30000);
 
@@ -317,19 +321,19 @@ const useChatStore = create(
       cleanupSocketListeners: (conversationId, userId) => {
         // Leave conversation room
         const socket = getSocket();
-        if(socket){
+        if (socket) {
           socket.disconnect();
         }
-        socket.emit('leave-conversation', { conversationId, userId });
+        socket.emit("leave-conversation", { conversationId, userId });
 
         // Remove listeners
-        socket.off('new-message', get().handleNewMessage);
-        socket.off('user-online', get().handleOnlineStatus);
-        socket.off('user-offline', get().handleOnlineStatus);
-      }
+        socket.off("new-message", get().handleNewMessage);
+        socket.off("user-online", get().handleOnlineStatus);
+        socket.off("user-offline", get().handleOnlineStatus);
+      },
     }),
     {
-      name: 'chat-storage',
+      name: "chat-storage",
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

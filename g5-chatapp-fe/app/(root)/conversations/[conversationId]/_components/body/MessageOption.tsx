@@ -52,7 +52,7 @@ export function MessageOption({
           <>
             <DropdownMenuItem>
               <button
-                className="flex items-center gap-2 text-red-500 "
+                className="flex items-center gap-2 text-red-500 w-full"
                 onClick={() => revokeMessage(message)}
               >
                 <MessageCircleX className="size-4" />
@@ -64,7 +64,7 @@ export function MessageOption({
         )}
         <DropdownMenuItem>
           <button
-            className="flex items-center gap-2 text-red-500 "
+            className="flex items-center gap-2 text-red-500 w-full"
             onClick={() => deleteMessage(message)}
           >
             <Trash2 className="size-4" />
