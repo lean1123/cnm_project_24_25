@@ -81,15 +81,18 @@ export class HandleContact {
     server: Server,
     conversation: string,
   ) {
-    server.to(contact.user.toString()).emit('acceptRequestContact', {
+    server.to(contact.user._id.toString()).emit('acceptRequestContact', {
       contactId: contact._id,
       conversation,
     });
 
-    server.to(contact.contact.toString()).emit('acceptRequestContact', {
+    server.to(contact.contact._id.toString()).emit('acceptRequestContact', {
       contactId: contact._id,
       conversation,
     });
+    console.log(
+      `[Contact] Contact ${contact._id as string} accepted by ${contact.user.toString()}`,
+    );
   }
 
   async handleJoinNewConversation(
@@ -116,6 +119,6 @@ export class HandleContact {
 
     // Gửi sự kiện
     await client.join(conversationId);
-    server.to(userId).emit('joinNewConversation', conversationId);
+    // server.to(userId).emit('joinNewConversation', conversationId);
   }
 }

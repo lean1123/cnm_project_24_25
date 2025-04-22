@@ -4,4 +4,5 @@ export enum CallStatus {
   FINISHED = 'finished',
   MISSED = 'missed',
   CANCELLED = 'cancelled',
+  REJECTED = 'rejected',
 }

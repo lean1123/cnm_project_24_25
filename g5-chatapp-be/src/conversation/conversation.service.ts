@@ -355,7 +355,7 @@ export class ConversationService {
     // optional (Gợi ý thêm) Xoá các file media trong Cloudinary nếu có
 
     // 4. Xoá cuộc trò chuyện
-    await this.convenstationModel.findByIdAndDelete(conversationId);
+    return await this.convenstationModel.findByIdAndDelete(conversationId);
   }
 
   /**
@@ -420,6 +420,53 @@ export class ConversationService {
     conversation.members = conversation.members.filter(
       (member) => !member.user.equals(new Types.ObjectId(userPayload._id)),
     );
+
+    await conversation.save();
+
+    return this.getConvensationById(conversation._id as string);
+  }
+
+  async changeAdminRole(
+    userPayload: JwtPayload,
+    conversationId: string,
+    memberId: string,
+  ) {
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    const currentUserId = new Types.ObjectId(userPayload._id);
+    const targetMemberId = new Types.ObjectId(memberId);
+
+    const currentMember = conversation.members.find((m) =>
+      m.user.equals(currentUserId),
+    );
+
+    if (!currentMember || currentMember.role !== ConversationRole.ADMIN) {
+      throw new Error('Only admins can change member roles');
+    }
+
+    const memberToPromote = conversation.members.find((m) =>
+      m.user.equals(targetMemberId),
+    );
+
+    if (!memberToPromote) {
+      throw new Error('Member not found in this conversation');
+    }
+
+    // Nếu người được chỉ định đã là ADMIN hoặc OWNER thì không làm gì
+    if (memberToPromote.role === ConversationRole.ADMIN) {
+      throw new Error('Target member is already an admin');
+    }
+
+    // Gán quyền admin cho người mới
+    memberToPromote.role = ConversationRole.ADMIN;
+
+    // Nếu current user không phải OWNER, thì hạ xuống MEMBER
+    if (currentMember.role === ConversationRole.ADMIN) {
+      currentMember.role = ConversationRole.MEMBER;
+    }
 
     await conversation.save();
 

@@ -19,7 +19,7 @@ import NotificationModal from "../../components/CustomModal";
 import { signIn } from "../../services/auth/authService";
 import { validateSignIn } from "../../utils/validators";
 import { CommonActions } from "@react-navigation/native";
-import { initSocket } from "../../services/socket";
+import { initSocket, emitLogin } from "../../services/socket";
 import useAuthStore from "../../store/useAuthStore";
 
 const { width } = Dimensions.get('window');
@@ -29,7 +29,7 @@ const SignInScreen = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
-  const { setUser } = useAuthStore();
+  const { login } = useAuthStore();
 
   const handleSignIn = async () => {
     // Validate form
@@ -77,7 +77,13 @@ const SignInScreen = ({ navigation }) => {
         setModalVisible(true);
 
         // Initialize socket connection
-        await initSocket(result.user._id);
+        await initSocket();
+        
+        // Emit login event after socket is initialized
+        emitLogin(result.user._id);
+
+        // Set user in global state using the login function from useAuthStore
+        await login({ email, password });
 
         // Navigate after showing modal
         setTimeout(() => {

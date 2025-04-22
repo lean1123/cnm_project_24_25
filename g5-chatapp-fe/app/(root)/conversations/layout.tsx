@@ -56,6 +56,14 @@ const ConversationsLayout = ({ children }: Props) => {
     fetchConversations();
   }, [user]);
 
+  useEffect(() => {
+    const filteredConversations = conversations?.filter((conversation) =>
+      conversation.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    console.log("Filtered conversations:", filteredConversations);
+  }
+  , [searchTerm, conversations]);
+
   const getMemberName = (conversation: Conversation) => {
     if (conversation.members[0].user._id !== user?.id) {
       return conversation.members[0].user.firstName + " " + conversation.members[0].user.lastName;

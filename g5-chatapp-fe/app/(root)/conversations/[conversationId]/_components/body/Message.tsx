@@ -22,10 +22,11 @@ import {
   MessageSquareText,
   Repeat,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import ImageGallery from "./ImageGallery";
 import { MessageOption } from "./MessageOption";
+import { FileViewerDialog } from "@/components/common/dialog/FileViewer";
 
 type Props = {
   message: Message | null;
@@ -60,6 +61,7 @@ const Message = ({
     const date = new Date(timeStamp);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
+
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split(".").pop()?.toLowerCase();
@@ -175,7 +177,7 @@ const Message = ({
       return message.reactions.some((reaction) => reaction.user === user?._id);
     }
     return false;
-  }
+  };
 
   const groupReactions = (reactions: Message["reactions"]) => {
     const map = new Map<
@@ -311,23 +313,21 @@ const Message = ({
             {!message?.isRevoked && type === "FILE" && file && (
               <div className="flex flex-col gap-2">
                 {file.map((file, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={index} className="flex items-center">
                     {getFileIcon(file.fileName)}
-                    <Button
+                    <span
                       key={index}
-                      onClick={() => {
-                        const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(
-                          file.url
-                        )}`;
-                        window.open(viewerUrl, "_blank", "noopener,noreferrer");
-                      }}
-                      variant={"link"}
                       className="flex items-center gap-2 p-2 transition-all max-w-[440px] text-left"
                     >
                       <span className="text-sm break-words line-clamp-2 text-foreground font-semibold">
                         {file.fileName}
                       </span>
-                    </Button>
+                    </span>
+                    {/* sdsd */}
+                    <FileViewerDialog
+                      fileName={file?.fileName}
+                      fileUrl={file.url}
+                    />
                     <Button
                       onClick={async () => {
                         try {
@@ -515,8 +515,8 @@ const Message = ({
             className={cn(
               "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
               {
-                "right-auto left-2": fromCurrentUser,
-                "right-2": !fromCurrentUser,
+                "right-auto left-2": !fromCurrentUser,
+                "right-2": fromCurrentUser,
               }
             )}
           >
@@ -535,7 +535,7 @@ const Message = ({
         {isHovered && (
           <div
             className={cn(
-              "absolute -right-[110px] bottom-0 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+              "absolute -right-[110px] bottom-6 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
               {
                 "right-auto -left-[110px]": fromCurrentUser, // Hiển thị bên trái nếu là user hiện tại
               }

@@ -27,7 +27,20 @@ import * as Location from "expo-location";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getSocket } from "../../services/socket";
+import { 
+  getSocket, 
+  emitJoinConversation, 
+  emitSendMessage, 
+  emitDeleteMessage, 
+  emitRevokeMessage, 
+  emitForwardMessage, 
+  emitReactToMessage, 
+  emitUnReactToMessage, 
+  emitTyping, 
+  emitStopTyping,
+  subscribeToChatEvents,
+  unsubscribeFromChatEvents
+} from "../../services/socket";
 import { format } from "date-fns";
 import ChatOptions from "../chat/components/ChatOptions";
 import { chatService } from "../../services/chat.service";
@@ -36,7 +49,7 @@ import { Video } from "expo-av";
 import { Audio } from "expo-av";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_URL } from "../../config/constants";
-
+import { TapGestureHandler, State } from "react-native-gesture-handler";
 import {
   Provider as PaperProvider,
   Surface,
@@ -54,8 +67,8 @@ import {
   Badge,
 } from "react-native-paper";
 
-// Add this at the beginning of the file after other imports
-import { TapGestureHandler, State } from "react-native-gesture-handler";
+
+
 
 const customTheme = {
   colors: {
@@ -456,6 +469,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
     reaction: "",
     users: [],
   });
+  // Add memberCount state
+  const [memberCount, setMemberCount] = useState(0);
+  // Add this at the top of the component after other useRef declarations
+  const typingTimeoutRef = useRef(null);
 
   const scrollToBottom = () => {
     if (flatListRef.current) {
@@ -631,86 +648,104 @@ const ChatDetailScreen = ({ navigation, route }) => {
           if (socketInstance) {
             setSocket(socketInstance);
             setIsOnline(socketInstance.connected);
-
-            socketInstance.emit("join", {
-              conversationId: conversation._id,
-              userId: currentUserData._id,
-            });
-            socketInstance.emit("joinConversation", {
-              conversationId: conversation._id,
-              userId: currentUserData._id,
-            });
-
-            // For individual chats, setup user status events
-            if (!conversation.isGroup) {
-              socketInstance.on("userStatusUpdate", (data) => {
-                if (otherUser && data.userId === otherUser._id) {
-                  setIsOnline(data.isOnline);
-                }
-              });
-
-              socketInstance.on("activeUsers", (data) => {
-                if (
-                  otherUser &&
-                  data.activeUsers &&
-                  data.activeUsers.includes(otherUser._id)
-                ) {
-                  setIsOnline(true);
-                }
-              });
-            }
-
-            const handleNewMessage = (data) => {
-              const messageData = data.message || data;
-              const messageConvId =
-                messageData.conversation?._id || messageData.conversation;
-
-              if (messageConvId === conversation._id) {
-                setMessages((prevMessages) => {
-                  const messageExists = prevMessages.some(
-                    (msg) => msg._id === messageData._id
-                  );
-                  if (!messageExists) {
-                    const updatedMessages = [...prevMessages, messageData].sort(
-                      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            
+            // Join the conversation
+            emitJoinConversation(conversation._id, currentUserData._id);
+            
+            // Setup chat event listeners
+            const chatEventHandlers = {
+              // Handle new messages
+              onNewMessage: (data) => {
+                const messageData = data.message || data;
+                const messageConvId = messageData.conversation?._id || messageData.conversation;
+                
+                if (messageConvId === conversation._id) {
+                  setMessages((prevMessages) => {
+                    const messageExists = prevMessages.some(
+                      (msg) => msg._id === messageData._id
                     );
-                    requestAnimationFrame(() => {
-                      if (flatListRef.current) {
-                        flatListRef.current.scrollToEnd({ animated: true });
-                      }
-                    });
-                    return updatedMessages;
-                  }
-                  return prevMessages;
-                });
+                    if (!messageExists) {
+                      const updatedMessages = [...prevMessages, messageData].sort(
+                        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+                      );
+                      requestAnimationFrame(() => {
+                        if (flatListRef.current) {
+                          flatListRef.current.scrollToEnd({ animated: true });
+                        }
+                      });
+                      return updatedMessages;
+                    }
+                    return prevMessages;
+                  });
+                }
+              },
+              
+              // Handle message deletions
+              onDeleteMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, deletedFor: message.deletedFor } : msg
+                  )
+                );
+              },
+              
+              // Handle message revocations
+              onRevokeMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, isRevoked: true } : msg
+                  )
+                );
+              },
+              
+              // Handle reactions
+              onReactToMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, reactions: message.reactions } : msg
+                  )
+                );
+              },
+              
+              onUnReactToMessage: (message) => {
+                setMessages((prevMessages) =>
+                  prevMessages.map((msg) =>
+                    msg._id === message._id ? 
+                      { ...msg, reactions: message.reactions } : msg
+                  )
+                );
+              },
+              
+              // Handle typing indicators
+              onTyping: (data) => {
+                if (data.conversationId === conversation._id && 
+                    data.userId !== currentUserData._id) {
+                  // Handle typing indicator UI
+                  console.log(`User ${data.userId} is typing...`);
+                }
+              },
+              
+              onStopTyping: (data) => {
+                if (data.conversationId === conversation._id && 
+                    data.userId !== currentUserData._id) {
+                  // Handle typing indicator UI
+                  console.log(`User ${data.userId} stopped typing`);
+                }
+              },
+              
+              // User status
+              onActiveUsers: (data) => {
+                if (data.activeUsers && otherUser) {
+                  setIsOnline(data.activeUsers.includes(otherUser._id));
+                }
               }
             };
-
-            socketInstance.off("messageReceived");
-            socketInstance.off("newMessage");
-            socketInstance.off("receiveMessage");
-            socketInstance.off("receiveMessageGroup");
-
-            socketInstance.on("newMessage", handleNewMessage);
-            socketInstance.on("messageReceived", handleNewMessage);
-            socketInstance.on("receiveMessage", handleNewMessage);
-            socketInstance.on("receiveMessageGroup", handleNewMessage);
-
-            socketInstance.on("connect", () => {
-              setIsOnline(true);
-              socketInstance.emit("join", {
-                conversationId: conversation._id,
-                userId: currentUserData._id,
-              });
-              socketInstance.emit("joinConversation", {
-                conversationId: conversation._id,
-                userId: currentUserData._id,
-              });
-            });
-
-            socketInstance.on("disconnect", () => {
-              setIsOnline(false);
-            });
+            
+            // Subscribe to events
+            subscribeToChatEvents(chatEventHandlers);
           }
 
           await fetchMessages();
@@ -727,24 +762,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
     initializeChat();
 
     return () => {
-      const socketInstance = getSocket();
-      if (socketInstance && conversation?._id && currentUser?._id) {
-        socketInstance.emit("leave", {
-          conversationId: conversation._id,
-          userId: currentUser._id,
-        });
-        socketInstance.emit("leaveConversation", {
-          conversationId: conversation._id,
-          userId: currentUser._id,
-        });
-
-        socketInstance.off("messageReceived");
-        socketInstance.off("newMessage");
-        socketInstance.off("receiveMessage");
-        socketInstance.off("receiveMessageGroup");
-        socketInstance.off("connect");
-        socketInstance.off("disconnect");
-      }
+      // Cleanup function when component unmounts
+      unsubscribeFromChatEvents();
     };
   }, [conversation]);
 
@@ -845,9 +864,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     if (
       (!newMessage.trim() &&
-        !messageData?.files?.length &&
-        !messageData?.content &&
-        !isLocationMessage) ||
+      !messageData?.files?.length &&
+      !messageData?.content &&
+      !isLocationMessage) ||
       !socket ||
       !currentUser ||
       !conversation?._id
@@ -970,17 +989,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
           },
         };
 
-        socket.emit("sendMessageToServer", {
-          message: newMessage,
-          conversationId: conversation._id,
-          senderId: currentUser._id,
-        });
-
-        socket.emit("sendMessage", {
-          message: newMessage,
-          conversationId: conversation._id,
-          senderId: currentUser._id,
-        });
+        // Use the new socket service to send message
+        emitSendMessage(conversation._id, currentUser, messagePayload, files);
       } else {
         throw new Error(response.error || "Không thể gửi tin nhắn");
       }
@@ -1214,6 +1224,9 @@ const ChatDetailScreen = ({ navigation, route }) => {
         ? item.content.split(",").map(Number)
         : [0, 0];
 
+      // Get Google Maps API key from app.json
+      const googleMapsApiKey = "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus";
+
       return wrapForwardedContent(
         <View
           style={{
@@ -1222,19 +1235,51 @@ const ChatDetailScreen = ({ navigation, route }) => {
             borderRadius: 12,
             overflow: "hidden",
           }}
-          onPress={() =>
-            navigation.navigate("Location", {
-              conversation: conversation,
-              initialLocation: { latitude, longitude },
-            })
-          }
         >
-          <Image
-            source={{
-              uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=15&size=200x150&markers=color:red|${latitude},${longitude}&key=YOUR_API_KEY`,
-            }}
-            style={{ width: "100%", height: 120 }}
-          />
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("Location", {
+                conversation: conversation,
+                initialLocation: { latitude, longitude },
+              })
+            }
+          >
+            <View style={{ width: "100%", height: 120, backgroundColor: "#f0f0f0", justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+              <Image 
+                source={{ 
+                  uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=14&size=200x120&markers=color:red|${latitude},${longitude}&key=${googleMapsApiKey}`
+                }}
+                style={{ width: "100%", height: "100%" }}
+                // Fallback to OSM if Google fails
+                onError={() => {
+                  console.log("Google Maps image failed, using OpenStreetMap");
+                  // We don't actually need to do anything here since the marker will show regardless
+                }}
+              />
+              
+              {/* This marker overlay will always be shown, regardless of whether the map loads */}
+              <View style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0, 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.1)'
+              }}>
+                <Avatar.Icon
+                  size={36}
+                  icon="map-marker"
+                  style={{
+                    backgroundColor: isMyMessage
+                      ? "rgba(0,105,217,0.8)"
+                      : "rgba(102,102,102,0.8)",
+                  }}
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
           <View
             style={{ flexDirection: "row", alignItems: "center", padding: 8 }}
           >
@@ -1450,53 +1495,108 @@ const ChatDetailScreen = ({ navigation, route }) => {
           fileUrl
         )}&embedded=true`;
 
+        const isPreviewableFile = /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt)$/i.test(fileName);
+
         return wrapForwardedContent(
-          <TouchableOpacity
+          <View
             style={{
               marginVertical: 4,
               backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
               borderRadius: 12,
               padding: 8,
-              flexDirection: "row",
-              alignItems: "center",
               maxWidth: 280,
               minWidth: 200,
             }}
-            onPress={() => Linking.openURL(viewerUrl)}
           >
-            <Avatar.Icon
-              size={28}
-              icon={getFileIcon(fileName)}
+            <View
               style={{
-                backgroundColor: isMyMessage
-                  ? "rgba(255,255,255,0.2)"
-                  : "rgba(102,102,102,0.1)",
-                marginRight: 10,
+                flexDirection: "row",
+                alignItems: "center",
               }}
-            />
-            <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text
-                variant="bodyMedium"
+            >
+              <Avatar.Icon
+                size={28}
+                icon={getFileIcon(fileName)}
                 style={{
-                  color: isMyMessage ? "#fff" : "#333",
-                  fontSize: 15,
-                  fontWeight: "500",
-                  lineHeight: 20,
+                  backgroundColor: isMyMessage
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(102,102,102,0.1)",
+                  marginRight: 10,
                 }}
-                numberOfLines={2}
-                ellipsizeMode="tail"
-              >
-                {decodeURIComponent(fileName)}
-              </Text>
-            </View>
-            {isTemp && item.status === "sending" && (
-              <ActivityIndicator
-                size="small"
-                color={isMyMessage ? "#fff" : "#666"}
-                style={{ marginLeft: 10 }}
               />
-            )}
-          </TouchableOpacity>
+              <View style={{ flex: 1, justifyContent: "center" }}>
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    color: isMyMessage ? "#fff" : "#333",
+                    fontSize: 15,
+                    fontWeight: "500",
+                    lineHeight: 20,
+                  }}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {decodeURIComponent(fileName)}
+                </Text>
+              </View>
+              {isTemp && item.status === "sending" && (
+                <ActivityIndicator
+                  size="small"
+                  color={isMyMessage ? "#fff" : "#666"}
+                  style={{ marginLeft: 10 }}
+                />
+              )}
+            </View>
+
+            {/* Preview and download buttons */}
+            <View style={{ 
+              flexDirection: "row", 
+              justifyContent: "space-between", 
+              marginTop: 8,
+              borderTopWidth: 1,
+              borderTopColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+              paddingTop: 8,
+            }}>
+              {isPreviewableFile && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("FileViewer", { 
+                    uri: fileUrl,
+                    fileName: fileName 
+                  })}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 4,
+                  }}
+                >
+                  <Feather name="eye" size={14} color={isMyMessage ? "#fff" : "#333"} style={{ marginRight: 4 }} />
+                  <Text style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 12 }}>
+                    Xem trước
+                  </Text>
+                </TouchableOpacity>
+              )}
+              
+              <TouchableOpacity
+                onPress={() => Linking.openURL(fileUrl)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: isMyMessage ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)",
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 4,
+                }}
+              >
+                <Feather name="download" size={14} color={isMyMessage ? "#fff" : "#333"} style={{ marginRight: 4 }} />
+                <Text style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 12 }}>
+                  Tải xuống
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         );
       default:
         if (item.isRevoked) {
@@ -2023,6 +2123,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
       console.log("Forward response:", response);
 
       if (response.success) {
+        // Use socket service to notify
+        if (response.messages && Array.isArray(response.messages)) {
+          emitForwardMessage(response.messages);
+        }
+        
         setShowForwardModal(false);
         setSelectedFriends([]);
         alert("Đã chuyển tiếp tin nhắn thành công");
@@ -2057,13 +2162,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.on("revokeMessage", (deletedMessage) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? deletedMessage : msg
-          )
-        );
-      });
+      // Use socket service to notify
+      emitRevokeMessage(message);
 
       setShowMessageOptions(false);
     } catch (error) {
@@ -2071,22 +2171,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       alert("Không thể xóa tin nhắn. Vui lòng thử lại.");
     }
   };
-
-  useEffect(() => {
-    if (socket) {
-      socket.on("revokeMessage", (deletedMessage) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? deletedMessage : msg
-          )
-        );
-      });
-
-      return () => {
-        socket.off("revokeMessage");
-      };
-    }
-  }, [socket]);
 
   const handleDeleteForMe = async (message) => {
     try {
@@ -2104,13 +2188,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
         )
       );
 
-      socket.on("deleteMessage", (deletedMessage) => {
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === deletedMessage._id ? deletedMessage : msg
-          )
-        );
-      });
+      // Use socket service to notify
+      emitDeleteMessage(message);
 
       setShowMessageOptions(false);
     } catch (error) {
@@ -2276,21 +2355,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
       // Call API to update reaction on server
       const response = await chatService.reactToMessage(messageId, reaction);
 
-      console.log("Reaction response from server:", JSON.stringify(response));
-
+      // Use socket service to notify
       if (response && !response.error) {
-        console.log("Reaction added successfully");
-
-        // If socket doesn't handle the update, manually update with server response
-        if (response.reactions) {
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg._id === messageId
-                ? { ...msg, reactions: response.reactions }
-                : msg
-            )
-          );
-        }
+        // Updated message with new reactions
+        const updatedMessage = {
+          ...message,
+          reactions: response.reactions || message.reactions
+        };
+        emitReactToMessage(updatedMessage);
       } else {
         console.error("Failed to add reaction:", response?.error);
 
@@ -2316,14 +2388,27 @@ const ChatDetailScreen = ({ navigation, route }) => {
       const response = await chatService.removeReaction(messageId);
 
       if (response) {
-        // Update the message with the removed reaction locally if needed
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg._id === messageId
-              ? { ...msg, reactions: response.reactions }
-              : msg
-          )
-        );
+        // Get the message being updated
+        const messageToUpdate = messages.find(msg => msg._id === messageId);
+        if (messageToUpdate) {
+          // Updated message with removed reaction
+          const updatedMessage = {
+            ...messageToUpdate,
+            reactions: response.reactions || []
+          };
+          
+          // Update local state
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg._id === messageId
+                ? updatedMessage
+                : msg
+            )
+          );
+          
+          // Use socket service to notify
+          emitUnReactToMessage(updatedMessage);
+        }
       }
     } catch (error) {
       console.error("Error removing reaction:", error);
@@ -2477,6 +2562,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
           conversation._id
         );
 
+        // Set initial member count
+        if (conversation?.members && Array.isArray(conversation.members)) {
+          setMemberCount(conversation.members.length);
+        }
+
         // Listen for specific conversation reactions
         socket.on("reactionInConversation", (data) => {
           if (data.conversationId === conversation._id) {
@@ -2503,11 +2593,45 @@ const ChatDetailScreen = ({ navigation, route }) => {
             }
           }
         });
+
+        // Listen for conversation updates to track member count
+        socket.on("updateConversation", (data) => {
+          if (data.conversation?._id === conversation._id) {
+            console.log("[ChatDetail] Conversation updated:", data.conversation);
+            // Update member count if members array exists
+            if (data.conversation.members && Array.isArray(data.conversation.members)) {
+              setMemberCount(data.conversation.members.length);
+            }
+          }
+        });
+
+        // Listen for member removal
+        socket.on("removedGroupByAdmin", (data) => {
+          if (data.conversationId === conversation._id) {
+            console.log("[ChatDetail] Member removed from group");
+            // Decrement member count
+            setMemberCount(prev => Math.max(0, prev - 1));
+          }
+        });
+
+        // Add listener for new members added
+        socket.on("createConversationForGroup", (data) => {
+          if (data.conversation?._id === conversation._id) {
+            console.log("[ChatDetail] Members added to group");
+            // Update member count if members array exists
+            if (data.conversation.members && Array.isArray(data.conversation.members)) {
+              setMemberCount(data.conversation.members.length);
+            }
+          }
+        });
       }
 
       return () => {
         if (socket) {
           socket.off("reactionInConversation");
+          socket.off("updateConversation");
+          socket.off("removedGroupByAdmin");
+          socket.off("createConversationForGroup");
         }
       };
     };
@@ -2613,41 +2737,26 @@ const ChatDetailScreen = ({ navigation, route }) => {
     // Function to ensure socket is connected
     const ensureSocketConnected = () => {
       const socketInstance = getSocket();
-      if (socketInstance && !socketInstance.connected && conversation) {
-        console.log("Socket not connected, reconnecting...");
+      if (socketInstance && !socketInstance.connected && conversation && currentUser) {
+        console.log("[ChatDetail] Socket not connected, reconnecting...");
         socketInstance.connect();
 
-        // After connecting, join the conversation room
         socketInstance.once("connect", () => {
           console.log(
-            "Socket reconnected, joining conversation room:",
+            "[ChatDetail] Socket reconnected, joining conversation:",
             conversation._id
           );
-          if (currentUser && currentUser._id) {
-            socketInstance.emit("join", {
-              conversationId: conversation._id,
-              userId: currentUser._id,
-            });
-            socketInstance.emit("joinConversation", {
-              conversationId: conversation._id,
-              userId: currentUser._id,
-            });
+          if (currentUser._id) {
+            emitJoinConversation(conversation._id, currentUser._id);
           }
         });
-      } else if (socketInstance && socketInstance.connected && conversation) {
+      } else if (socketInstance && socketInstance.connected && conversation && currentUser) {
         console.log(
-          "Socket already connected, joining conversation room:",
+          "[ChatDetail] Socket already connected, joining conversation:",
           conversation._id
         );
-        if (currentUser && currentUser._id) {
-          socketInstance.emit("join", {
-            conversationId: conversation._id,
-            userId: currentUser._id,
-          });
-          socketInstance.emit("joinConversation", {
-            conversationId: conversation._id,
-            userId: currentUser._id,
-          });
+        if (currentUser._id) {
+          emitJoinConversation(conversation._id, currentUser._id);
         }
       }
     };
@@ -2664,6 +2773,75 @@ const ChatDetailScreen = ({ navigation, route }) => {
       clearInterval(intervalId);
     };
   }, [conversation, currentUser]);
+
+  // Add typing indicator functionality
+  useEffect(() => {
+    return () => {
+      // Clear timeout on cleanup
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        // Make sure we send stop typing when component unmounts
+        if (socket && conversation?._id && currentUser?._id) {
+          emitStopTyping(currentUser._id, conversation._id);
+        }
+      }
+    };
+  }, [socket, conversation, currentUser]);
+
+  // Create a proper debounced text change handler
+  const handleTextChange = (text) => {
+    setNewMessage(text);
+    
+    if (socket && conversation?._id && currentUser?._id) {
+      // Clear any existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Send typing event if user is entering text
+      if (text.length > 0) {
+        emitTyping(currentUser._id, conversation._id);
+        
+        // Set timeout to send stop typing after 2 seconds of inactivity
+        typingTimeoutRef.current = setTimeout(() => {
+          emitStopTyping(currentUser._id, conversation._id);
+          typingTimeoutRef.current = null;
+        }, 2000);
+      } else {
+        emitStopTyping(currentUser._id, conversation._id);
+      }
+    }
+  };
+
+  // Add this useEffect to handle screen focus events and update the member count
+  useEffect(() => {
+    // Create a subscription that will update the member count when the screen is focused
+    const unsubscribe = navigation.addListener('focus', async () => {
+      console.log("[ChatDetail] Screen focused, refreshing member count");
+      
+      try {
+        // Fetch latest conversation data to get the updated member count
+        if (conversation?._id) {
+          const response = await chatService.getMyConversations();
+          if (response?.success && response?.data) {
+            // Find our conversation in the response
+            const updatedConversation = response.data.find(conv => conv._id === conversation._id);
+            if (updatedConversation && updatedConversation.members) {
+              console.log(`[ChatDetail] Updated member count: ${updatedConversation.members.length}`);
+              setMemberCount(updatedConversation.members.length);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[ChatDetail] Error refreshing member count:", error);
+      }
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => {
+      unsubscribe();
+    };
+  }, [navigation, conversation]);
 
   if (loading) {
     return (
@@ -2809,8 +2987,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
               </Text>
               <Text variant="bodySmall" style={{ color: "#fff", fontSize: 12 }}>
                 {conversation?.isGroup
-                  ? conversation.members
-                    ? `${conversation.members.length} members`
+                  ? memberCount > 0
+                    ? `${memberCount} members`
                     : "Group chat"
                   : isOnline
                   ? "Online"
@@ -2847,23 +3025,30 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 size={24}
                 onPress={() => {
                   if (conversation) {
+                    console.log("[ChatDetail] Navigating to UserInfo with conversation:", conversation._id);
+                    
+                    // Create a clean conversation object to pass
+                    const conversationToPass = {
+                      _id: conversation._id,
+                      name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
+                      members: conversation.members || [],
+                      avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                      isGroup: conversation.isGroup || false,
+                      isOnline: isOnline,
+                    };
+                    
+                    // Add user property only for individual chats
+                    if (!conversation.isGroup && otherUser) {
+                      conversationToPass.user = otherUser;
+                    }
+                    
+                    console.log("[ChatDetail] Prepared conversation data:", JSON.stringify(conversationToPass, null, 2));
+                    
                     navigation.navigate("UserInfo", {
-                      conversation: {
-                        _id: conversation._id,
-                        name:
-                          conversation.name ||
-                          (otherUser
-                            ? `${otherUser.firstName} ${otherUser.lastName}`
-                            : "Chat"),
-                        members: conversation.members || [],
-                        avatar:
-                          conversation.avatar ||
-                          (otherUser ? otherUser.avatar : null),
-                        isGroup: conversation.isGroup || false,
-                        isOnline: isOnline,
-                        user: otherUser,
-                      },
+                      conversation: conversationToPass
                     });
+                  } else {
+                    console.error("[ChatDetail] Cannot navigate to UserInfo - conversation is null");
                   }
                 }}
               />
@@ -2946,7 +3131,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
               placeholder="Type a message..."
               placeholderTextColor="#888"
               value={newMessage}
-              onChangeText={(text) => setNewMessage(text)}
+              onChangeText={(text) => handleTextChange(text)}
               onSubmitEditing={handleSubmitEditing}
               onFocus={scrollToBottom}
             />

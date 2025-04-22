@@ -1,34 +1,39 @@
-import {
-  MessageCircleX,
-  Trash2
-} from "lucide-react";
+import { MessageCircleX, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { useMessageStore } from "@/store/useMessageStore";
 import { Message } from "@/types";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type Props = {
-    message: Message;
-    setIsDropdownOpen: (isOpen: boolean) => void;
-    setIsHovered: (isHovered: boolean) => void;
+  message: Message;
+  setIsDropdownOpen: (isOpen: boolean) => void;
+  setIsHovered: (isHovered: boolean) => void;
 };
 
-export function MessageOption({message, setIsDropdownOpen, setIsHovered} : Props) {
-    const {deleteMessage, revokeMessage} = useMessageStore();
+export function MessageOption({
+  message,
+  setIsDropdownOpen,
+  setIsHovered,
+}: Props) {
+  const { deleteMessage, revokeMessage } = useMessageStore();
+  const { user } = useAuthStore();
   return (
-    <DropdownMenu onOpenChange={(open) => {
+    <DropdownMenu
+      onOpenChange={(open) => {
         setIsDropdownOpen(open);
         if (!open) {
-            setIsHovered(false);
+          setIsHovered(false);
         }
-    }}>
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -43,15 +48,25 @@ export function MessageOption({message, setIsDropdownOpen, setIsHovered} : Props
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 z-[999]">
+        {message.sender._id === user?.id && (
+          <>
+            <DropdownMenuItem>
+              <button
+                className="flex items-center gap-2 text-red-500 "
+                onClick={() => revokeMessage(message)}
+              >
+                <MessageCircleX className="size-4" />
+                <span>Recall</span>
+              </button>
+            </DropdownMenuItem>
+            <Separator />
+          </>
+        )}
         <DropdownMenuItem>
-          <button  className="flex items-center gap-2 text-red-500 " onClick={() => revokeMessage(message)}>
-            <MessageCircleX className="size-4" />
-            <span>Recall</span>
-          </button>
-        </DropdownMenuItem>
-        <Separator/>
-        <DropdownMenuItem>
-        <button  className="flex items-center gap-2 text-red-500 " onClick={() => deleteMessage(message)}>
+          <button
+            className="flex items-center gap-2 text-red-500 "
+            onClick={() => deleteMessage(message)}
+          >
             <Trash2 className="size-4" />
             <span>Delete for me only</span>
           </button>

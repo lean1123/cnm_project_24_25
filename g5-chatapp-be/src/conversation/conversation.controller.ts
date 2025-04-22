@@ -23,6 +23,7 @@ import { ChatGateway } from '../message/gateway/chat.gateway';
 import { MemberAdditionRequest } from './dto/requests/MemberAddition.request';
 import { MemberRemovationRequest } from './dto/requests/memberRemovation.request';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AdminChangeConversationDto } from './dto/requests/adminChange.dto';
 
 @Controller('conversation')
 export class ConvensationController {
@@ -91,6 +92,10 @@ export class ConvensationController {
       );
 
     this.chatGateWay.handleUpdateConversation(updatedConversation);
+    this.chatGateWay.handleRemoveMemberFromConversation({
+      conversationId: conversationId,
+      memberId: memberRemove.memberId,
+    });
 
     return updatedConversation;
   }
@@ -106,6 +111,24 @@ export class ConvensationController {
         userPayload,
         conversationId,
       );
+
+    this.chatGateWay.handleUpdateConversation(updatedConversation);
+
+    return updatedConversation;
+  }
+
+  @Put('change-admin/:conversationId')
+  @UseGuards(AuthGuard('jwt'))
+  async changeAdmin(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('conversationId') conversationId: string,
+    @Body() memberToChange: AdminChangeConversationDto,
+  ) {
+    const updatedConversation = await this.convensationService.changeAdminRole(
+      userPayload,
+      conversationId,
+      memberToChange.adminId,
+    );
 
     this.chatGateWay.handleUpdateConversation(updatedConversation);
 
@@ -152,7 +175,10 @@ export class ConvensationController {
   ) {
     const deletedConversation =
       await this.convensationService.deleteConversation(userPayload, id);
-    // this.chatGateWay.handleDeleteConversation(deletedConversation);
+    this.chatGateWay.handleDeleteConversation({
+      conversation: deletedConversation,
+      adminId: userPayload._id,
+    });
     return deletedConversation;
   }
 
@@ -174,7 +200,7 @@ export class ConvensationController {
       conversationId,
       memberId,
     );
-    // this.chatGateWay.handleUpdateConversation(updatedConversation);
+    this.chatGateWay.handleUpdateConversation(updatedConversation);
     return updatedConversation;
   }
 }

@@ -248,33 +248,21 @@ const chatService = {
       }
 
       console.log("Sending formData:", JSON.stringify(Object.fromEntries(formData._parts)));
-
-      const userData = await AsyncStorage.getItem("userData");
-      const token = userData ? JSON.parse(userData).token : null;
-
-      const response = await axiosInstance.post(
-        "/conversation",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.data) {
-        throw new Error("Invalid response format");
-      }
-
-      console.log("Group created successfully:", response.data);
-
+      
+      const response = await axiosInstance.post("/conversation/create-group", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      
+      console.log("Group creation response:", response.data);
+      
       return {
         success: true,
-        data: response.data,
+        data: response.data.data,
       };
     } catch (error) {
-      console.error("Error creating group:", error.response?.data || error.message);
+      console.error("Error creating group:", error);
       return {
         success: false,
         error: error.response?.data?.message || error.message,
@@ -789,8 +777,32 @@ const chatService = {
   // Change member role (promote/demote admin)
   changeRoleMember: async (conversationId, memberId) => {
     try {
-      console.log(`Changing role for member ${memberId} in conversation ${conversationId}`);
+      console.log(`[chatService] Changing role for member ${memberId} in conversation ${conversationId}`);
+      
       const response = await axiosInstance.post(`/conversation/change-role/${conversationId}/${memberId}`);
+      
+      console.log("[chatService] Change role response:", response.data);
+      
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      console.error("[chatService] Error changing member role:", error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  },
+
+  // Change admin role (assign new admin when leaving group)
+  changeAdmin: async (conversationId, adminId) => {
+    try {
+      console.log(`[chatService] Changing admin for conversation ${conversationId} to user ${adminId}`);
+      const response = await axiosInstance.put(`/conversation/change-admin/${conversationId}`, {
+        adminId: adminId
+      });
 
       if (!response.data) {
         throw new Error("Invalid response format");
@@ -801,8 +813,11 @@ const chatService = {
         data: response.data
       };
     } catch (error) {
-      console.error("Error changing member role:", error);
-      throw new Error(error.response?.data?.message || "Failed to change member role");
+      console.error("[chatService] Error changing admin:", error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
     }
   },
 
@@ -878,19 +893,22 @@ const chatService = {
   // Dissolve group (only for group owner)
   dissolveGroup: async (conversationId) => {
     try {
-      const response = await axiosInstance.delete(`/conversation/${conversationId}`);
-
-      if (!response.data) {
-        throw new Error("Invalid response format");
-      }
-
+      console.log(`[chatService] Dissolving group conversation ${conversationId}`);
+      
+      const response = await axiosInstance.delete(`/conversation/dissolve-group/${conversationId}`);
+      
+      console.log("[chatService] Dissolve group response:", response.data);
+      
       return {
         success: true,
-        data: response.data
+        data: response.data.data
       };
     } catch (error) {
-      console.error("Error dissolving group:", error);
-      throw new Error(error.response?.data?.message || "Failed to dissolve group");
+      console.error("[chatService] Error dissolving group:", error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
     }
   },
 
@@ -942,31 +960,46 @@ const chatService = {
   },
   leaveGroup: async (conversationId) => {
     try {
-      const userData = await AsyncStorage.getItem("userData");
-      if (!userData) throw new Error("User not logged in");
-      const token = JSON.parse(userData).token;
-
-      const response = await axiosInstance.post(
-        `/conversation/leave/${conversationId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.data) {
-        throw new Error("Invalid response format");
-      }
-
+      console.log(`[chatService] Leaving group conversation ${conversationId}`);
+      
+      const response = await axiosInstance.delete(`/conversation/leave-group/${conversationId}`);
+      
+      console.log("[chatService] Leave group response:", response.data);
+      
       return {
         success: true,
-        data: response.data,
+        data: response.data.data
       };
     } catch (error) {
-      console.error("Error leaving group:", error);
-      throw new Error(error.response?.data?.message || "Failed to leave group");
+      console.error("[chatService] Error leaving group:", error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  },
+
+  // Remove a member from a group conversation
+  removeMember: async (conversationId, memberId) => {
+    try {
+      console.log(`[chatService] Removing member ${memberId} from conversation ${conversationId}`);
+      
+      const response = await axiosInstance.delete(`/conversation/remove-member/${conversationId}`, {
+        data: { memberId: memberId }
+      });
+      
+      console.log("[chatService] Remove member response:", response.data);
+      
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      console.error("[chatService] Error removing member:", error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
     }
   },
 

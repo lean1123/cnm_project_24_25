@@ -23,6 +23,7 @@ import { HandleContact } from './handleContact';
 import { HandleConversation } from './handleConvsersation';
 import { HandleMessage } from './handleMessage';
 import { Contact } from 'src/contact/schema/contact.schema';
+import { AdminRemoveMemberRequest } from 'src/conversation/dto/requests/adminRemoveMember.request';
 
 @WebSocketGateway({
   cors: {
@@ -356,45 +357,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
   }
 
-  @SubscribeMessage('newUserJoinCall')
-  handleNewUserStartCall(
-    @MessageBody()
-    data: {
-      to: string;
-      sender: string;
-    },
-  ) {
-    this.handleCallService.handleNewUserStartCall(data, this.server);
-  }
-  @SubscribeMessage('sdp')
-  handleSdp(
-    @MessageBody()
-    data: {
-      to: string;
-      description: any;
-      sender: string;
-    },
-  ) {
-    this.server.to(data.to).emit('sdp', {
-      description: data.description,
-      sender: data.sender,
-    });
-  }
-  @SubscribeMessage('iceCandidate')
-  handleIceCandidate(
-    @MessageBody()
-    data: {
-      to: string;
-      candidate: any;
-      sender: string;
-    },
-  ) {
-    this.server.to(data.to).emit('iceCandidate', {
-      candidate: data.candidate,
-      sender: data.sender,
-    });
-  }
-
   handleReactToMessage(@MessageBody() message: Message) {
     this.handleMessageService.handleReactToMessage(message, this.server);
   }
@@ -414,6 +376,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.conversationHandler.handleUpdateConversation(
       this.server,
       conversation,
+    );
+  }
+
+  handleRemoveMemberFromConversation(
+    @MessageBody() adminRemoveMember: AdminRemoveMemberRequest,
+  ) {
+    this.conversationHandler.handleRemoveMemberFromGroup(
+      this.server,
+      adminRemoveMember.memberId,
+      adminRemoveMember.conversationId,
+    );
+  }
+
+  handleDeleteConversation(
+    @MessageBody() data: { conversation: Convensation; adminId: string },
+  ) {
+    this.conversationHandler.handleDeleteConversation(
+      this.server,
+      data.conversation,
+      data.adminId,
     );
   }
 }
