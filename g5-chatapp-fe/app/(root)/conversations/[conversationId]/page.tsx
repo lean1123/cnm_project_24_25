@@ -70,7 +70,7 @@ function ConversationPage({ params }: Props) {
     );
   }
 
-  return  (
+  return (
     <ConversationContainer>
       {/* <RemoveFriendDialog
         conversationId={conversationId}
@@ -92,7 +92,8 @@ function ConversationPage({ params }: Props) {
               {
                 label: "Voice call",
                 icon: <Phone />,
-                onClick: () => handleCall(conversationId, selectedConversation.isGroup),
+                onClick: () =>
+                  handleCall(conversationId, selectedConversation.isGroup),
               },
               {
                 label: "Video call",
@@ -117,12 +118,14 @@ function ConversationPage({ params }: Props) {
               {
                 label: "Voice call",
                 icon: <Phone />,
-                onClick: () => handleCall(conversationId, selectedConversation!.isGroup),
+                onClick: () =>
+                  handleCall(conversationId, selectedConversation!.isGroup),
               },
               {
                 label: "Video call",
                 icon: <Video />,
-                onClick: () => handleCall(conversationId, selectedConversation!.isGroup),
+                onClick: () =>
+                  handleCall(conversationId, selectedConversation!.isGroup),
               },
               {
                 label: "Info",
@@ -140,7 +143,6 @@ function ConversationPage({ params }: Props) {
         <ConversationInfo
           isOpen={isOpenRightBar}
           setOpen={setIsOpenRightBar}
-          conversationSelected={selectedConversation}
           isGroup={true}
         />
       ) : (

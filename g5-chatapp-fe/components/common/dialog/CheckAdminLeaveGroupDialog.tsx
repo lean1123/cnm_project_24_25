@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, UserPlus, X } from "lucide-react";
+import { LogOutIcon, MessageCircle, UserPlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useUserStore } from "@/store/useUserStore";
 import { useContactStore } from "@/store/useContactStore";
@@ -22,64 +22,40 @@ import { Conversation } from "@/types";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
 
-interface AddMemberToGroupDialogProps {
+interface CheckAdminLeaveGroupDialogProps {
   conversation: Conversation | null;
 }
 
-export function AddMemberToGroupDialog({
+export function CheckAdminLeaveGroupDialog({
   conversation,
-}: AddMemberToGroupDialogProps) {
+}: CheckAdminLeaveGroupDialogProps) {
   const [inputValue, setInputValue] = useState("");
-  const { contacts, getMyContact, createContact } = useContactStore();
-  const {addMemberToGroup} = useConversationStore();
+  const { changeAdminGroup } = useConversationStore();
   const { user } = useAuthStore();
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const toggleSelectUser = (userId: string) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
-    );
+    setSelectedUserId((prev) => (prev === userId ? null : userId));
   };
 
   const normalizedInput = inputValue.trim().toLowerCase();
 
-  const filterContacts = contacts
-    .map((contact) => {
-      // Ưu tiên contact là người bạn đã lưu, không phải chính bạn
-      const contactUser =
-        contact.contact._id !== user?._id ? contact.contact : contact.user;
+  const filterContacts = conversation?.members
+  .filter((member) => {
+    const fullName =
+      `${member.user.firstName} ${member.user.lastName}`.toLowerCase();
+    const email = member.user.email?.toLowerCase() || "";
+    const matchesQuery =
+      fullName.includes(normalizedInput) || email.includes(normalizedInput);
 
-      return contactUser;
-    })
-    .filter((contactUser) => {
-      const fullName =
-        `${contactUser.firstName} ${contactUser.lastName}`.toLowerCase();
-      const email = contactUser.email?.toLowerCase() || "";
-      return (
-        fullName.includes(normalizedInput) || email.includes(normalizedInput)
-      );
-    });
+    return matchesQuery && member.role !== "ADMIN"; // 👈 Exclude admins
+  })
+  .map((member) => member.user);
 
-  const checkIsMember = (userId: string) => {
-    if (!conversation) return false;
-    return conversation.members.some((member) => member.user._id === userId);
-  };
 
-  const handleAddMember = async (userId: string[]) => {
-    if (!conversation) return;
-    // Add member to group logic here
-    console.log("Adding member to group: ", userId);
-    // You can use the conversation ID and userId to make an API call to add the member
-    await addMemberToGroup(
-      conversation._id as string,
-      userId
-    );
-  };
 
   useEffect(() => {
-    getMyContact();
+    // getMyContact();
   }, [conversation]);
 
   return (
@@ -87,9 +63,9 @@ export function AddMemberToGroupDialog({
       <DialogTrigger asChild>
         <Button
           className="rounded-full size-8 flex justify-center items-center"
-          variant="secondary"
+          variant="destructive"
         >
-          <UserPlus className="size-4 text-base-content" />
+          <LogOutIcon className="size-4 text-base-content" />
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[400px] h-[60vh] p-0 overflow-hidden">
@@ -97,7 +73,7 @@ export function AddMemberToGroupDialog({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <DialogTitle className="text-base font-semibold">
-              Add member to group
+              Change admin before leaving group
             </DialogTitle>
           </div>
 
@@ -121,11 +97,6 @@ export function AddMemberToGroupDialog({
                   className="flex items-center justify-between gap-2 p-4 border-b border-base-300"
                 >
                   <div className="flex items-center gap-2">
-                    {/* <img
-                      src={user.avatar || "/avatar.png"}
-                      alt={user.firstName + " " + user.lastName}
-                      className="w-10 h-10 rounded-full"
-                    /> */}
                     <Avatar>
                       <AvatarImage
                         src={user.avatar || "/avatar.png"}
@@ -144,18 +115,13 @@ export function AddMemberToGroupDialog({
                       <p className="text-xs text-base-content">{user.email}</p>
                     </div>
                   </div>
-                  {checkIsMember(user._id as string) ? (
-                    <span className="text-xs text-muted-foreground">
-                      In group
-                    </span>
-                  ) : (
-                    <input
-                      type="checkbox"
-                      className="form-checkbox"
-                      checked={selectedUsers.includes(user._id!)}
-                      onChange={() => toggleSelectUser(user._id!)}
-                    />
-                  )}
+
+                  <input
+                    type="checkbox"
+                    className="form-checkbox"
+                    checked={selectedUserId === user._id}
+                    onChange={() => toggleSelectUser(user._id!)}
+                  />
                 </div>
               ))}
           </div>
@@ -166,14 +132,16 @@ export function AddMemberToGroupDialog({
               <Button variant="ghost">Cancel</Button>
             </DialogClose>
             <Button
-              disabled={selectedUsers.length === 0}
-              onClick={() => {
-                handleAddMember(selectedUsers);
-                setSelectedUsers([]);
-                setInputValue("");
+              disabled={!selectedUserId}
+              onClick={async () => {
+                if (selectedUserId && conversation) {
+                  await changeAdminGroup(conversation._id, selectedUserId);
+                  setSelectedUserId(null);
+                  setInputValue("");
+                }
               }}
             >
-              Add ({selectedUsers.length})
+              Change
             </Button>
           </DialogFooter>
         </div>

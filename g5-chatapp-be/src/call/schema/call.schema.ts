@@ -8,7 +8,7 @@ import { CallType } from './callType.enum';
 })
 export class Call {
   @Prop({ type: Types.ObjectId, ref: "Convensation" })
-  convensationId: Types.ObjectId;
+  conversationId: Types.ObjectId;
   @Prop({ type: Types.ObjectId, required: true, ref: "User" })
   callerId: Types.ObjectId;
   @Prop({ type: [{ type: Types.ObjectId, ref: "User" }] })
@@ -25,6 +25,8 @@ export class Call {
   duration: number;
   @Prop({ type: [Types.ObjectId], ref: "User" })
   participants: Types.ObjectId[];
+  @Prop({ type: [Types.ObjectId], ref: "User"})
+  currentParticipants: Types.ObjectId[]
 }
 
 export const CallSchema = SchemaFactory.createForClass(Call);

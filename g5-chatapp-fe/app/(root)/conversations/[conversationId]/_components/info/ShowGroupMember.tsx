@@ -10,7 +10,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, MoreVertical } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  MoreVertical,
+} from "lucide-react";
+import { useConversationStore } from "@/store/useConversationStore";
 
 type Props = {
   members: Member[];
@@ -20,6 +27,12 @@ type Props = {
 
 const ShowGroupMember = ({ members, isActive, setIsActive }: Props) => {
   const { user } = useAuthStore();
+  const {
+    removeMemberFromGroup,
+    selectedConversation,
+    changeRoleMember,
+    changeAdminGroup,
+  } = useConversationStore();
   const [hoveredMemberId, setHoveredMemberId] = useState<string | null>(null);
 
   const currentMember = members.find((m) => m.user._id === user?.id);
@@ -31,16 +44,19 @@ const ShowGroupMember = ({ members, isActive, setIsActive }: Props) => {
     return 0;
   });
 
-  const handleRemove = (member: Member) => {
+  const handleRemove = async (member: Member) => {
     console.log("Remove:", member.user.firstName);
+    await removeMemberFromGroup(selectedConversation?._id!, member.user._id!);
   };
 
-  const handleMakeAdmin = (member: Member) => {
+  const handleMakeAdmin = async (member: Member) => {
     console.log("Make admin:", member.user.firstName);
+    await changeAdminGroup(selectedConversation?._id!, member.user._id!);
   };
 
-  const handleMakeOwner = (member: Member) => {
+  const handleMakeOwner = async (member: Member) => {
     console.log("Make owner:", member.user.firstName);
+    await changeRoleMember(selectedConversation?._id!, member.user._id!);
   };
 
   return (
@@ -51,7 +67,7 @@ const ShowGroupMember = ({ members, isActive, setIsActive }: Props) => {
           onClick={() => setIsActive(!isActive)}
           className="text-sm text-muted-foreground"
         >
-          {isActive ? <ChevronUp/> : <ChevronDown/>}
+          {isActive ? <ChevronUp /> : <ChevronDown />}
         </button>
       </div>
 
@@ -60,6 +76,7 @@ const ShowGroupMember = ({ members, isActive, setIsActive }: Props) => {
           {sortMembers.map((member) => {
             const isCurrentUser = member.user._id === user?.id;
             const isAdmin = member.role === "ADMIN";
+            const isOwner = member.role === "OWNER";
 
             const showPopoverTrigger =
               isCurrentUserAdmin && !isAdmin && !isCurrentUser;
@@ -84,6 +101,9 @@ const ShowGroupMember = ({ members, isActive, setIsActive }: Props) => {
                   </h1>
                   {isAdmin && (
                     <span className="text-sm text-gray-500">Admin</span>
+                  )}
+                  {isOwner && (
+                    <span className="text-sm text-gray-500">Owner</span>
                   )}
                 </div>
 

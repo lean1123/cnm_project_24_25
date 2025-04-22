@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Call } from './schema/call.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ConversationService } from 'src/conversation/conversation.service';
 import { UserService } from 'src/user/user.service';
 import { MessageService } from 'src/message/message.service';
@@ -18,8 +18,6 @@ export class CallService {
         // Constructor logic if needed
     }
     
-    // Define your service methods here
-    // For example:
     async createCall(
         callerId: string,
         receiverIds: string[],
@@ -32,9 +30,15 @@ export class CallService {
             type,
             conversationId,
             status: 'waiting',
+            startTime: new Date(),
+            currentParticipants: [new Types.ObjectId(callerId)],
         });
-        call.startTime = new Date();
         await call.save();
+        const message = await this.messageService.createCallMessage(
+            callerId,
+            type,
+            conversationId
+        )
     }
     
     async cancelCall(callId: string) {
@@ -44,20 +48,10 @@ export class CallService {
         }
         call.status = CallStatus.CANCELLED;
         await call.save();
+        // await this.messageService.updateCallMessage(callId, CallStatus.CANCELLED);
     }
 
-    async endCall(callId: string) {
-        const call = await this.callModel.findById(callId);
-        if (!call) {
-            throw new Error('Call not found');
-        }
-        call.status = CallStatus.FINISHED;
-        call.endTime = new Date();
-        call.duration = Math.floor((call.endTime.getTime() - call.startTime.getTime()) / 1000); // Duration in seconds
-        await call.save();
-    }
-    
-    async acceptCall(callId: string) {
+    async endCall(callId: string, userId: string) {
         const call = await this.callModel.findById(callId);
         if (!call) {
             throw new Error('Call not found');
@@ -65,9 +59,47 @@ export class CallService {
         if (call.status == CallStatus.CANCELLED || call.status == CallStatus.FINISHED) {
             throw new Error('Call has been cancelled or finished');
         }
+        if (call.currentParticipants.length > 2) {
+            call.currentParticipants = call.currentParticipants.filter(participant => participant != new Types.ObjectId(userId));
+            await call.save();
+            return;
+        }
+        call.status = CallStatus.FINISHED;
+        call.endTime = new Date();
+        call.duration = Math.floor((call.endTime.getTime() - call.startTime.getTime()) / 1000); // Duration in seconds
+        await call.save();
+    }
+    
+    async acceptCall(callId: string, userId: string) {
+        const call = await this.callModel.findById(callId);
+        if (!call) {
+            throw new Error('Call not found');
+        }
+        if (call.status == CallStatus.CANCELLED || call.status == CallStatus.FINISHED) {
+            throw new Error('Call has been cancelled or finished');
+        }
+        if (call.status == CallStatus.WAITING) {
+            call.startTime = new Date();
+        }
+
         call.status = CallStatus.ONGOING;
         call.participants.push(call.callerId);
+        call.currentParticipants.push(new Types.ObjectId(userId));
         await call.save();
     }
 
+    async rejectCall(callId: string, userId: string) {
+        const call = await this.callModel.findById(callId);
+        if (!call) {
+            throw new Error('Call not found');
+        }
+        if (call.status == CallStatus.CANCELLED || call.status == CallStatus.FINISHED) {
+            throw new Error('Call has been cancelled or finished');
+        }
+        if (call.status == CallStatus.WAITING) {
+            call.status = CallStatus.REJECTED;
+            call.endTime = new Date();
+            call.duration = Math.floor((call.endTime.getTime() - call.startTime.getTime()) / 1000); // Duration in seconds
+        }
+    }
 }

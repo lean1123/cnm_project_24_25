@@ -23,6 +23,7 @@ import { HandleContact } from './handleContact';
 import { HandleConversation } from './handleConvsersation';
 import { HandleMessage } from './handleMessage';
 import { Contact } from 'src/contact/schema/contact.schema';
+import { AdminRemoveMemberRequest } from 'src/conversation/dto/requests/adminRemoveMember.request';
 
 @WebSocketGateway({
   cors: {
@@ -414,6 +415,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.conversationHandler.handleUpdateConversation(
       this.server,
       conversation,
+    );
+  }
+
+  handleRemoveMemberFromConversation(@MessageBody() adminRemoveMember: AdminRemoveMemberRequest) {
+    this.conversationHandler.handleRemoveMemberFromGroup(
+      this.server,
+      adminRemoveMember.memberId,
+      adminRemoveMember.conversationId,
+    );
+  }
+
+  handleDeleteConversation(@MessageBody() data: {conversation: Convensation, adminId: string}) {
+    this.conversationHandler.handleDeleteConversation(
+      this.server,
+      data.conversation,
+      data.adminId,
     );
   }
 }

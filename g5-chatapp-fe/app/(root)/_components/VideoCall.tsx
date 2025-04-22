@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useCallStore } from "@/store/useCallStore";
 import { useAuthStore } from "@/store/useAuthStore";
 
+const CALL_TIMEOUT = 30; // 30 giây đếm ngược
+
 const VideoCall = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [callType, setCallType] = React.useState<"audio" | "video" | null>(
-    "video"
-  );
+  const [callType, setCallType] = useState<"audio" | "video" | null>("video");
+  const [countdown, setCountdown] = useState(CALL_TIMEOUT);
 
   const {
     isCallActive,
@@ -17,12 +18,39 @@ const VideoCall = () => {
     handleEndCall,
     handleCancelCall,
     callConversationId,
-    isCallGroup
+    isCallGroup,
   } = useCallStore();
+
   const { user } = useAuthStore();
-  const roomID = callConversationId || "demo-room"; // Sử dụng ID cuộc gọi thực tế từ store
-  const userID = user?._id || "defaultUserID"; // Thay thế bằng ID người dùng thực tế
-  const userName = user?.firstName + " " + user?.lastName || "defaultUserName"; // Thay thế bằng tên người dùng thực tế
+  const roomID = callConversationId || "demo-room";
+  const userID = user?._id || "defaultUserID";
+  const userName = user?.firstName + " " + user?.lastName || "defaultUserName";
+
+  // Countdown timeout logic
+  useEffect(() => {
+    if (isCallActive && isCallWaiting && !isCallAccepted) {
+      setCountdown(CALL_TIMEOUT);
+      const interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+
+            // Đặt trong setTimeout để tránh update khi đang render
+            setTimeout(() => {
+              if (!isCallAccepted) {
+                handleCancelCall(callConversationId!, isCallGroup);
+              }
+            }, 0);
+
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [isCallActive, isCallWaiting, isCallAccepted]);
 
   useEffect(() => {
     if (!isCallActive || !isCallAccepted) return;
@@ -53,32 +81,33 @@ const VideoCall = () => {
         scenario: {
           mode: ZegoUIKitPrebuilt.OneONoneCall,
         },
-        // turnOnCameraWhenJoining: callType === "video",
-        // showMyCameraToggleButton: callType === "video",
-        // showScreenSharingButton: callType === "video",
         showTextChat: false,
         showLeaveRoomConfirmDialog: false,
         showRoomTimer: true,
         showPreJoinView: false,
         showLeavingView: false,
         onLeaveRoom() {
-          handleEndCall(roomID, isCallGroup); // Gọi hàm kết thúc cuộc gọi khi rời phòng
+          handleEndCall(roomID, isCallGroup);
         },
-        onJoinRoom() {},
       });
     };
 
     init();
-  }, [isCallActive, isCallAccepted, isCallWaiting]); // gọi lại khi trạng thái thay đổi
+  }, [isCallActive, isCallAccepted]);
 
   const shouldShowWaiting = isCallActive && isCallWaiting && !isCallAccepted;
 
   if (shouldShowWaiting) {
     return (
-      <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50 z-[9999]">
-        <p className="text-white">Waiting for the other person to join...</p>
+      <div className="absolute top-0 left-0 w-full h-full flex flex-col gap-6 items-center justify-center bg-black bg-opacity-70 z-[9999]">
+        <div className="flex flex-col items-center">
+          <p className="text-white text-lg mb-2 animate-pulse">
+            Waiting for the other person to join...
+          </p>
+          <div className="text-yellow-400 text-4xl font-bold">{countdown}s</div>
+        </div>
         <button
-          className="bg-red-500 p-2 rounded-full"
+          className="bg-red-600 hover:bg-red-700 transition p-3 rounded-full shadow-lg"
           onClick={() => handleCancelCall(callConversationId!, isCallGroup)}
         >
           <svg
@@ -99,7 +128,7 @@ const VideoCall = () => {
       </div>
     );
   }
-  // ⛔️ Ẩn component hoàn toàn nếu không active hoặc chưa accept
+
   if (!isCallActive || !isCallAccepted) return null;
 
   return (
