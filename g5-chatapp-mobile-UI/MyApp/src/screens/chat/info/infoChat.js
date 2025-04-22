@@ -55,6 +55,23 @@ const UserInfoScreen = ({ navigation, route }) => {
   const [potentialAdmins, setPotentialAdmins] = useState([]);
   
   const conversation = route.params?.conversation;
+  
+  // Validate conversation data at the start
+  useEffect(() => {
+    // Immediately validate the conversation data
+    if (!conversation || !conversation._id) {
+      console.error("[InfoChat] Invalid conversation data received:", conversation);
+      Alert.alert(
+        "Error", 
+        "Invalid conversation data", 
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+      return;
+    } else {
+      console.log("[InfoChat] Received valid conversation:", conversation._id);
+    }
+  }, [conversation, navigation]);
+  
   const isGroup = conversation?.isGroup || false;
   const otherUser = isGroup ? null : conversation?.user;
 
@@ -68,20 +85,28 @@ const UserInfoScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+    
     const initialize = async () => {
       try {
+        console.log("[InfoChat] Initializing with conversation:", conversation?._id);
+        
+        // Get user data
         const userData = await AsyncStorage.getItem("userData");
-        if (userData) {
-          setCurrentUser(JSON.parse(userData));
+        if (userData && mounted) {
+          const parsedUserData = JSON.parse(userData);
+          console.log("[InfoChat] Current user:", parsedUserData?._id);
+          setCurrentUser(parsedUserData);
         }
 
-        if (isGroup && conversation?._id) {
+        if (isGroup && conversation?._id && mounted) {
           await refreshGroupMembers();
         }
 
-        if (conversation?._id) {
+        if (conversation?._id && mounted) {
           const response = await chatService.getMessages(conversation._id);
-          if (response?.data) {
+          if (response?.data && mounted) {
+            // Process media files
             const messages = Array.isArray(response.data)
               ? response.data
               : response.data.data;
@@ -117,13 +142,20 @@ const UserInfoScreen = ({ navigation, route }) => {
           }
         }
 
-        // We'll let handleShowAddMemberModal fetch the contacts when needed
-        // instead of loading them here
-
-        // Add socket event listeners for group-related events
+        // Set up socket event listeners
         const socket = getSocket();
-        if (socket && conversation?._id) {
+        if (socket && conversation?._id && mounted) {
+          console.log("[InfoChat] Setting up socket listeners for conversation:", conversation._id);
+          
+          // Clean up any existing listeners first to prevent duplicates
+          socket.off('updateConversation');
+          socket.off('removedGroupByAdmin');
+          socket.off('dissolvedGroup');
+          
+          // Add new listeners
           socket.on('updateConversation', (data) => {
+            if (!mounted) return;
+            
             if (data.conversation?._id === conversation._id) {
               console.log('[InfoChat] Conversation updated, refreshing members');
               refreshGroupMembers();
@@ -131,8 +163,10 @@ const UserInfoScreen = ({ navigation, route }) => {
           });
           
           socket.on('removedGroupByAdmin', (data) => {
+            if (!mounted) return;
+            
             if (data.conversationId === conversation._id && 
-                data.memberId === currentUser?._id) {
+                data.memberId === parsedUserData?._id) {
               console.log('[InfoChat] You were removed from the group');
               Alert.alert(
                 "Removed from Group",
@@ -143,19 +177,28 @@ const UserInfoScreen = ({ navigation, route }) => {
           });
           
           socket.on('dissolvedGroup', (data) => {
+            if (!mounted) return;
+            
             if (data.conversation?._id === conversation._id) {
               console.log('[InfoChat] Group has been dissolved');
               Alert.alert(
                 "Group Dissolved",
-                `This group has been dissolved by ${data.adminId === currentUser?._id ? 'you' : 'an admin'}`,
+                `This group has been dissolved by ${data.adminId === parsedUserData?._id ? 'you' : 'an admin'}`,
                 [{ text: "OK", onPress: () => navigation.navigate("Home_Chat") }]
               );
             }
           });
+        } else {
+          console.log("[InfoChat] Socket not available or conversation ID missing");
         }
       } catch (error) {
-        console.error("Error initializing:", error);
-        setLoading(false);
+        console.error("[InfoChat] Error initializing:", error);
+      } finally {
+        // Always set loading to false when initialization completes
+        if (mounted) {
+          console.log("[InfoChat] Initialization complete, setting loading to false");
+          setLoading(false);
+        }
       }
     };
 
@@ -169,9 +212,13 @@ const UserInfoScreen = ({ navigation, route }) => {
     };
     
     return () => {
+      // Set mounted flag to false on cleanup
+      mounted = false;
+      
       // Clean up socket listeners
       const socket = getSocket();
       if (socket) {
+        console.log("[InfoChat] Cleaning up socket listeners");
         socket.off('updateConversation');
         socket.off('removedGroupByAdmin');
         socket.off('dissolvedGroup');
@@ -181,6 +228,7 @@ const UserInfoScreen = ({ navigation, route }) => {
 
   const refreshGroupMembers = async () => {
     try {
+      console.log("[InfoChat] Refreshing group members");
       const conversationDetails = await chatService.getMyConversations();
       if (conversationDetails?.success && conversationDetails?.data) {
         const currentConv = conversationDetails.data.find(
@@ -188,10 +236,15 @@ const UserInfoScreen = ({ navigation, route }) => {
         );
         if (currentConv && currentConv.members) {
           setGroupMembers(currentConv.members || []);
+          console.log("[InfoChat] Group members refreshed successfully:", currentConv.members.length);
+        } else {
+          console.log("[InfoChat] Could not find current conversation in response");
         }
+      } else {
+        console.log("[InfoChat] Failed to get conversation details:", conversationDetails?.error);
       }
     } catch (error) {
-      console.error("Error fetching group members:", error);
+      console.error("[InfoChat] Error fetching group members:", error);
     }
   };
 
@@ -293,6 +346,12 @@ const UserInfoScreen = ({ navigation, route }) => {
       setIsProcessingAction(true);
       console.log(`[handleRemoveMember] Starting - memberId: ${memberId}, conversation: ${conversation._id}`);
       setLoading(true);
+      
+      if (!chatService.removeMember) {
+        console.error("[handleRemoveMember] Error: chatService.removeMember function is not defined");
+        throw new Error("The removeMember function is not available");
+      }
+      
       const response = await chatService.removeMember(
         conversation._id,
         memberId
@@ -332,6 +391,12 @@ const UserInfoScreen = ({ navigation, route }) => {
       setIsProcessingAction(true);
       console.log(`[handleChangeRole] Starting - memberId: ${memberId}, conversation: ${conversation._id}`);
       setLoading(true);
+      
+      if (!chatService.changeRoleMember) {
+        console.error("[handleChangeRole] Error: chatService.changeRoleMember function is not defined");
+        throw new Error("The changeRoleMember function is not available");
+      }
+      
       const response = await chatService.changeRoleMember(
         conversation._id,
         memberId
@@ -363,6 +428,12 @@ const UserInfoScreen = ({ navigation, route }) => {
       setIsProcessingAction(true);
       console.log(`[handleMakeAdmin] Starting - memberId: ${memberId}, conversation: ${conversation._id}`);
       setLoading(true);
+      
+      if (!chatService.changeAdmin) {
+        console.error("[handleMakeAdmin] Error: chatService.changeAdmin function is not defined");
+        throw new Error("The changeAdmin function is not available");
+      }
+      
       const response = await chatService.changeAdmin(
         conversation._id,
         memberId
@@ -429,11 +500,25 @@ const UserInfoScreen = ({ navigation, route }) => {
   const confirmLeaveGroup = async () => {
     try {
       setLoading(true);
-      await chatService.leaveGroup(conversation._id);
-      setShowLeaveGroupModal(false);
-      navigation.navigate("Home_Chat");
+      
+      if (!chatService.leaveGroup) {
+        console.error("[confirmLeaveGroup] Error: chatService.leaveGroup function is not defined");
+        throw new Error("The leaveGroup function is not available");
+      }
+      
+      const response = await chatService.leaveGroup(conversation._id);
+      
+      console.log("[confirmLeaveGroup] Response:", response);
+      
+      if (response.success) {
+        setShowLeaveGroupModal(false);
+        navigation.navigate("Home_Chat");
+      } else {
+        console.error("[confirmLeaveGroup] Error in response:", response.error);
+        Alert.alert("Error", response.error || "Failed to leave group");
+      }
     } catch (error) {
-      console.error("Error leaving group:", error);
+      console.error("[confirmLeaveGroup] Exception:", error);
       Alert.alert("Error", error.message || "Failed to leave group");
     } finally {
       setLoading(false);
@@ -448,26 +533,45 @@ const UserInfoScreen = ({ navigation, route }) => {
   const assignNewAdminAndLeave = async (memberId) => {
     try {
       setLoading(true);
-      console.log("Assigning new admin:", memberId);
+      console.log("[assignNewAdminAndLeave] Assigning new admin:", memberId);
       
-      // Use the new changeAdmin function instead of changeRoleMember
+      if (!chatService.changeAdmin) {
+        console.error("[assignNewAdminAndLeave] Error: chatService.changeAdmin function is not defined");
+        throw new Error("The changeAdmin function is not available");
+      }
+      
+      // Use the changeAdmin function
       const adminChangeResult = await chatService.changeAdmin(
         conversation._id,
         memberId
       );
 
-      console.log("Admin change result:", adminChangeResult);
+      console.log("[assignNewAdminAndLeave] Admin change result:", adminChangeResult);
 
       if (adminChangeResult.success) {
+        if (!chatService.leaveGroup) {
+          console.error("[assignNewAdminAndLeave] Error: chatService.leaveGroup function is not defined");
+          throw new Error("The leaveGroup function is not available");
+        }
+        
         // Leave the group after assigning new admin
-        await chatService.leaveGroup(conversation._id);
-        setShowAdminSelectionModal(false);
-        navigation.navigate("Home_Chat");
+        const leaveResult = await chatService.leaveGroup(conversation._id);
+        
+        console.log("[assignNewAdminAndLeave] Leave group result:", leaveResult);
+        
+        if (leaveResult.success) {
+          setShowAdminSelectionModal(false);
+          navigation.navigate("Home_Chat");
+        } else {
+          console.error("[assignNewAdminAndLeave] Error leaving group:", leaveResult.error);
+          throw new Error(leaveResult.error || "Failed to leave group after assigning new admin");
+        }
       } else {
-        throw new Error("Failed to assign new admin");
+        console.error("[assignNewAdminAndLeave] Error assigning new admin:", adminChangeResult.error);
+        throw new Error(adminChangeResult.error || "Failed to assign new admin");
       }
     } catch (error) {
-      console.error("Error assigning new admin:", error);
+      console.error("[assignNewAdminAndLeave] Exception:", error);
       Alert.alert("Error", error.message || "Failed to assign new admin and leave group");
     } finally {
       setLoading(false);
@@ -477,7 +581,15 @@ const UserInfoScreen = ({ navigation, route }) => {
   const dissolveGroup = async () => {
     try {
       setLoading(true);
+      
+      if (!chatService.dissolveGroup) {
+        console.error("[dissolveGroup] Error: chatService.dissolveGroup function is not defined");
+        throw new Error("The dissolveGroup function is not available");
+      }
+      
       const response = await chatService.dissolveGroup(conversation._id);
+      
+      console.log("[dissolveGroup] Response:", response);
       
       if (response.success) {
         // Emit socket event to notify all group members about dissolution
@@ -486,10 +598,11 @@ const UserInfoScreen = ({ navigation, route }) => {
         setShowDissolveGroupModal(false);
         navigation.navigate("Home_Chat");
       } else {
+        console.error("[dissolveGroup] Error in response:", response.error);
         throw new Error(response.error || "Failed to dissolve group");
       }
     } catch (error) {
-      console.error("Error dissolving group:", error);
+      console.error("[dissolveGroup] Exception:", error);
       Alert.alert("Error", error.message || "Failed to dissolve group");
     } finally {
       setLoading(false);
@@ -580,288 +693,296 @@ const UserInfoScreen = ({ navigation, route }) => {
     );
   };
 
-  const renderGroupHeader = () => (
-    <>
-      <View style={styles.avatarSection}>
-        <Image
-          source={
-            conversation.avatar
-              ? {
-                  uri: conversation.avatar.startsWith("http")
-                    ? conversation.avatar
-                    : `${API_URL}/uploads/${conversation.avatar}`,
-                }
-              : require("../../../../assets/chat/avatar.png")
-          }
-          style={styles.avatarLarge}
-        />
-        <Text style={styles.name}>{conversation.name || "Group Chat"}</Text>
-        <Text style={styles.memberCount}>{groupMembers.length} members</Text>
+  const renderGroupHeader = () => {
+    if (!conversation) return null;
+    
+    return (
+      <>
+        <View style={styles.avatarSection}>
+          <Image
+            source={
+              conversation.avatar
+                ? {
+                    uri: conversation.avatar.startsWith("http")
+                      ? conversation.avatar
+                      : `${API_URL}/uploads/${conversation.avatar}`,
+                  }
+                : require("../../../../assets/chat/avatar.png")
+            }
+            style={styles.avatarLarge}
+          />
+          <Text style={styles.name}>{conversation.name || "Group Chat"}</Text>
+          <Text style={styles.memberCount}>{groupMembers.length} members</Text>
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleShowAddMemberModal}
-          >
-            <MaterialIcon name="account-plus" size={22} color="#fff" />
-            <Text style={styles.actionText}>Add</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.leaveButton]}
-            onPress={handleLeaveGroup}
-          >
-            <MaterialIcon name="exit-to-app" size={22} color="#fff" />
-            <Text style={styles.actionText}>Leave</Text>
-          </TouchableOpacity>
-
-          {checkIsAdmin() && (
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.dissolveButton]}
-              onPress={() => setShowDissolveGroupModal(true)}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleShowAddMemberModal}
             >
-              <MaterialIcon name="delete" size={22} color="#fff" />
-              <Text style={styles.actionText}>Dissolve</Text>
+              <MaterialIcon name="account-plus" size={22} color="#fff" />
+              <Text style={styles.actionText}>Add</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.leaveButton]}
+              onPress={handleLeaveGroup}
+            >
+              <MaterialIcon name="exit-to-app" size={22} color="#fff" />
+              <Text style={styles.actionText}>Leave</Text>
+            </TouchableOpacity>
+
+            {checkIsAdmin() && (
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.dissolveButton]}
+                onPress={() => setShowDissolveGroupModal(true)}
+              >
+                <MaterialIcon name="delete" size={22} color="#fff" />
+                <Text style={styles.actionText}>Dissolve</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Members ({groupMembers.length})</Text>
+            <TouchableOpacity
+              onPress={() => setShowAllMembers(!showAllMembers)}
+              style={styles.toggleButton}
+            >
+              <Text style={styles.toggleText}>
+                {showAllMembers ? "Hide" : "Show all"}
+              </Text>
+              <MaterialIcon 
+                name={showAllMembers ? "chevron-up" : "chevron-down"} 
+                size={18} 
+                color="#135CAF" 
+              />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.membersList}>
+            {(showAllMembers ? groupMembers : groupMembers.slice(0, 3)).map((item) => renderMemberItem({ item }))}
+          </View>
+          
+          {!showAllMembers && groupMembers.length > 3 && (
+            <TouchableOpacity 
+              style={styles.showMoreButton}
+              onPress={() => setShowAllMembers(true)}
+            >
+              <Text style={styles.showMoreText}>
+                +{groupMembers.length - 3} more members
+              </Text>
             </TouchableOpacity>
           )}
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Members ({groupMembers.length})</Text>
-          <TouchableOpacity
-            onPress={() => setShowAllMembers(!showAllMembers)}
-            style={styles.toggleButton}
-          >
-            <Text style={styles.toggleText}>
-              {showAllMembers ? "Hide" : "Show all"}
-            </Text>
-            <MaterialIcon 
-              name={showAllMembers ? "chevron-up" : "chevron-down"} 
-              size={18} 
-              color="#135CAF" 
+        {mediaMessages.images.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shared Photos</Text>
+            <FlatList
+              data={mediaMessages.images.slice(0, 6)}
+              renderItem={renderMediaGrid}
+              keyExtractor={(item, index) => `image-${index}`}
+              numColumns={3}
+              scrollEnabled={false}
             />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.membersList}>
-          {(showAllMembers ? groupMembers : groupMembers.slice(0, 3)).map((item) => renderMemberItem({ item }))}
-        </View>
-        
-        {!showAllMembers && groupMembers.length > 3 && (
-          <TouchableOpacity 
-            style={styles.showMoreButton}
-            onPress={() => setShowAllMembers(true)}
-          >
-            <Text style={styles.showMoreText}>
-              +{groupMembers.length - 3} more members
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {mediaMessages.images.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shared Photos</Text>
-          <FlatList
-            data={mediaMessages.images.slice(0, 6)}
-            renderItem={renderMediaGrid}
-            keyExtractor={(item, index) => `image-${index}`}
-            numColumns={3}
-            scrollEnabled={false}
-          />
-          {mediaMessages.images.length > 6 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {mediaMessages.videos.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shared Videos</Text>
-          <FlatList
-            data={mediaMessages.videos.slice(0, 6)}
-            renderItem={renderMediaGrid}
-            keyExtractor={(item, index) => `video-${index}`}
-            numColumns={3}
-            scrollEnabled={false}
-          />
-          {mediaMessages.videos.length > 6 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {mediaMessages.files.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shared Files</Text>
-          <FlatList
-            data={mediaMessages.files.slice(0, 3)}
-            renderItem={renderFileItem}
-            keyExtractor={(item, index) => `file-${index}`}
-            scrollEnabled={false}
-          />
-          {mediaMessages.files.length > 3 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-    </>
-  );
-
-  const renderIndividualHeader = () => (
-    <>
-      <View style={styles.avatarSection}>
-        <Image
-          source={
-            otherUser?.avatar
-              ? {
-                  uri: otherUser.avatar.startsWith("http")
-                    ? otherUser.avatar
-                    : `${API_URL}/uploads/${otherUser.avatar}`,
-                }
-              : require("../../../../assets/chat/avatar.png")
-          }
-          style={styles.avatarLarge}
-        />
-        <Text style={styles.name}>
-          {otherUser?.firstName} {otherUser?.lastName}
-        </Text>
-        {otherUser?.isOnline ? (
-          <Text style={styles.onlineStatus}>Active now</Text>
-        ) : (
-          <Text style={styles.offlineStatus}>Offline</Text>
-        )}
-
-        <View style={styles.userInfoSection}>
-          <View style={styles.infoRow}>
-            <MaterialIcon name="email-outline" size={20} color="#666" />
-            <Text style={styles.infoText}>
-              {otherUser?.email || "No email"}
-            </Text>
+            {mediaMessages.images.length > 6 && (
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
+        )}
 
-          {otherUser?.phone && (
+        {mediaMessages.videos.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shared Videos</Text>
+            <FlatList
+              data={mediaMessages.videos.slice(0, 6)}
+              renderItem={renderMediaGrid}
+              keyExtractor={(item, index) => `video-${index}`}
+              numColumns={3}
+              scrollEnabled={false}
+            />
+            {mediaMessages.videos.length > 6 && (
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {mediaMessages.files.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shared Files</Text>
+            <FlatList
+              data={mediaMessages.files.slice(0, 3)}
+              renderItem={renderFileItem}
+              keyExtractor={(item, index) => `file-${index}`}
+              scrollEnabled={false}
+            />
+            {mediaMessages.files.length > 3 && (
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </>
+    );
+  };
+
+  const renderIndividualHeader = () => {
+    if (!conversation || !otherUser) return null;
+    
+    return (
+      <>
+        <View style={styles.avatarSection}>
+          <Image
+            source={
+              otherUser?.avatar
+                ? {
+                    uri: otherUser.avatar.startsWith("http")
+                      ? otherUser.avatar
+                      : `${API_URL}/uploads/${otherUser.avatar}`,
+                  }
+                : require("../../../../assets/chat/avatar.png")
+            }
+            style={styles.avatarLarge}
+          />
+          <Text style={styles.name}>
+            {otherUser?.firstName} {otherUser?.lastName}
+          </Text>
+          {otherUser?.isOnline ? (
+            <Text style={styles.onlineStatus}>Active now</Text>
+          ) : (
+            <Text style={styles.offlineStatus}>Offline</Text>
+          )}
+
+          <View style={styles.userInfoSection}>
             <View style={styles.infoRow}>
-              <MaterialIcon name="phone-outline" size={20} color="#666" />
-              <Text style={styles.infoText}>{otherUser.phone}</Text>
+              <MaterialIcon name="email-outline" size={20} color="#666" />
+              <Text style={styles.infoText}>
+                {otherUser?.email || "No email"}
+              </Text>
             </View>
-          )}
-        </View>
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton}>
-            <MaterialIcon name="phone" size={22} color="#fff" />
-            <Text style={styles.actionText}>Call</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <MaterialIcon name="video" size={22} color="#fff" />
-            <Text style={styles.actionText}>Video</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.blockButton]}
-            onPress={() => {
-              Alert.alert(
-                "Block User",
-                "Are you sure you want to block this user?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Block",
-                    style: "destructive",
-                    onPress: () => {
-                      // Handle block user logic
-                      navigation.goBack();
-                    },
-                  },
-                ]
-              );
-            }}
-          >
-            <MaterialIcon name="block-helper" size={22} color="#fff" />
-            <Text style={styles.actionText}>Block</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.privacySection}>
-        <View style={styles.privacyOption}>
-          <View style={styles.privacyOptionInfo}>
-            <MaterialIcon name="bell-outline" size={24} color="#333" />
-            <Text style={styles.privacyOptionText}>Mute notifications</Text>
+            {otherUser?.phone && (
+              <View style={styles.infoRow}>
+                <MaterialIcon name="phone-outline" size={20} color="#666" />
+                <Text style={styles.infoText}>{otherUser.phone}</Text>
+              </View>
+            )}
           </View>
-          <Switch
-            value={false}
-            onValueChange={() => {}}
-            trackColor={{ false: "#d3d3d3", true: "#135CAF" }}
-            thumbColor="#fff"
-          />
-        </View>
-      </View>
 
-      {mediaMessages.images.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shared Photos</Text>
-          <FlatList
-            data={mediaMessages.images.slice(0, 6)}
-            renderItem={renderMediaGrid}
-            keyExtractor={(item, index) => `image-${index}`}
-            numColumns={3}
-            scrollEnabled={false}
-          />
-          {mediaMessages.images.length > 6 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.actionButton}>
+              <MaterialIcon name="phone" size={22} color="#fff" />
+              <Text style={styles.actionText}>Call</Text>
             </TouchableOpacity>
-          )}
-        </View>
-      )}
 
-      {mediaMessages.videos.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shared Videos</Text>
-          <FlatList
-            data={mediaMessages.videos.slice(0, 6)}
-            renderItem={renderMediaGrid}
-            keyExtractor={(item, index) => `video-${index}`}
-            numColumns={3}
-            scrollEnabled={false}
-          />
-          {mediaMessages.videos.length > 6 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
+            <TouchableOpacity style={styles.actionButton}>
+              <MaterialIcon name="video" size={22} color="#fff" />
+              <Text style={styles.actionText}>Video</Text>
             </TouchableOpacity>
-          )}
-        </View>
-      )}
 
-      {mediaMessages.files.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shared Files</Text>
-          <FlatList
-            data={mediaMessages.files.slice(0, 3)}
-            renderItem={renderFileItem}
-            keyExtractor={(item, index) => `file-${index}`}
-            scrollEnabled={false}
-          />
-          {mediaMessages.files.length > 3 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>View All</Text>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.blockButton]}
+              onPress={() => {
+                Alert.alert(
+                  "Block User",
+                  "Are you sure you want to block this user?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Block",
+                      style: "destructive",
+                      onPress: () => {
+                        // Handle block user logic
+                        navigation.goBack();
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <MaterialIcon name="block-helper" size={22} color="#fff" />
+              <Text style={styles.actionText}>Block</Text>
             </TouchableOpacity>
-          )}
+          </View>
         </View>
-      )}
-    </>
-  );
+
+        <View style={styles.privacySection}>
+          <View style={styles.privacyOption}>
+            <View style={styles.privacyOptionInfo}>
+              <MaterialIcon name="bell-outline" size={24} color="#333" />
+              <Text style={styles.privacyOptionText}>Mute notifications</Text>
+            </View>
+            <Switch
+              value={false}
+              onValueChange={() => {}}
+              trackColor={{ false: "#d3d3d3", true: "#135CAF" }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
+        {mediaMessages.images.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shared Photos</Text>
+            <FlatList
+              data={mediaMessages.images.slice(0, 6)}
+              renderItem={renderMediaGrid}
+              keyExtractor={(item, index) => `image-${index}`}
+              numColumns={3}
+              scrollEnabled={false}
+            />
+            {mediaMessages.images.length > 6 && (
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {mediaMessages.videos.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shared Videos</Text>
+            <FlatList
+              data={mediaMessages.videos.slice(0, 6)}
+              renderItem={renderMediaGrid}
+              keyExtractor={(item, index) => `video-${index}`}
+              numColumns={3}
+              scrollEnabled={false}
+            />
+            {mediaMessages.videos.length > 6 && (
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {mediaMessages.files.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shared Files</Text>
+            <FlatList
+              data={mediaMessages.files.slice(0, 3)}
+              renderItem={renderFileItem}
+              keyExtractor={(item, index) => `file-${index}`}
+              scrollEnabled={false}
+            />
+            {mediaMessages.files.length > 3 && (
+              <TouchableOpacity style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </>
+    );
+  };
 
   const renderAddMemberModal = () => (
     <Modal

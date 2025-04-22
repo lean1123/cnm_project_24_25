@@ -469,6 +469,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
     reaction: "",
     users: [],
   });
+  // Add this at the top of the component after other useRef declarations
+  const typingTimeoutRef = useRef(null);
 
   const scrollToBottom = () => {
     if (flatListRef.current) {
@@ -2643,40 +2645,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   // Add typing indicator functionality
   useEffect(() => {
-    let typingTimeout = null;
-    
-    // Create a debounced handler for text input changes
-    const handleTextChange = (text) => {
-      if (!socket || !conversation?._id || !currentUser?._id) return;
-      
-      // Update the state
-      setNewMessage(text);
-      
-      // Clear any existing timeout
-      if (typingTimeout) {
-        clearTimeout(typingTimeout);
-      }
-      
-      // Send typing event if user is entering text
-      if (text.length > 0) {
-        emitTyping(currentUser._id, conversation._id);
-      }
-      
-      // Set timeout to send stop typing after 2 seconds of inactivity
-      typingTimeout = setTimeout(() => {
-        emitStopTyping(currentUser._id, conversation._id);
-      }, 2000);
-    };
-    
-    // Override the standard input handler with our typing-aware version
-    const originalSetNewMessage = setNewMessage;
-    setNewMessage = handleTextChange;
-    
     return () => {
-      // Restore original function and clear timeout on cleanup
-      setNewMessage = originalSetNewMessage;
-      if (typingTimeout) {
-        clearTimeout(typingTimeout);
+      // Clear timeout on cleanup
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
         // Make sure we send stop typing when component unmounts
         if (socket && conversation?._id && currentUser?._id) {
           emitStopTyping(currentUser._id, conversation._id);
@@ -2684,6 +2656,31 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
     };
   }, [socket, conversation, currentUser]);
+
+  // Create a proper debounced text change handler
+  const handleTextChange = (text) => {
+    setNewMessage(text);
+    
+    if (socket && conversation?._id && currentUser?._id) {
+      // Clear any existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Send typing event if user is entering text
+      if (text.length > 0) {
+        emitTyping(currentUser._id, conversation._id);
+        
+        // Set timeout to send stop typing after 2 seconds of inactivity
+        typingTimeoutRef.current = setTimeout(() => {
+          emitStopTyping(currentUser._id, conversation._id);
+          typingTimeoutRef.current = null;
+        }, 2000);
+      } else {
+        emitStopTyping(currentUser._id, conversation._id);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -2860,23 +2857,30 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 size={24}
                 onPress={() => {
                   if (conversation) {
+                    console.log("[ChatDetail] Navigating to UserInfo with conversation:", conversation._id);
+                    
+                    // Create a clean conversation object to pass
+                    const conversationToPass = {
+                      _id: conversation._id,
+                      name: conversation.name || (otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : "Chat"),
+                      members: conversation.members || [],
+                      avatar: conversation.avatar || (otherUser ? otherUser.avatar : null),
+                      isGroup: conversation.isGroup || false,
+                      isOnline: isOnline,
+                    };
+                    
+                    // Add user property only for individual chats
+                    if (!conversation.isGroup && otherUser) {
+                      conversationToPass.user = otherUser;
+                    }
+                    
+                    console.log("[ChatDetail] Prepared conversation data:", JSON.stringify(conversationToPass, null, 2));
+                    
                     navigation.navigate("UserInfo", {
-                      conversation: {
-                        _id: conversation._id,
-                        name:
-                          conversation.name ||
-                          (otherUser
-                            ? `${otherUser.firstName} ${otherUser.lastName}`
-                            : "Chat"),
-                        members: conversation.members || [],
-                        avatar:
-                          conversation.avatar ||
-                          (otherUser ? otherUser.avatar : null),
-                        isGroup: conversation.isGroup || false,
-                        isOnline: isOnline,
-                        user: otherUser,
-                      },
+                      conversation: conversationToPass
                     });
+                  } else {
+                    console.error("[ChatDetail] Cannot navigate to UserInfo - conversation is null");
                   }
                 }}
               />
@@ -2959,7 +2963,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
               placeholder="Type a message..."
               placeholderTextColor="#888"
               value={newMessage}
-              onChangeText={(text) => setNewMessage(text)}
+              onChangeText={(text) => handleTextChange(text)}
               onSubmitEditing={handleSubmitEditing}
               onFocus={scrollToBottom}
             />
