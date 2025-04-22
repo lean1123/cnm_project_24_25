@@ -29,6 +29,7 @@ const HomeScreen = () => {
   const [socketConnected, setSocketConnected] = useState(false);
   const navigation = useNavigation();
 
+
   const renderLastMessage = (lastMessage) => {
     if (!lastMessage) return "Bắt đầu cuộc trò chuyện!";
 
@@ -289,6 +290,8 @@ const HomeScreen = () => {
     );
   }
 
+  
+
   const renderConversation = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -308,7 +311,7 @@ const HomeScreen = () => {
     >
       <View style={styles.avatarContainer}>
         <Image 
-          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/avatar.png")}
+          source={item.avatar ? { uri: item.avatar } : require("../../../assets/chat/group.jpg")}
           style={styles.avatar} 
         />
         {item.isOnline && <View style={styles.onlineIndicator} />}

@@ -315,7 +315,7 @@ const AddGroupScreen = ({ navigation }) => {
             source={
               groupImage 
                 ? { uri: groupImage.uri } 
-                : require("../../../assets/chat/avatar.png")
+                : require("../../../assets/chat/group.jpg")
             }
             style={styles.groupAvatar}
           />
