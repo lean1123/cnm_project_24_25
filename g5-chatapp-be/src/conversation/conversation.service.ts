@@ -355,7 +355,7 @@ export class ConversationService {
     // optional (Gợi ý thêm) Xoá các file media trong Cloudinary nếu có
 
     // 4. Xoá cuộc trò chuyện
-    await this.convenstationModel.findByIdAndDelete(conversationId);
+    return await this.convenstationModel.findByIdAndDelete(conversationId);
   }
 
   /**

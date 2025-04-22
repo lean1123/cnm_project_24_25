@@ -26,8 +26,22 @@ interface iConversationStore {
   addMemberCreateGroup: (member: User) => void;
   removeMemberCreateGroup: (member: User) => void;
   createGroup: (group: CreateGroupRequest) => Promise<void>;
+  addMemberToGroup: (
+    conversationId: string,
+    userIds: string[]
+  ) => Promise<void>;
+  removeMemberFromGroup: (
+    conversationId: string,
+    memberId: string
+  ) => Promise<void>;
+  changeRoleMember: (conversationId: string, memberId: string) => Promise<void>;
+  changeAdminGroup: (conversationId: string, memberId: string) => Promise<void>;
+  leaveGroup: (conversationId: string) => Promise<void>;
+  dissolveGroup: (conversationId: string) => Promise<void>;
   subscribeNewGroup: () => void;
   unsubscribeNewGroup: () => void;
+  subscribeUpdateGroup: () => void;
+  unsubscribeUpdateGroup: () => void;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -116,8 +130,102 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       set({ isLoading: false });
     }
   },
+  addMemberToGroup: async (conversationId: string, userIds: string[]) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.post(
+        `/conversation/add-member/${conversationId}`,
+        { newMemberIds: userIds }
+      );
+      console.log("Add member to group response:", data);
+      toast.success("Member added successfully!");
+      get().getConversations(useAuthStore.getState().user?._id as string);
+    } catch (error) {
+      set({ error: "Failed to add member" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  removeMemberFromGroup: async (conversationId: string, memberId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.delete(
+        `/conversation/remove-member/${conversationId}`,
+        {
+          data: { memberId },
+        }
+      );
+      console.log("Remove member from group response:", data);
+      toast.success("Member removed successfully!");
+      get().getConversations(useAuthStore.getState().user?._id as string);
+    } catch (error) {
+      set({ error: "Failed to remove member" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  leaveGroup: async (conversationId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.post(`/conversation/leave/${conversationId}`);
+      console.log("Leave group response:", data);
+      toast.success("Left group successfully!");
+      get().getConversations(useAuthStore.getState().user?._id as string);
+      set({ selectedConversation: null });
+    } catch (error) {
+      set({ error: "Failed to leave group" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  dissolveGroup: async (conversationId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.delete(`/conversation/${conversationId}`);
+      console.log("Dissolve group response:", data);
+      toast.success("Group dissolved successfully!");
+      get().getConversations(useAuthStore.getState().user?._id as string);
+    } catch (error) {
+      set({ error: "Failed to dissolve group" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  changeRoleMember: async (conversationId: string, memberId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.post(
+        `/conversation/change-role/${conversationId}/${memberId}`
+      );
+      console.log("Change role response:", data);
+      toast.success("Role changed successfully!");
+      get().getConversations(useAuthStore.getState().user?._id as string);
+    } catch (error) {
+      set({ error: "Failed to change role" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  changeAdminGroup: async (conversationId: string, memberId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.put(
+        `/conversation/change-admin/${conversationId}`,
+        {
+          adminId: memberId,
+        }
+      );
+      console.log("Change admin response:", data);
+      toast.success("Admin changed successfully!");
+      get().getConversations(useAuthStore.getState().user?._id as string);
+    } catch (error) {
+      set({ error: "Failed to change admin" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
   subscribeNewGroup: () => {
-    const socket = getSocket();
+    const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.on("createConversationForGroup", (data) => {
         console.log("New group created:", data);
@@ -131,9 +239,50 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     }
   },
   unsubscribeNewGroup: () => {
-    const socket = getSocket();
+    const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.off("createConversationForGroup");
+    }
+  },
+  subscribeUpdateGroup: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      socket.on("updateConversation", (data) => {
+        console.log("Group updated:", data);
+        if (data.conversation._id === get().selectedConversation?._id) {
+          set({ selectedConversation: data.conversation });
+        }
+        get().getConversations(useAuthStore.getState().user?._id as string);
+      });
+      socket.on("removedGroupByAdmin", (data) => {
+        console.log("You have been removed from the group:", data);
+        if (data.memberId === useAuthStore.getState().user?._id) {
+          toast.error("You have been removed from the group!");
+          if (get().selectedConversation?._id === data.conversationId) {
+            set({ selectedConversation: null });
+            window.location.href = "/conversations";
+          }
+          get().getConversations(useAuthStore.getState().user?._id as string);
+        }
+      });
+      socket.on("dissolvedGroup", (data) => {
+        console.log("Group dissolved:", data);
+        if (
+          data.conversation._id === get().selectedConversation?._id &&
+          useAuthStore.getState().user?._id !== data.adminId
+        ) {
+          toast.error("Group has been dissolved!");
+          set({ selectedConversation: null });
+          window.location.href = "/conversations";
+        }
+        get().getConversations(useAuthStore.getState().user?._id as string);
+      });
+    }
+  },
+  unsubscribeUpdateGroup: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      socket.off("updateConversation");
     }
   },
 }));

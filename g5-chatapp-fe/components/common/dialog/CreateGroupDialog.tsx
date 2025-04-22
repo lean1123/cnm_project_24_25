@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Pencil, UserPlus, Users, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUserStore } from "@/store/useUserStore";
 import { useContactStore } from "@/store/useContactStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -70,9 +70,9 @@ export function CreateGroupDialog() {
     );
   };
 
-  useEffect(() => {
-    getMyContact(); // gọi để load dữ liệu contacts từ store
-  }, []);
+  // useEffect(() => {
+  //   getMyContact(); // gọi để load dữ liệu contacts từ store
+  // }, [contacts, getMyContact]);
 
   useEffect(() => {
     if (!contacts || contacts.length === 0) return;
@@ -106,15 +106,17 @@ export function CreateGroupDialog() {
     removeMemberCreateGroup(member);
   };
 
-  const friendFilter = friends.filter((friend) => {
-    const fullName = `${friend.firstName} ${friend.lastName}`.toLowerCase();
-    const email = friend.email?.toLowerCase() || "";
-    const query = inputValue.toLowerCase();
+  const friendFilter = useMemo(() => {
+    return friends.filter((friend) => {
+      const fullName = `${friend.firstName} ${friend.lastName}`.toLowerCase();
+      const email = friend.email?.toLowerCase() || "";
+      const query = inputValue.toLowerCase();
 
-    return (
-      inputValue === "" || fullName.includes(query) || email.includes(query)
-    );
-  });
+      return (
+        inputValue === "" || fullName.includes(query) || email.includes(query)
+      );
+    });
+  }, [friends, inputValue]);
 
   return (
     <Dialog>
@@ -173,7 +175,7 @@ export function CreateGroupDialog() {
           {/* result */}
           <div className="flex-grow grid grid-cols-5">
             {/* left */}
-            <div className="col-span-3 overflow-y-scroll h-[300px] no-scrollbar">
+            <div className="col-span-3 overflow-y-scroll h-[320px] no-scrollbar">
               {friendFilter &&
                 friendFilter.map((contact, idx) => (
                   <div

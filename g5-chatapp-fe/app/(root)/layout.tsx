@@ -13,6 +13,8 @@ const Layout = ({ children }: Props) => {
   const {
     subscribeNewGroup,
     unsubscribeNewGroup,
+    subscribeUpdateGroup,
+    unsubscribeUpdateGroup,
   } = useConversationStore();
   const {
     subscribeContact,
@@ -77,6 +79,7 @@ const Layout = ({ children }: Props) => {
       subscribeEndCall();
       subscribeCancelCall();
       subscribeAcceptContact();
+      subscribeUpdateGroup();
       return () => {
         unsubscribeContact();
         unsubscribeCancelContact();
@@ -95,6 +98,7 @@ const Layout = ({ children }: Props) => {
         unsubscribeEndCall();
         unsubscribeCancelCall();
         unsubscribeAcceptContact();
+        unsubscribeUpdateGroup();
       };
     }
   }, [isAuthenticated, socket]);

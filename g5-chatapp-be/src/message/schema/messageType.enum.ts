@@ -7,4 +7,5 @@ export enum MessageType {
   STICKER = 'STICKER',
   GIF = 'GIF',
   LOCATION = 'LOCATION',
+  CALL = 'CALL',
 }
