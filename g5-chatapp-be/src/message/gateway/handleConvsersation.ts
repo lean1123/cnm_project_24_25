@@ -36,6 +36,54 @@ export class HandleConversation {
       server.to(conversationId).emit('updateConversation', {
         conversation: conversation,
       });
+      for (const member of conversation.members) {
+        const userId = member.user._id.toString();
+        if (userId) {
+          server.to(userId).emit('updateConversation', {
+            conversation: conversation,
+          });
+          console.log(
+            `[Conversation] User ${userId} updated conversation ${conversationId}`,
+          );
+        }
+      }
+    }
+  }
+
+  handleRemoveMemberFromGroup(
+    server: Server,
+    memberId: string,
+    conversationId: string,
+  ){
+    server.to(memberId).emit('removedGroupByAdmin', {
+      memberId: memberId,
+      conversationId: conversationId,
+    });
+  }
+
+  handleDeleteConversation(
+    server: Server,
+    conversation: Convensation,
+    adminId: string,
+  ) {
+    const conversationId = conversation._id as string;
+    if (conversationId) {
+      server.to(conversationId).emit('dissolvedGroup', {
+        conversation: conversation,
+        adminId
+      });
+      for (const member of conversation.members) {
+        const userId = member.user._id.toString();
+        if (userId) {
+          server.to(userId).emit('dissolvedGroup', {
+            conversation: conversation,
+            adminId
+          });
+          console.log(
+            `[Conversation] User ${userId} deleted conversation ${conversationId}`,
+          );
+        }
+      }
     }
   }
   // async handleJoinNewConversation(

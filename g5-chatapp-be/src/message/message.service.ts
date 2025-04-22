@@ -15,6 +15,7 @@ import { MessageForwardationRequest } from './dtos/requests/messageForwardation.
 import { MessageType } from './schema/messageType.enum';
 import { Message } from './schema/messege.chema';
 import { MessageReactionRequest } from './dtos/requests/messageReaction.request';
+import { User } from 'src/user/schema/user.schema';
 
 @Injectable()
 export class MessageService {
@@ -472,4 +473,39 @@ export class MessageService {
       imagesAndVideos: imagesAndVideos.flat(),
     };
   }
+
+  async createCallMessage(
+    conversationId: string,
+    callerId: string,
+    type: string,
+  ) {
+    const message = await this.messageModel.create({
+      conversation: new Types.ObjectId(conversationId),
+      sender: callerId,
+      type: MessageType.CALL,
+      content: type,
+    });
+
+    return message.populate('sender', 'firstName lastName email avatar');
+  }
+  async updateCallMessage(
+    messageId: string,
+    type: string,
+    callStatus: string,
+  ): Promise<Message> {
+    const message = await this.messageModel.findByIdAndUpdate(
+      messageId,
+      {
+        type: MessageType.CALL,
+        content: type,
+        callStatus: callStatus,
+      },
+      { new: true },
+    );
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    return message.populate('sender', 'firstName lastName email avatar');
+  }
+
 }
