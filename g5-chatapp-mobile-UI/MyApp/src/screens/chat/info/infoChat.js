@@ -695,7 +695,6 @@ const UserInfoScreen = ({ navigation, route }) => {
               }
               style={styles.memberAvatar}
             />
-            {isUserOnline(user._id) && <View style={styles.memberOnlineIndicator} />}
           </View>
           <View>
             <Text style={styles.memberName}>
@@ -737,7 +736,7 @@ const UserInfoScreen = ({ navigation, route }) => {
                         ? conversation.avatar
                         : `${API_URL}/uploads/${conversation.avatar}`,
                     }
-                  : require("../../../../assets/chat/avatar.png")
+                  : require("../../../../assets/chat/group.jpg")
               }
               style={styles.avatarLarge}
             />
@@ -922,27 +921,12 @@ const UserInfoScreen = ({ navigation, route }) => {
               }
               style={styles.avatarLarge}
             />
-            {isUserOnline(otherUser._id) && (
-              <View style={styles.onlineIndicator} />
-            )}
           </View>
           <Text style={styles.name}>
             {otherUser?.firstName} {otherUser?.lastName}
           </Text>
           
-          <View style={styles.statusBadge}>
-            {isUserOnline(otherUser._id) ? (
-              <>
-                <View style={styles.statusDot} />
-                <Text style={styles.onlineStatus}>Active now</Text>
-              </>
-            ) : (
-              <>
-                <View style={[styles.statusDot, styles.offlineDot]} />
-                <Text style={styles.offlineStatus}>Offline</Text>
-              </>
-            )}
-          </View>
+          
 
           <View style={styles.userInfoSection}>
             <View style={styles.infoRow}>
@@ -960,41 +944,6 @@ const UserInfoScreen = ({ navigation, route }) => {
             )}
           </View>
 
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialIcon name="phone" size={22} color="#fff" />
-              <Text style={styles.actionText}>Call</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialIcon name="video" size={22} color="#fff" />
-              <Text style={styles.actionText}>Video</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.blockButton]}
-              onPress={() => {
-                Alert.alert(
-                  "Block User",
-                  "Are you sure you want to block this user?",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Block",
-                      style: "destructive",
-                      onPress: () => {
-                        // Handle block user logic
-                        navigation.goBack();
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <MaterialIcon name="block-helper" size={22} color="#fff" />
-              <Text style={styles.actionText}>Block</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={styles.privacySection}>

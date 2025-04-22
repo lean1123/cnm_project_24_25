@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Image,
   ImageBackground,
+  ScrollView,
 } from "react-native";
 import WebView from "react-native-webview";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -65,6 +66,7 @@ import {
   List,
   Badge,
 } from "react-native-paper";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 
 
@@ -472,6 +474,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
   const [memberCount, setMemberCount] = useState(0);
   // Add this at the top of the component after other useRef declarations
   const typingTimeoutRef = useRef(null);
+  const [reactionDetailsVisible, setReactionDetailsVisible] = useState(false);
+  const [reactionDetailsData, setReactionDetailsData] = useState({
+    reaction: null,
+    users: [],
+  });
 
   const scrollToBottom = () => {
     if (flatListRef.current) {
@@ -1789,99 +1796,132 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 shadowOpacity: 0.1,
                 shadowRadius: 1,
                 elevation: 1,
+                paddingHorizontal: 5,
+                paddingVertical: 3,
               }}
             >
               {Array.isArray(item.reactions)
-                ? // Handle array of reaction objects
-                  item.reactions.map((reactionObj, index) => {
-                    console.log(
-                      `Message ${item._id} - Reaction object:`,
-                      reactionObj
-                    );
-
-                    if (!reactionObj || !reactionObj.reaction) return null;
-
-                    // Check if current user has used this reaction
-                    const myId = currentUser?._id;
-                    const hasReacted = reactionObj.user === myId;
-
-                    return (
-                      <TouchableOpacity
-                        key={index}
-                        style={{
-                          marginHorizontal: 3,
-                          borderRadius: 8,
-                          border: "none",
-                        }}
-                        onPress={() => {
-                          if (hasReacted) {
-                            removeReaction(item._id);
-                          } else {
-                            handleReaction(item, reactionObj.reaction);
-                          }
-                        }}
-                      >
-                        <View
-                          style={{ flexDirection: "row", alignItems: "center" }}
-                        >
-                          <Text style={{ fontSize: 18 }}>
-                            {reactionObj.reaction}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })
-                : // Handle old reaction format (if still needed)
-                  Object.entries(item.reactions || {}).map(
-                    ([reaction, userIds]) => {
-                      console.log(
-                        `Message ${item._id} - Reaction: ${reaction}, Users:`,
-                        userIds
-                      );
-
-                      // Make sure userIds is an array with contents
-                      if (!Array.isArray(userIds) || userIds.length === 0)
-                        return null;
-
-                      // Check if current user has used this reaction
+                ? (() => {
+                    // Nhóm các reaction theo loại
+                    const reactionGroups = item.reactions.reduce((groups, reactionObj) => {
+                      if (!reactionObj || !reactionObj.reaction) return groups;
+                      
+                      if (!groups[reactionObj.reaction]) {
+                        groups[reactionObj.reaction] = {
+                          count: 0,
+                          users: [],
+                          myReaction: false
+                        };
+                      }
+                      
+                      groups[reactionObj.reaction].count++;
+                      groups[reactionObj.reaction].users.push(reactionObj.user);
+                      
+                      // Kiểm tra xem người dùng hiện tại đã reaction chưa
                       const myId = currentUser?._id;
-                      const hasReacted = userIds.includes(myId);
-
+                      if (reactionObj.user === myId) {
+                        groups[reactionObj.reaction].myReaction = true;
+                      }
+                      
+                      return groups;
+                    }, {});
+                    
+                    // Render từng nhóm reaction
+                    return Object.entries(reactionGroups).map(([reaction, data]) => {
+                      const { count, myReaction } = data;
+                      
                       return (
                         <TouchableOpacity
                           key={reaction}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: myReaction ? 'rgba(0,153,255,0.1)' : 'transparent',
+                            borderRadius: 12,
+                            paddingHorizontal: 5,
+                            paddingVertical: 2,
+                            marginHorizontal: 2,
+                          }}
                           onPress={() => {
-                            if (hasReacted) {
+                            // Nếu là reaction của mình thì xóa, ngược lại thêm reaction mới
+                            if (myReaction) {
                               removeReaction(item._id);
                             } else {
                               handleReaction(item, reaction);
                             }
                           }}
+                          onLongPress={() => {
+                            // Hiển thị chi tiết người dùng đã reaction
+                            showReactionDetails(reaction, data.users);
+                          }}
                         >
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Text style={{ fontSize: 18 }}>{reaction}</Text>
-                            {userIds.length > 1 && (
-                              <Text
-                                style={{
-                                  fontSize: 12,
-                                  marginLeft: 2,
-                                  color: hasReacted ? "#0099ff" : "#666",
-                                  fontWeight: hasReacted ? "bold" : "normal",
-                                }}
-                              >
-                                {userIds.length}
-                              </Text>
-                            )}
-                          </View>
+                          <Text style={{ fontSize: 16 }}>{reaction}</Text>
+                          {count > 1 && (
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                marginLeft: 2,
+                                color: myReaction ? '#0099ff' : '#666',
+                                fontWeight: myReaction ? 'bold' : 'normal',
+                              }}
+                            >
+                              {count}
+                            </Text>
+                          )}
                         </TouchableOpacity>
                       );
-                    }
-                  )}
+                    });
+                  })()
+                : // Xử lý định dạng reaction cũ (nếu còn cần)
+                  Object.entries(item.reactions || {}).map(([reaction, userIds]) => {
+                    // Đảm bảo userIds là một mảng và có dữ liệu
+                    if (!Array.isArray(userIds) || userIds.length === 0) return null;
+
+                    // Kiểm tra xem người dùng hiện tại đã sử dụng reaction này chưa
+                    const myId = currentUser?._id;
+                    const hasReacted = userIds.includes(myId);
+
+                    return (
+                      <TouchableOpacity
+                        key={reaction}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: hasReacted ? 'rgba(0,153,255,0.1)' : 'transparent',
+                          borderRadius: 12,
+                          paddingHorizontal: 5,
+                          paddingVertical: 2,
+                          marginHorizontal: 2,
+                        }}
+                        onPress={() => {
+                          // Nếu người dùng đã thêm reaction này thì xóa nó, ngược lại thêm mới
+                          if (hasReacted) {
+                            removeReaction(item._id);
+                          } else {
+                            handleReaction(item, reaction);
+                          }
+                        }}
+                        onLongPress={() => {
+                          // Hiển thị chi tiết người dùng đã reaction
+                          showReactionDetails(reaction, userIds);
+                        }}
+                      >
+                        <Text style={{ fontSize: 16 }}>{reaction}</Text>
+                        {userIds.length > 1 && (
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              marginLeft: 2,
+                              color: hasReacted ? '#0099ff' : '#666',
+                              fontWeight: hasReacted ? 'bold' : 'normal',
+                            }}
+                          >
+                            {userIds.length}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
             </View>
           )}
         </View>
@@ -2384,33 +2424,72 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const removeReaction = async (messageId) => {
     try {
+
+      const messageToUpdate = messages.find(msg => msg._id === messageId);
+      if (!messageToUpdate) return;
+
+
+      const myId = currentUser?._id;
+      if (!myId) return;
+
+
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) => {
+          if (msg._id === messageId) {
+
+            if (Array.isArray(msg.reactions)) {
+     
+              const filteredReactions = msg.reactions.filter(
+                r => r.user !== myId
+              );
+              return { ...msg, reactions: filteredReactions };
+            } 
+
+            else if (msg.reactions && typeof msg.reactions === 'object') {
+              const updatedReactions = { ...msg.reactions };
+              
+ 
+              Object.keys(updatedReactions).forEach(reactionType => {
+                if (Array.isArray(updatedReactions[reactionType])) {
+
+                  updatedReactions[reactionType] = updatedReactions[reactionType].filter(
+                    userId => userId !== myId
+                  );
+ 
+                  if (updatedReactions[reactionType].length === 0) {
+                    delete updatedReactions[reactionType];
+                  }
+                }
+              });
+              
+              return { ...msg, reactions: updatedReactions };
+            }
+          }
+          return msg;
+        })
+      );
+
+
       const response = await chatService.removeReaction(messageId);
 
       if (response) {
-        // Get the message being updated
-        const messageToUpdate = messages.find(msg => msg._id === messageId);
-        if (messageToUpdate) {
-          // Updated message with removed reaction
-          const updatedMessage = {
-            ...messageToUpdate,
-            reactions: response.reactions || []
-          };
-          
-          // Update local state
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg._id === messageId
-                ? updatedMessage
-                : msg
-            )
-          );
-          
-          // Use socket service to notify
-          emitUnReactToMessage(updatedMessage);
-        }
+
+        const updatedMessage = {
+          ...messageToUpdate,
+          reactions: response.reactions || []
+        };
+        
+
+        emitUnReactToMessage(updatedMessage);
       }
     } catch (error) {
       console.error("Error removing reaction:", error);
+      
+
+      Alert.alert("Thông báo", "Không thể xóa cảm xúc, vui lòng thử lại sau.");
+      
+
+      fetchMessages();
     }
   };
 
@@ -2552,7 +2631,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   }, [socket]);
 
-  // Also add this listener in the initializeChat function right after the newMessage handlers
   useEffect(() => {
     const initChats = async () => {
       if (socket && conversation) {
@@ -2561,12 +2639,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
           conversation._id
         );
 
-        // Set initial member count
+
         if (conversation?.members && Array.isArray(conversation.members)) {
           setMemberCount(conversation.members.length);
         }
 
-        // Listen for specific conversation reactions
+
         socket.on("reactionInConversation", (data) => {
           if (data.conversationId === conversation._id) {
             console.log(
@@ -2593,18 +2671,18 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
         });
 
-        // Listen for conversation updates to track member count
+
         socket.on("updateConversation", (data) => {
           if (data.conversation?._id === conversation._id) {
             console.log("[ChatDetail] Conversation updated:", data.conversation);
-            // Update member count if members array exists
+
             if (data.conversation.members && Array.isArray(data.conversation.members)) {
               setMemberCount(data.conversation.members.length);
             }
           }
         });
 
-        // Listen for member removal
+
         socket.on("removedGroupByAdmin", (data) => {
           if (data.conversationId === conversation._id) {
             console.log("[ChatDetail] Member removed from group");
@@ -2613,11 +2691,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
           }
         });
 
-        // Add listener for new members added
+
         socket.on("createConversationForGroup", (data) => {
           if (data.conversation?._id === conversation._id) {
             console.log("[ChatDetail] Members added to group");
-            // Update member count if members array exists
+
             if (data.conversation.members && Array.isArray(data.conversation.members)) {
               setMemberCount(data.conversation.members.length);
             }
@@ -2641,97 +2719,290 @@ const ChatDetailScreen = ({ navigation, route }) => {
   // Add function to load user details for a reaction
   const showReactionDetails = async (reaction, userIds) => {
     try {
-      setCurrentReactionDetails({
-        reaction,
-        users: userIds.map((id) => {
-          // Find user in conversation members if available
-          if (conversation?.members) {
-            const member = conversation.members.find(
-              (m) => m._id === id || (m.user && m.user._id === id)
-            );
-            if (member) {
-              return {
-                _id: id,
-                name: member.user
-                  ? `${member.user.firstName} ${member.user.lastName}`
-                  : member.name || "Unknown",
-                avatar: member.user ? member.user.avatar : member.avatar,
-              };
+      console.log(`Showing details for reaction ${reaction} with users:`, userIds);
+      
+
+      if (userIds && userIds.length > 0 && typeof userIds[0] === 'object') {
+
+        setReactionDetailsData({
+          reaction,
+          users: userIds
+        });
+        setReactionDetailsVisible(true);
+        return;
+      }
+      
+
+      if (Array.isArray(userIds) && userIds.length > 0) {
+ 
+        const userPromises = userIds.map(async (userId) => {
+          try {
+
+            if (typeof userId === 'object' && userId._id) {
+              return userId;
             }
+            
+       
+            if (conversation && conversation.members) {
+              const memberInfo = conversation.members.find(
+                m => m.user && m.user._id === userId
+              );
+              if (memberInfo && memberInfo.user) {
+                return memberInfo.user;
+              }
+            }
+            
+            
+            const response = await chatService.getUserInfo(userId);
+            return response.data;
+          } catch (error) {
+            console.error(`Error fetching user ${userId}:`, error);
+   
+            return { _id: userId, firstName: 'Unknown', lastName: 'User' };
           }
-          // Default user object if not found
-          return { _id: id, name: "Unknown", avatar: null };
-        }),
-      });
-      setShowReactionDetailsModal(true);
+        });
+        
+      
+        const userDetails = await Promise.all(userPromises);
+        
+
+        setReactionDetailsData({
+          reaction,
+          users: userDetails.filter(Boolean) 
+        });
+        setReactionDetailsVisible(true);
+      }
     } catch (error) {
-      console.error("Error loading reaction details:", error);
+      console.error('Error showing reaction details:', error);
+      Alert.alert('Lỗi', 'Không thể hiển thị chi tiết cảm xúc');
     }
   };
 
-  // Add this ReactionDetailsModal component near the other modals
+  // Modal hiển thị chi tiết người dùng đã reaction
   const ReactionDetailsModal = () => {
-    if (!showReactionDetailsModal) return null;
-
+    const { reaction, users } = reactionDetailsData;
+    
+    if (!reaction || !users || users.length === 0) return null;
+    
     return (
       <Portal>
         <PaperModal
-          visible={showReactionDetailsModal}
-          onDismiss={() => setShowReactionDetailsModal(false)}
+          visible={reactionDetailsVisible}
+          onDismiss={() => setReactionDetailsVisible(false)}
           contentContainerStyle={{
-            backgroundColor: "white",
-            borderRadius: 20,
-            padding: 16,
-            margin: 16,
-            maxHeight: "70%",
+            backgroundColor: 'white',
+            borderRadius: 15,
+            padding: 0,
+            overflow: 'hidden',
+            maxHeight: 'auto',
+            width: '75%',
+            alignSelf: 'center',
+            elevation: 10,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 5 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            position: 'absolute',
+            top: '30%',
           }}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 16,
-            }}
-          >
-            <Text style={{ fontSize: 24, marginRight: 8 }}>
-              {currentReactionDetails.reaction}
-            </Text>
-            <Text variant="titleMedium">
-              {currentReactionDetails.users.length}{" "}
-              {currentReactionDetails.users.length === 1 ? "người" : "người"}
-            </Text>
-            <View style={{ flex: 1 }} />
-            <IconButton
-              icon="close"
-              onPress={() => setShowReactionDetailsModal(false)}
-            />
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: '#f0f0f0',
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 26, marginRight: 8 }}>{reaction}</Text>
+              <Text style={{ 
+                fontSize: 14, 
+                fontWeight: '500', 
+                color: '#333',
+              }}>
+                {users.length} {users.length > 1 ? 'người đã bày tỏ cảm xúc' : 'người đã bày tỏ cảm xúc'}
+              </Text>
+            </View>
+            <TouchableOpacity 
+              onPress={() => setReactionDetailsVisible(false)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="close" size={20} color="#666" />
+            </TouchableOpacity>
           </View>
-
-          <FlatList
-            data={currentReactionDetails.users}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
-              <List.Item
-                title={item.name}
-                left={() => (
-                  <Avatar.Image
-                    size={40}
-                    source={
-                      item.avatar
-                        ? { uri: item.avatar }
+          
+          {/* Danh sách người dùng */}
+          {users.length <= 4 ? (
+            // Nếu ít người, hiển thị danh sách tĩnh
+            <View style={{ maxHeight: 280 }}>
+              {users.map((item, index) => {
+                const displayName = item.firstName && item.lastName 
+                  ? `${item.firstName} ${item.lastName}`
+                  : item.name || item.username || `Người dùng ${index + 1}`;
+                  
+                const isCurrentUser = item._id === currentUser?._id;
+                
+                return (
+                  <View key={item._id || index} style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    backgroundColor: isCurrentUser ? 'rgba(0, 153, 255, 0.06)' : 'transparent',
+                  }}>
+                    <Avatar.Image 
+                      size={36}
+                      source={item.avatar 
+                        ? { uri: item.avatar } 
                         : require("../../../assets/chat/avatar.png")
-                    }
-                  />
-                )}
-              />
-            )}
-          />
+                      }
+                      style={{ 
+                        marginRight: 12,
+                        borderWidth: isCurrentUser ? 1.5 : 0,
+                        borderColor: '#0099ff',
+                      }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text 
+                        style={{ 
+                          fontSize: 15,
+                          fontWeight: isCurrentUser ? '600' : '400',
+                          color: isCurrentUser ? '#0099ff' : '#333'
+                        }}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {displayName}
+                      </Text>
+                    </View>
+                    {isCurrentUser && (
+                      <Text style={{ 
+                        fontSize: 11, 
+                        color: '#0099ff', 
+                        backgroundColor: 'rgba(0, 153, 255, 0.12)',
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 10,
+                        fontWeight: '500'
+                      }}>
+                        Bạn
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            // Nếu nhiều người, dùng FlatList cho hiệu suất
+            <FlatList
+              data={users}
+              keyExtractor={(item, index) => (item._id || index.toString())}
+              showsVerticalScrollIndicator={true}
+              style={{ maxHeight: 280 }}
+              renderItem={({ item, index }) => {
+                const displayName = item.firstName && item.lastName 
+                  ? `${item.firstName} ${item.lastName}`
+                  : item.name || item.username || `Người dùng ${index + 1}`;
+                  
+                const isCurrentUser = item._id === currentUser?._id;
+                
+                return (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    backgroundColor: isCurrentUser ? 'rgba(0, 153, 255, 0.06)' : 'transparent',
+                  }}>
+                    <Avatar.Image 
+                      size={36}
+                      source={item.avatar 
+                        ? { uri: item.avatar } 
+                        : require("../../../assets/chat/avatar.png")
+                      }
+                      style={{ 
+                        marginRight: 12,
+                        borderWidth: isCurrentUser ? 1.5 : 0,
+                        borderColor: '#0099ff',
+                      }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text 
+                        style={{ 
+                          fontSize: 15,
+                          fontWeight: isCurrentUser ? '600' : '400',
+                          color: isCurrentUser ? '#0099ff' : '#333'
+                        }}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {displayName}
+                      </Text>
+                    </View>
+                    {isCurrentUser && (
+                      <Text style={{ 
+                        fontSize: 11, 
+                        color: '#0099ff', 
+                        backgroundColor: 'rgba(0, 153, 255, 0.12)',
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 10,
+                        fontWeight: '500'
+                      }}>
+                        Bạn
+                      </Text>
+                    )}
+                  </View>
+                );
+              }}
+              ItemSeparatorComponent={() => (
+                <View style={{ 
+                  height: 1, 
+                  backgroundColor: '#f5f5f5', 
+                  marginLeft: 64
+                }} />
+              )}
+            />
+          )}
         </PaperModal>
       </Portal>
     );
   };
 
-  // Add a useEffect for socket reconnection at the top after the other useEffects
+  // Add this useEffect to handle screen focus events and update the member count
+  useEffect(() => {
+    // Create a subscription that will update the member count when the screen is focused
+    const unsubscribe = navigation.addListener('focus', async () => {
+      console.log("[ChatDetail] Screen focused, refreshing member count");
+      
+      try {
+        // Fetch latest conversation data to get the updated member count
+        if (conversation?._id) {
+          const response = await chatService.getMyConversations();
+          if (response?.success && response?.data) {
+            // Find our conversation in the response
+            const updatedConversation = response.data.find(conv => conv._id === conversation._id);
+            if (updatedConversation && updatedConversation.members) {
+              console.log(`[ChatDetail] Updated member count: ${updatedConversation.members.length}`);
+              setMemberCount(updatedConversation.members.length);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[ChatDetail] Error refreshing member count:", error);
+      }
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => {
+      unsubscribe();
+    };
+  }, [navigation, conversation]);
+
+  // Add a useEffect for socket reconnection
   useEffect(() => {
     // Function to ensure socket is connected
     const ensureSocketConnected = () => {
@@ -2771,7 +3042,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
     };
   }, [conversation, currentUser]);
 
-
   useEffect(() => {
     return () => {
       // Clear timeout on cleanup
@@ -2809,36 +3079,6 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
     }
   };
-
-  // Add this useEffect to handle screen focus events and update the member count
-  useEffect(() => {
-    // Create a subscription that will update the member count when the screen is focused
-    const unsubscribe = navigation.addListener('focus', async () => {
-      console.log("[ChatDetail] Screen focused, refreshing member count");
-      
-      try {
-        // Fetch latest conversation data to get the updated member count
-        if (conversation?._id) {
-          const response = await chatService.getMyConversations();
-          if (response?.success && response?.data) {
-            // Find our conversation in the response
-            const updatedConversation = response.data.find(conv => conv._id === conversation._id);
-            if (updatedConversation && updatedConversation.members) {
-              console.log(`[ChatDetail] Updated member count: ${updatedConversation.members.length}`);
-              setMemberCount(updatedConversation.members.length);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("[ChatDetail] Error refreshing member count:", error);
-      }
-    });
-
-    // Clean up the listener when the component unmounts
-    return () => {
-      unsubscribe();
-    };
-  }, [navigation, conversation]);
 
   if (loading) {
     return (
@@ -2923,12 +3163,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     conversation?.isGroup
                       ? conversation.avatar
                         ? { uri: conversation.avatar }
-                        : require("../../../assets/chat/avatar.png")
+                        : require("../../../assets/chat/group.jpg")
                       : otherUser?.avatar
                       ? { uri: otherUser.avatar }
                       : require("../../../assets/chat/avatar.png")
                   }
-                  style={{ marginHorizontal: 8 }}
+                  style={{ marginHorizontal: 8, backgroundColor: "white"}}
                 />
                 {!conversation?.isGroup && isOnline && (
                   <View
