@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { chatService } from '../services/chat.service';
-import { getSocket, initSocket } from '../config/socket';
+import { create } from "zustand";
+import { chatService } from "../services/chat.service";
+import { getSocket, initSocket } from "../config/socket";
 
 const useChatStore = create((set, get) => ({
   // State
@@ -16,34 +16,35 @@ const useChatStore = create((set, get) => ({
   currentUserId: null,
 
   // Actions
-  setCurrentConversation: (conversationId) => set({ currentConversationId: conversationId }),
+  setCurrentConversation: (conversationId) =>
+    set({ currentConversationId: conversationId }),
   setCurrentUser: (userId) => set({ currentUserId: userId }),
 
   // Message Actions
   addMessage: (message) => {
     const messages = get().messages;
     // Check if message already exists
-    const exists = messages.some(m => m._id === message._id);
+    const exists = messages.some((m) => m._id === message._id);
     if (!exists) {
-      set(state => ({ messages: [...state.messages, message] }));
+      set((state) => ({ messages: [...state.messages, message] }));
     }
   },
 
   addTempMessage: (message) => {
-    set(state => ({ tempMessages: [...state.tempMessages, message] }));
+    set((state) => ({ tempMessages: [...state.tempMessages, message] }));
   },
 
   removeTempMessage: (messageId) => {
-    set(state => ({
-      tempMessages: state.tempMessages.filter(m => m._id !== messageId)
+    set((state) => ({
+      tempMessages: state.tempMessages.filter((m) => m._id !== messageId),
     }));
   },
 
   markMessageAsError: (messageId) => {
-    set(state => ({
-      tempMessages: state.tempMessages.map(m => 
-        m._id === messageId ? { ...m, status: 'error' } : m
-      )
+    set((state) => ({
+      tempMessages: state.tempMessages.map((m) =>
+        m._id === messageId ? { ...m, status: "error" } : m
+      ),
     }));
   },
 
@@ -66,13 +67,14 @@ const useChatStore = create((set, get) => ({
   clearTempMessages: () => set({ tempMessages: [] }),
 
   // Reset entire store
-  reset: () => set({
-    messages: [],
-    tempMessages: [],
-    isLoadingMessages: false,
-    isSendingMessage: false,
-    isOnline: false
-  }),
+  reset: () =>
+    set({
+      messages: [],
+      tempMessages: [],
+      isLoadingMessages: false,
+      isSendingMessage: false,
+      isOnline: false,
+    }),
 
   // API Actions
   fetchMessages: async (conversationId) => {
@@ -83,7 +85,7 @@ const useChatStore = create((set, get) => ({
         set({ messages: response.data });
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error("Error fetching messages:", error);
     } finally {
       set({ isLoadingMessages: false });
     }
@@ -104,7 +106,7 @@ const useChatStore = create((set, get) => ({
         conversation: conversationId,
         createdAt: new Date().toISOString(),
         isTemp: true,
-        status: 'sending'
+        status: "sending",
       };
 
       // Add temp message immediately
@@ -114,7 +116,7 @@ const useChatStore = create((set, get) => ({
       const response = await chatService.sendMessage(conversationId, {
         content: messageData.content,
         type: messageData.type,
-        sender: currentUserId
+        sender: currentUserId,
       });
 
       if (response?.success) {
@@ -122,27 +124,27 @@ const useChatStore = create((set, get) => ({
         get().removeTempMessage(tempId);
         get().addMessage({
           ...response.data,
-          status: 'sent'
+          status: "sent",
         });
 
         // Emit socket event
         try {
           const socket = getSocket();
           if (socket) {
-            socket.emit('new-message', {
+            socket.emit("new-message", {
               message: response.data,
               conversationId,
-              sender: currentUserId
+              sender: currentUserId,
             });
           }
         } catch (error) {
-          console.error('Error emitting socket event:', error);
+          console.error("Error emitting socket event:", error);
         }
       } else {
-        throw new Error('Failed to send message');
+        throw new Error("Failed to send message");
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       get().markMessageAsError(messageData._id);
       throw error;
     } finally {
@@ -154,20 +156,20 @@ const useChatStore = create((set, get) => ({
   handleNewMessage: (data) => {
     const { messages, currentConversationId } = get();
     const message = data?.message || data;
-    
+
     if (!message || !message._id) {
-      console.log('Invalid message data received:', data);
+      console.log("Invalid message data received:", data);
       return;
     }
 
     // Check if message belongs to current conversation
     if (message.conversation === currentConversationId) {
       // Check if message already exists
-      const messageExists = messages.some(msg => msg._id === message._id);
+      const messageExists = messages.some((msg) => msg._id === message._id);
       if (!messageExists) {
         get().addMessage({
           ...message,
-          status: 'received'
+          status: "received",
         });
       }
     }
@@ -185,17 +187,23 @@ const useChatStore = create((set, get) => ({
     set({ currentConversationId: conversationId, currentUserId: userId });
 
     // Join conversation room
-    socket.emit('join-conversation', { conversationId, userId });
+    const socket = getSocket();
+    if (!socket) {
+      initSocket(userId);
+    } else {
+      socket.connect();
+    }
+    socket.emit("join-conversation", { conversationId, userId });
 
     // Set up listeners
-    socket.on('new-message', get().handleNewMessage);
-    socket.on('user-online', get().handleOnlineStatus);
-    socket.on('user-offline', get().handleOnlineStatus);
+    socket.on("new-message", get().handleNewMessage);
+    socket.on("user-online", get().handleOnlineStatus);
+    socket.on("user-offline", get().handleOnlineStatus);
 
     // Set up ping interval to maintain connection
     const pingInterval = setInterval(() => {
       if (socket.connected) {
-        socket.emit('ping');
+        socket.emit("ping");
       }
     }, 30000);
 
@@ -206,13 +214,15 @@ const useChatStore = create((set, get) => ({
 
   cleanupSocketListeners: (conversationId, userId) => {
     // Leave conversation room
-    socket.emit('leave-conversation', { conversationId, userId });
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit("leave-conversation", { conversationId, userId });
 
     // Remove listeners
-    socket.off('new-message', get().handleNewMessage);
-    socket.off('user-online', get().handleOnlineStatus);
-    socket.off('user-offline', get().handleOnlineStatus);
-  }
+    socket.off("new-message", get().handleNewMessage);
+    socket.off("user-online", get().handleOnlineStatus);
+    socket.off("user-offline", get().handleOnlineStatus);
+  },
 }));
 
 export { useChatStore };
