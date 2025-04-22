@@ -331,10 +331,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('endCall')
   handleEndCall(
     @MessageBody()
-    { userId, conversationId }: { userId: string; conversationId: string },
+    { userId, conversationId, isGroup }: { userId: string; conversationId: string, isGroup: boolean },
   ) {
     this.handleCallService.handleEndCall(
-      { userId, conversationId },
+      { userId, conversationId, isGroup },
       this.server,
     );
   }

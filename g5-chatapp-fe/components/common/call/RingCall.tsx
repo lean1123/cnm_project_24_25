@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { useCallStore } from "@/store/useCallStore";
 import { Minus } from "lucide-react";
@@ -7,17 +8,31 @@ interface RingCallProps {
   setShowRingCall: (value: boolean) => void;
 }
 
+const CALL_RING_TIMEOUT = 30_000; // 30 giây
+
 function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
-  // listen call
   const {
     ongoingCall,
     callConversationId,
     handleAcceptCall,
     handleRejectCall,
-    isCallGroup
+    isCallGroup,
   } = useCallStore();
 
+  // ⏱️ Auto reject nếu người dùng không phản hồi sau 30 giây
+  useEffect(() => {
+    if (ongoingCall?.isRinging) {
+      const timeout = setTimeout(() => {
+        // handleRejectCall(callConversationId!, isCallGroup);
+        setShowRingCall(false);
+      }, CALL_RING_TIMEOUT);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [ongoingCall?.isRinging, callConversationId, isCallGroup]);
+
   if (!ongoingCall?.isRinging) return null;
+
   return (
     <div
       className={`${
@@ -32,11 +47,6 @@ function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
       </button>
       <div className="flex flex-col grow items-center justify-around w-full py-4">
         <h1 className="text-lg font-semibold">Incoming call</h1>
-        {/* <img
-          src="/avatar.png "
-          alt="profile"
-          className="w-20 h-20 rounded-full"
-        /> */}
         <Avatar>
           <AvatarImage
             src={ongoingCall.sender.avatar || "/avatar.png"}
@@ -49,7 +59,10 @@ function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
         <div className="flex items-center justify-evenly gap-4 w-full mt-4">
           <button
             className="bg-red-500 p-2 rounded-full"
-            onClick={() => handleRejectCall(callConversationId!, isCallGroup)}
+            onClick={() => {
+              handleRejectCall(callConversationId!, isCallGroup);
+              setShowRingCall(false);
+            }}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -68,11 +81,13 @@ function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
           </button>
           <button
             className="bg-green-500 p-2 rounded-full"
-            onClick={() => handleAcceptCall(callConversationId!, isCallGroup)}
+            onClick={() => {
+              handleAcceptCall(callConversationId!, isCallGroup);
+              setShowRingCall(false);
+            }}
           >
             <svg
-              xmlns="http://www.w3.org/
-                2000/svg"
+              xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6 text-white"
               fill="none"
               viewBox="0 0 24 24"

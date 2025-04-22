@@ -374,6 +374,13 @@ const ChatInput = (props: Props) => {
     console.log("Liked!");
   };
 
+  useEffect(() => {
+    if (recordingTime >= 60 && isRecording) {
+      stopRecording();
+      toast.info("Recording stopped automatically after 60 seconds.");
+    }
+  }, [recordingTime, isRecording]);
+
   const [isOpenOptions, setIsOpenOptions] = React.useState(false);
   return (
     <Card className="w-full p-2 rounded-lg relative flex flex-col gap-2">
