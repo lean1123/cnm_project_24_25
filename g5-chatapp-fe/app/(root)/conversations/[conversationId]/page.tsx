@@ -89,16 +89,17 @@ function ConversationPage({ params }: Props) {
             imageUrl={selectedConversation?.profilePicture || ""}
             numMembers={selectedConversation?.members.length}
             options={[
-              {
-                label: "Voice call",
-                icon: <Phone />,
-                onClick: () =>
-                  handleCall(conversationId, selectedConversation.isGroup),
-              },
+              // {
+              //   label: "Voice call",
+              //   icon: <Phone />,
+              //   onClick: () =>
+              //     handleCall(conversationId, selectedConversation.isGroup),
+              // },
               {
                 label: "Video call",
                 icon: <Video />,
-                onClick: () => setDeleteGroupDialogOpen(true),
+                onClick: () =>
+                  handleCall(conversationId, selectedConversation.isGroup),
               },
               {
                 label: "Info",
@@ -115,12 +116,12 @@ function ConversationPage({ params }: Props) {
             lastName={userSelected?.user.lastName || ""}
             imageUrl={userSelected?.user.avatar || ""}
             options={[
-              {
-                label: "Voice call",
-                icon: <Phone />,
-                onClick: () =>
-                  handleCall(conversationId, selectedConversation!.isGroup),
-              },
+              // {
+              //   label: "Voice call",
+              //   icon: <Phone />,
+              //   onClick: () =>
+              //     handleCall(conversationId, selectedConversation!.isGroup),
+              // },
               {
                 label: "Video call",
                 icon: <Video />,

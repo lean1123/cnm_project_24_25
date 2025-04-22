@@ -26,6 +26,7 @@ import {
   emitRemoveMemberFromGroup,
   emitDeleteConversation
 } from "../../../services/socket";
+import useAuthStore from "../../../store/useAuthStore";
 
 const UserInfoScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
@@ -54,6 +55,9 @@ const UserInfoScreen = ({ navigation, route }) => {
   const [showAdminSelectionModal, setShowAdminSelectionModal] = useState(false);
   const [potentialAdmins, setPotentialAdmins] = useState([]);
   
+  // Lấy danh sách người dùng đang hoạt động từ useAuthStore
+  const { activeUsers } = useAuthStore();
+  
   const conversation = route.params?.conversation;
   
   // Validate conversation data at the start
@@ -74,6 +78,12 @@ const UserInfoScreen = ({ navigation, route }) => {
   
   const isGroup = conversation?.isGroup || false;
   const otherUser = isGroup ? null : conversation?.user;
+
+  // Kiểm tra xem người dùng có đang online không
+  const isUserOnline = userId => {
+    if (!userId || !activeUsers || !activeUsers.length) return false;
+    return activeUsers.includes(userId);
+  };
 
   // Check if current user is admin
   const checkIsAdmin = () => {
@@ -462,7 +472,7 @@ const UserInfoScreen = ({ navigation, route }) => {
 
   const handleLeaveGroup = async () => {
     try {
-      // Check if current user is admin
+ 
       const isAdmin = checkIsAdmin();
       console.log("Current user is admin:", isAdmin);
   
@@ -685,7 +695,6 @@ const UserInfoScreen = ({ navigation, route }) => {
               }
               style={styles.memberAvatar}
             />
-            {user.isOnline && <View style={styles.memberOnlineIndicator} />}
           </View>
           <View>
             <Text style={styles.memberName}>
@@ -727,7 +736,7 @@ const UserInfoScreen = ({ navigation, route }) => {
                         ? conversation.avatar
                         : `${API_URL}/uploads/${conversation.avatar}`,
                     }
-                  : require("../../../../assets/chat/avatar.png")
+                  : require("../../../../assets/chat/group.jpg")
               }
               style={styles.avatarLarge}
             />
@@ -912,27 +921,12 @@ const UserInfoScreen = ({ navigation, route }) => {
               }
               style={styles.avatarLarge}
             />
-            {otherUser?.isOnline && (
-              <View style={styles.onlineIndicator} />
-            )}
           </View>
           <Text style={styles.name}>
             {otherUser?.firstName} {otherUser?.lastName}
           </Text>
           
-          <View style={styles.statusBadge}>
-            {otherUser?.isOnline ? (
-              <>
-                <View style={styles.statusDot} />
-                <Text style={styles.onlineStatus}>Active now</Text>
-              </>
-            ) : (
-              <>
-                <View style={[styles.statusDot, styles.offlineDot]} />
-                <Text style={styles.offlineStatus}>Offline</Text>
-              </>
-            )}
-          </View>
+          
 
           <View style={styles.userInfoSection}>
             <View style={styles.infoRow}>
@@ -950,41 +944,6 @@ const UserInfoScreen = ({ navigation, route }) => {
             )}
           </View>
 
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialIcon name="phone" size={22} color="#fff" />
-              <Text style={styles.actionText}>Call</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialIcon name="video" size={22} color="#fff" />
-              <Text style={styles.actionText}>Video</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.blockButton]}
-              onPress={() => {
-                Alert.alert(
-                  "Block User",
-                  "Are you sure you want to block this user?",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Block",
-                      style: "destructive",
-                      onPress: () => {
-                        // Handle block user logic
-                        navigation.goBack();
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <MaterialIcon name="block-helper" size={22} color="#fff" />
-              <Text style={styles.actionText}>Block</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={styles.privacySection}>

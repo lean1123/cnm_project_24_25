@@ -31,13 +31,17 @@
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus"
         }
-      }
+      },
+      "package": "com.anonymous.MyApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { User } from "@/types";
 import { useConversationStore } from "@/store/useConversationStore";
+import { toast } from "sonner";
 
 export function CreateGroupDialog() {
   const [inputValue, setInputValue] = useState("");
@@ -41,7 +42,10 @@ export function CreateGroupDialog() {
   const [friends, setFriends] = useState<User[]>([]);
 
   const handleCreateGroup = async () => {
-    if (!name || !membersCreateGroup || membersCreateGroup.length < 2) return;
+    if (!name || !membersCreateGroup || membersCreateGroup.length < 2) {
+      toast.error("Please enter group name and select at least 2 members");
+      return;
+    }
     const groupMembers = membersCreateGroup
       .map((member) => member._id)
       .filter((id): id is string => id !== undefined);

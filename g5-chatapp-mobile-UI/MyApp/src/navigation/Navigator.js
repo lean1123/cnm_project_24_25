@@ -54,6 +54,8 @@ import FileViewer from "../screens/chat/components/FileViewer";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
+import IncomingCall from "../screens/chat/call/IncomingCall";
+import TestCall from "../screens/chat/call/testCall";
 // Login/Register without API
 import SignUpScreen from "../screens/auth/register";
 import SignInScreen from "../screens/auth/login";
@@ -169,6 +171,22 @@ const MainNavigator = () => {
       <Stack.Screen
         name="Introduce"
         component={Introduce}
+      />
+
+      {/* Screens that should be accessible regardless of login state */}
+      <Stack.Screen
+        name="IncomingCall"
+        component={IncomingCall}
+        options={{
+          gestureEnabled: false
+        }}
+      />
+      <Stack.Screen
+        name="TestCall"
+        component={TestCall}
+        options={{
+          gestureEnabled: false
+        }}
       />
 
       {/* Main App Screens - Only accessible when logged in */}
