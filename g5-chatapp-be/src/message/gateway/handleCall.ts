@@ -88,10 +88,11 @@ export class HandleCall {
     {
       userId,
       conversationId,
-      
+      isGroup,
     }: {
       userId: string;
       conversationId: string;
+      isGroup: boolean;
     },
     server: Server,
   ) {
@@ -101,6 +102,11 @@ export class HandleCall {
     // check còn người tham gia không
     // nếu không còn thì cập nhật trạng thái cuộc gọi đã kết thúc
     // cập nhật trạng thái cuộc gọi đã kết thúc
+    server.to(conversationId).emit('endCall', {
+      userId,
+      conversationId,
+      isGroup,
+    });
   }
 
   handleCancelCall(
