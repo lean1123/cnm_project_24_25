@@ -17,7 +17,7 @@ import PasswordField from "../../components/PasswordInput";
 import GenderSelector from "../../components/GenderSelector";
 import NotificationModal from "../../components/CustomModal";
 import { signUp } from "../../services/auth/authService";
-import { validateSignUp } from "../../utils/validators";
+import { validateSignUp, isValidName, isValidEmail, validatePassword, isValidDob } from "../../utils/validators";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import DateInputField from "../../components/DateInputField";
 
@@ -34,10 +34,67 @@ const SignUpScreen = ({ navigation }) => {
   const [modalMessage, setModalMessage] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
   const [dobPickerVisible, setDobPickerVisible] = useState(false);
+  
+  // Add validation error states for each field
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    dob: "",
+  });
 
   const toggleSecure = () => setSecureTextEntry(!secureTextEntry);
 
+  // Handle individual field validation
+  const validateField = (field, value) => {
+    let error = "";
+    switch (field) {
+      case "firstName":
+      case "lastName":
+        if (value.trim() !== "" && !isValidName(value)) {
+          error = `${field === "firstName" ? "First" : "Last"} name can only contain letters and hyphens`;
+        }
+        break;
+      case "email":
+        if (value.trim() !== "" && !isValidEmail(value)) {
+          error = "Please enter a valid email";
+        }
+        break;
+      case "password":
+        if (value.trim() !== "") {
+          const passwordError = validatePassword(value);
+          if (passwordError) error = passwordError;
+        }
+        break;
+      case "dob":
+        if (value && !isValidDob(value)) {
+          error = "You must be at least 13 years old";
+        }
+        break;
+      default:
+        break;
+    }
+    setErrors(prev => ({ ...prev, [field]: error }));
+    return error === "";
+  };
+
+  // Update form field with validation
+  const updateField = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    validateField(field, value);
+  };
+
   const handleSignUp = async () => {
+    // Clear previous errors
+    setErrors({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      dob: "",
+    });
+
     const validationError = validateSignUp(form);
     if (validationError) {
       setModalMessage(validationError);
@@ -103,8 +160,12 @@ const SignUpScreen = ({ navigation }) => {
                   icon="account"
                   placeholder="First Name"
                   value={form.firstName}
-                  onChangeText={(text) => setForm({ ...form, firstName: text })}
+                  onChangeText={(text) => updateField("firstName", text)}
+                  error={errors.firstName}
                 />
+                {errors.firstName ? (
+                  <Text style={styles.errorText}>{errors.firstName}</Text>
+                ) : null}
               </View>
 
               <View style={[styles.inputWrapper, styles.halfWidth]}>
@@ -112,24 +173,39 @@ const SignUpScreen = ({ navigation }) => {
                   icon="account"
                   placeholder="Last Name"
                   value={form.lastName}
-                  onChangeText={(text) => setForm({ ...form, lastName: text })}
+                  onChangeText={(text) => updateField("lastName", text)}
+                  error={errors.lastName}
                 />
+                {errors.lastName ? (
+                  <Text style={styles.errorText}>{errors.lastName}</Text>
+                ) : null}
               </View>
 
             <InputField
               icon="email"
               placeholder="Email"
               value={form.email}
-              onChangeText={(text) => setForm({ ...form, email: text })}
+              onChangeText={(text) => updateField("email", text)}
               keyboardType="email-address"
               autoCapitalize="none"
+              error={errors.email}
             />
+            {errors.email ? (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            ) : null}
 
             <PasswordField
               placeholder="Password"
               value={form.password}
-              onChangeText={(text) => setForm({ ...form, password: text })}
+              onChangeText={(text) => updateField("password", text)}
+              error={errors.password}
             />
+            {errors.password ? (
+              <Text style={styles.errorText}>{errors.password}</Text>
+            ) : null}
+            <Text style={styles.passwordHint}>
+              Password must be at least 6 characters long and must not contain spaces
+            </Text>
 
             <View style={styles.genderContainer}>
               <GenderSelector
@@ -143,7 +219,11 @@ const SignUpScreen = ({ navigation }) => {
               <DateInputField
                 value={form.dob}
                 onPress={() => setDobPickerVisible(true)}
+                error={errors.dob}
               />
+              {errors.dob ? (
+                <Text style={styles.errorText}>{errors.dob}</Text>
+              ) : null}
             </View>
 
             {Platform.OS === 'android' && dobPickerVisible && (
@@ -155,7 +235,7 @@ const SignUpScreen = ({ navigation }) => {
                   setDobPickerVisible(false);
                   if (selectedDate) {
                     const formattedDate = selectedDate.toISOString().split('T')[0];
-                    setForm({ ...form, dob: formattedDate });
+                    updateField("dob", formattedDate);
                   }
                 }}
               />
@@ -169,7 +249,7 @@ const SignUpScreen = ({ navigation }) => {
                 onChange={(event, selectedDate) => {
                   if (selectedDate) {
                     const formattedDate = selectedDate.toISOString().split('T')[0];
-                    setForm({ ...form, dob: formattedDate });
+                    updateField("dob", formattedDate);
                   }
                 }}
               />
@@ -311,6 +391,18 @@ const styles = StyleSheet.create({
     color: '#135CAF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  passwordHint: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 16,
   },
 });
 
