@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   SafeAreaView,
   View,
@@ -27,6 +27,7 @@ const HomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const navigation = useNavigation();
 
 
@@ -307,11 +308,33 @@ const HomeScreen = () => {
     }
   }, [userId]);
 
+  // Filter conversations based on search term
+  const filteredConversations = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return conversations;
+    }
+    
+    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+    
+    return conversations.filter(conv => {
+      // Search only by conversation name
+      if (conv.name && conv.name.toLowerCase().includes(normalizedSearchTerm)) {
+        return true;
+      }
+      
+      return false;
+    });
+  }, [conversations, searchTerm]);
+
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
-        <Header />
+        <Header onSearch={handleSearch} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#135CAF" />
         </View>
@@ -392,35 +415,45 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
-      <Header />
+      <Header onSearch={handleSearch} />
       <View style={styles.content}>
-        <FlatList
-          data={conversations}
-          renderItem={renderConversation}
-          keyExtractor={(item) => item._id}
-          style={styles.conversationList}
-          contentContainerStyle={styles.listContent}
-          refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            fetchConversations();
-          }}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <Icon name="message-text-outline" size={64} color="#666" />
-              <Text style={styles.emptyText}>Chưa có cuộc trò chuyện nào</Text>
-              <Text style={styles.emptySubText}>
-                Hãy bắt đầu trò chuyện với bạn bè của bạn
-              </Text>
-              <TouchableOpacity 
-                style={styles.startChatButton}
-                onPress={() => navigation.navigate("FriendsList")}
-              >
-                <Text style={styles.startChatButtonText}>Bắt đầu chat</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        />
+        {searchTerm.trim() !== "" && filteredConversations.length === 0 ? (
+          <View style={styles.emptySearchContainer}>
+            <Icon name="magnify" size={64} color="#666" />
+            <Text style={styles.emptyText}>Không tìm thấy kết quả</Text>
+            <Text style={styles.emptySubText}>
+              Không tìm thấy cuộc trò chuyện nào phù hợp với "{searchTerm}"
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredConversations}
+            renderItem={renderConversation}
+            keyExtractor={(item) => item._id}
+            style={styles.conversationList}
+            contentContainerStyle={styles.listContent}
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              fetchConversations();
+            }}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Icon name="message-text-outline" size={64} color="#666" />
+                <Text style={styles.emptyText}>Chưa có cuộc trò chuyện nào</Text>
+                <Text style={styles.emptySubText}>
+                  Hãy bắt đầu trò chuyện với bạn bè của bạn
+                </Text>
+                <TouchableOpacity 
+                  style={styles.startChatButton}
+                  onPress={() => navigation.navigate("FriendsList")}
+                >
+                  <Text style={styles.startChatButtonText}>Bắt đầu chat</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        )}
       </View>
       <Footer />
     </SafeAreaView>
@@ -576,6 +609,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  emptySearchContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
   },
 });
 
