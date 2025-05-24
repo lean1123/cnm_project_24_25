@@ -33,6 +33,7 @@ import { HandleMessage } from './handleMessage';
       'http://localhost:8082',
       'https://d3vkdcq3kcj9ec.cloudfront.net',
       'http://localhost:3001',
+      'https://cnm-project-24-25.vercel.app',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,

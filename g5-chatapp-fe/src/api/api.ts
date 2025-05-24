@@ -3,9 +3,7 @@ import Cookies from "js-cookie";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_BASE_API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  withCredentials: true, // Enable sending cookies with requests
 });
 
 const getAccessToken = () => {
