@@ -12,10 +12,11 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-const Header = () => {
+const Header = ({ onSearch }) => {
   const navigation = useNavigation();
   const [isSearching, setIsSearching] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const modalOptions = [
     {
@@ -30,6 +31,21 @@ const Header = () => {
     },
   ];
 
+  const handleSearch = (text) => {
+    setSearchTerm(text);
+    if (onSearch) {
+      onSearch(text);
+    }
+  };
+
+  const handleCancelSearch = () => {
+    setSearchTerm("");
+    setIsSearching(false);
+    if (onSearch) {
+      onSearch("");
+    }
+  };
+
   return (
     <View style={styles.header}>
       {isSearching ? (
@@ -38,14 +54,24 @@ const Header = () => {
             <Icon name="magnify" size={20} color="#666" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search for friends..."
+              placeholder="Tìm kiếm theo tên cuộc trò chuyện..."
               placeholderTextColor="#666"
               autoFocus
+              value={searchTerm}
+              onChangeText={handleSearch}
             />
+            {searchTerm.length > 0 && (
+              <TouchableOpacity 
+                onPress={() => handleSearch("")}
+                style={styles.clearButton}
+              >
+                <Icon name="close-circle" size={18} color="#888" />
+              </TouchableOpacity>
+            )}
           </View>
           <TouchableOpacity 
             style={styles.cancelButton} 
-            onPress={() => setIsSearching(false)}
+            onPress={handleCancelSearch}
           >
             <Text style={styles.cancelText}>X</Text>
           </TouchableOpacity>
@@ -175,6 +201,9 @@ const styles = StyleSheet.create({
     height: 36,
     fontSize: 16,
     color: "#000",
+  },
+  clearButton: {
+    padding: 4,
   },
   cancelButton: {
     marginLeft: 12,

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-const PasswordInput = ({ value, onChangeText }) => {
+const PasswordInput = ({ value, onChangeText, placeholder = "Password", error = "" }) => {
   const [secureTextEntry, setSecureTextEntry] = useState(true); 
 
   const toggleSecureTextEntry = () => {
@@ -11,16 +11,19 @@ const PasswordInput = ({ value, onChangeText }) => {
 
   return (
     <View style={styles.container}>
-      <Icon name="lock" size={24} color="#4484CD" style={styles.icon} />
+      <Icon name="lock" size={24} color={error ? "#FF3B30" : "#4484CD"} style={styles.icon} />
       <TextInput
-        style={styles.input}
-        placeholder="Password"
+        style={[
+          styles.input,
+          error ? styles.inputError : null
+        ]}
+        placeholder={placeholder}
         value={value}
         onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry} 
+        secureTextEntry={secureTextEntry}
       />
       <TouchableOpacity onPress={toggleSecureTextEntry} style={styles.eyeIcon}>
-        <Icon name={secureTextEntry ? "eye-off" : "eye"} size={24} color="#4484CD" />
+        <Icon name={secureTextEntry ? "eye-off" : "eye"} size={24} color={error ? "#FF3B30" : "#4484CD"} />
       </TouchableOpacity>
     </View>
   );
@@ -32,7 +35,7 @@ const styles = StyleSheet.create({
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   icon: {
     position: "absolute",
@@ -53,6 +56,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8ECF4',
     boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
+  },
+  inputError: {
+    borderColor: '#FF3B30',
   },
 });
 
