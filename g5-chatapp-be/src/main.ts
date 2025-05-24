@@ -25,6 +25,7 @@ async function bootstrap() {
       'http://localhost:5174',
       'https://d3vkdcq3kcj9ec.cloudfront.net',
       'http://localhost:3000',
+      'http://localhost:3001',
       'http://localhost:8082',
       'http://localhost:8081',
     ], // Chỉ chấp nhận từ frontend này

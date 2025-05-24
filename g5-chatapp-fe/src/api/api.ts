@@ -2,8 +2,10 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000",
-  withCredentials: true,
+  baseURL: import.meta.env.VITE_BASE_API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 const getAccessToken = () => {
@@ -13,7 +15,13 @@ const getAccessToken = () => {
 
 api.interceptors.request.use(
   async (config) => {
-    const publicEndpoints = ["/auth/sign-in", "/auth/sign-up", "/auth/refresh-token", "/auth/forgot-password", "/auth/forgot-password-verification"];
+    const publicEndpoints = [
+      "/auth/sign-in",
+      "/auth/sign-up",
+      "/auth/refresh-token",
+      "/auth/forgot-password",
+      "/auth/forgot-password-verification",
+    ];
     const isPublicEndpoint = publicEndpoints.some((endpoint) =>
       config.url?.includes(endpoint)
     );
@@ -42,7 +50,7 @@ api.interceptors.response.use(
         const store = localStorage.getItem("auth-storage");
         const userId = store ? JSON.parse(store).stats.user._id : null;
         const { data } = await axios.post(
-          "/auth/refresh-token/"+userId,
+          "/auth/refresh-token/" + userId,
           {},
           { withCredentials: true }
         );

@@ -1,0 +1,50 @@
+services:
+  g5-chatapp-be:
+    build:
+      context: ./g5-chatapp-be
+      dockerfile: Dockerfile
+    image: g5-chatapp-be:latest
+    container_name: g5-chatapp-be
+    env_file:
+      - ./g5-chatapp-be/.env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    ports:
+      - "3000:3000"
+    networks:
+      - chatAppNetwork
+
+  g5-chatapp-fe:
+    build:
+      context: ./g5-chatapp-fe
+      dockerfile: Dockerfile
+    image: g5-chatapp-fe:latest
+    container_name: g5-chatapp-fe
+    depends_on:
+      - g5-chatapp-be
+    env_file:
+      - ./g5-chatapp-fe/.env.docker
+    ports:
+      - "3001:80"
+    networks:
+      - chatAppNetwork
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - chatAppNetwork
+
+networks:
+  chatAppNetwork:
+    driver: bridge
+
+volumes:
+  redis_data:
