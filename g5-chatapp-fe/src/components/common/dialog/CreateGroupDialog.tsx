@@ -10,6 +10,7 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useContactStore } from "@/store/useContactStore";
 import { useConversationStore } from "@/store/useConversationStore";
@@ -121,11 +122,16 @@ export function CreateGroupDialog() {
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
+      <Tooltip>
+        <DialogTrigger asChild>
+          <TooltipTrigger asChild>
         <Button variant="ghost" size="icon">
           <Users className="h-5 w-5" />
         </Button>
-      </DialogTrigger>
+      </TooltipTrigger>
+        </DialogTrigger>
+        <TooltipContent>Tạo nhóm</TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-[600px] h-[80vh] p-0 overflow-hidden">
         <div className="flex flex-col h-full">
           {/* Header */}

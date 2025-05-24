@@ -37,7 +37,7 @@ const Body = (props: Props) => {
   };
 
   return (
-    <div className="h-[calc(100vh-14rem)] w-full flex flex-col">
+    <div className="h-[calc(100vh-13rem)] w-full flex flex-col">
       <div className="flex-1 w-full flex overflow-y-scroll flex-col-reverse gap-2 p-3 no-scrollbar">
         {messages &&
           messages?.map((message, index) => {
