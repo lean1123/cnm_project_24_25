@@ -1,27 +1,27 @@
-FROM node:20 AS development
+# Stage 1: Build
+FROM node:20-alpine AS builder
 
-WORKDIR /lean1123/src/app
+WORKDIR /app
 
 COPY package*.json ./
 
+# Cài cả devDependencies để dùng tsc
 RUN npm install
 
 COPY . .
 
+# Dùng tsc thay vì nest CLI
 RUN npm run build
 
+# Stage 2: Slim image
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
 EXPOSE 3000
-
-# PRODUCTION
-FROM node:20 AS production
-
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
-
-WORKDIR /lean1123/src/app
-
-COPY --from=development /lean1123/src/app/ .
-
-EXPOSE 8080
 
 CMD ["node", "dist/main"]
