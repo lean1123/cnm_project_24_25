@@ -121,23 +121,31 @@ function ConversationInfo({ isOpen, setOpen, userSelected, isGroup }: Props) {
           {!isGroup && (
             <>
               <div className="flex flex-col items-center gap-1">
-                <Button
-                  className="rounded-full size-8 flex justify-center items-center"
-                  variant="secondary"
-                >
-                  <Bell className="size-4 text-base-content" />
-                </Button>
-                <span className="text-base-content text-sm">Tắt thông báo</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="rounded-full size-8 flex justify-center items-center"
+                      variant="secondary"
+                    >
+                      <Bell className="size-4 text-base-content" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Tắt thông báo</TooltipContent>
+                </Tooltip>
               </div>
 
               <div className="flex flex-col items-center gap-1">
-                <Button
-                  className="rounded-full size-8 flex justify-center items-center"
-                  variant="secondary"
-                >
-                  <Search className="size-4 text-base-content" />
-                </Button>
-                <span className="text-base-content text-sm">Tìm kiếm</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      className="rounded-full size-8 flex justify-center items-center"
+                      variant="secondary"
+                    >
+                      <Search className="size-4 text-base-content" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Tìm kiếm tin nhắn</TooltipContent>
+                </Tooltip>
               </div>
             </>
           )}

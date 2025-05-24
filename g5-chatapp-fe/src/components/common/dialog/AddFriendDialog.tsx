@@ -9,6 +9,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getNameFallBack } from "@/lib/utils";
 import { useContactStore } from "@/store/useContactStore";
 import { useUserStore } from "@/store/useUserStore";
@@ -47,11 +52,16 @@ export function AddFriendDialog() {
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <UserPlus className="h-5 w-5" />
-        </Button>
-      </DialogTrigger>
+      <Tooltip>
+        <DialogTrigger asChild>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <UserPlus className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+        </DialogTrigger>
+        <TooltipContent>Kết bạn</TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-[400px] h-[60vh] p-0 overflow-hidden">
         <div className="flex flex-col h-full">
           {/* Header */}
