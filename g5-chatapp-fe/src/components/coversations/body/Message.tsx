@@ -19,6 +19,7 @@ import {
   FileText,
   FileVideo,
   Forward,
+  Heart,
   MessageSquareText,
   Repeat,
 } from "lucide-react";
@@ -26,6 +27,11 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ImageGallery from "./ImageGallery";
 import { MessageOption } from "./MessageOption";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Props = {
   message: Message | null;
@@ -122,6 +128,7 @@ const MessageComponent = ({
   }, [file, type]);
 
   const [isHovered, setIsHovered] = useState(false);
+  const [isReactionHovered, setIsReactionHovered] = useState(false);
 
   // check message is deleted
   const { user } = useAuthStore();
@@ -166,6 +173,9 @@ const MessageComponent = ({
   const handleMouseLeave = () => {
     if (!isDropdownOpen) setIsHovered(false);
   };
+
+  const handleReactionMouseEnter = () => setIsReactionHovered(true);
+  const handleReactionMouseLeave = () => setIsReactionHovered(false);
 
   const { reactionMessage, unReactionMessage } = useMessageStore();
 
@@ -216,7 +226,10 @@ const MessageComponent = ({
           invisible: lastByUser,
         })}
       >
-        <AvatarImage src={senderImage || "/avatar.png"} alt={senderName} />
+        <AvatarImage
+          src={senderImage || "src/assets/avatar.png"}
+          alt={senderName}
+        />
         <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
       </Avatar>
       {/* chat content */}
@@ -240,13 +253,13 @@ const MessageComponent = ({
                 fromCurrentUser ? "-top-8 right-1" : "-top-8 left-1"
               )}
             >
-              <Forward className="size-4" /> Message is forwarded
+              <Forward className="size-4" /> Được chuyển tiếp
             </div>
           )}
 
           <div
             className={cn("relative px-4 py-2 rounded-lg ", {
-              "bg-secondary text-secondary-foreground": fromCurrentUser,
+              "bg-primary/20 text-secondary-foreground": fromCurrentUser,
               "bg-muted text-mute-foreground": !fromCurrentUser,
               "rounded-br-none": !lastByUser && fromCurrentUser,
               "rounded-bl-none": !lastByUser && !fromCurrentUser,
@@ -434,7 +447,7 @@ const MessageComponent = ({
             )}
             {message && message?.isRevoked && (
               <div className="flex gap-2 text-gray-600">
-                Message is recalled
+                Tin nhắn đã được thu hồi
               </div>
             )}
             <p
@@ -446,17 +459,17 @@ const MessageComponent = ({
               {formatTime(new Date(createdAt).getTime())}
             </p>
             {isLastMessage && (
-              <p className="absolute -bottom-4 right-1 text-muted-foreground flex w-full justify-end text-xs">
-                <CheckCheck className="size-4" /> received
+              <p className="absolute -bottom-4 right-1 text-muted-foreground flex w-full justify-end text-xs mb-1">
+                <CheckCheck className="size-4" /> Đã gửi
               </p>
             )}
           </div>
           {isTemp && !isError && (
-            <p className="text-xs text-gray-500 italic">Sending...</p>
+            <p className="text-xs text-gray-500 italic">Đang gửi...</p>
           )}
           {isTemp && isError && (
             <div className="flex items-center gap-2">
-              <p className="text-xs text-red-500 italic">Error</p>
+              <p className="text-xs text-red-500 italic">Lỗi</p>
               <Button
                 onClick={() => toast.error("Đã xảy ra lỗi")}
                 variant="ghost"
@@ -468,55 +481,82 @@ const MessageComponent = ({
             </div>
           )}
         </div>
-        {message && message.reactions && message.reactions.length > 0 && (
-          //
-          <div
-            className={cn(
-              "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
-              {
-                "right-auto left-2": fromCurrentUser,
-                "right-2": !fromCurrentUser,
-              }
-            )}
-          >
-            {groupReactions(message.reactions).map((reaction) => (
-              <span
-                key={reaction.emoji}
-                className={cn(
-                  "text-xs pl-1 cursor-pointer hover:opacity-70 rounded-full",
-                  {
-                    "bg-primary text-primary-foreground":
-                      reaction.reactedByCurrentUser,
-                  }
-                )}
-                onClick={() => {
-                  if (reaction.reactedByCurrentUser) {
-                    unReactionMessage(message!._id);
-                  } else {
-                    // reactionMessage(message!._id, reaction.emoji);
-                  }
-                }}
-                title={`${reaction.count} người đã phản ứng`}
-              >
-                <span>{reaction.count > 1 && `${reaction.count}`}</span>
-                {""}
-                {reaction.emoji}
+        {!message?.isRevoked &&
+          message &&
+          message.reactions &&
+          message.reactions.length > 0 && (
+            //
+            <div
+              className={cn(
+                "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1"
+                // {
+                //   "right-auto left-2": fromCurrentUser,
+                //   "right-2": !fromCurrentUser,
+                // }
+              )}
+            >
+              {groupReactions(message.reactions).map((reaction) => (
+                <span
+                  key={reaction.emoji}
+                  className={cn(
+                    "text-xs pl-1 cursor-pointer hover:opacity-70 rounded-full",
+                    {
+                      "bg-primary text-primary-foreground":
+                        reaction.reactedByCurrentUser,
+                    }
+                  )}
+                  onClick={() => {
+                    if (reaction.reactedByCurrentUser) {
+                      unReactionMessage(message!._id);
+                    } else {
+                      // reactionMessage(message!._id, reaction.emoji);
+                    }
+                  }}
+                  title={`${reaction.count} người đã phản ứng`}
+                >
+                  <span>{reaction.count > 1 && `${reaction.count}`}</span>
+                  {""}
+                  {reaction.emoji}
+                </span>
+              ))}
+            </div>
+          )}
+        {!message?.isRevoked &&
+          isHovered &&
+          message &&
+          message.reactions &&
+          message.reactions.length === 0 && (
+            //
+            <div
+              className={cn(
+                "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1"
+                // {
+                //   "right-2": fromCurrentUser,
+                //   "right-2": !fromCurrentUser,
+                // }
+              )}
+              onMouseEnter={handleReactionMouseEnter}
+              onMouseLeave={handleReactionMouseLeave}
+            >
+              <span className="text-xs cursor-pointer hover:opacity-70 rounded-full">
+                <Heart className="size-4 text-muted-foreground" />
               </span>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* {isHovered && !checkReaction(message) && (
+        {isReactionHovered && !checkReaction(message) && (
           //&& message?.reactions?.length === 0
           //
           <div
             className={cn(
-              "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+              "absolute bottom-3.5 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
               {
-                "right-auto left-2": !fromCurrentUser,
+                "-right-14 left-auto": !fromCurrentUser,
                 "right-2": fromCurrentUser,
               }
             )}
+            onMouseEnter={handleReactionMouseEnter}
+            onMouseLeave={handleReactionMouseLeave}
           >
             {["👍", "❤️", "😂", "😮", "😢", "😡"].map((emoji) => (
               <button
@@ -528,9 +568,9 @@ const MessageComponent = ({
               </button>
             ))}
           </div>
-        )} */}
+        )}
 
-        {isHovered && (
+        {!message?.isRevoked && isHovered && !isReactionHovered && (
           <div
             className={cn(
               "absolute -right-[110px] bottom-6 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
@@ -539,17 +579,22 @@ const MessageComponent = ({
               }
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
-              onClick={(e) => {
-                e.stopPropagation();
-                // Handle reply logic
-              }}
-            >
-              <MessageSquareText className="size-4" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Handle reply logic
+                  }}
+                >
+                  <MessageSquareText className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Trả lời</TooltipContent>
+            </Tooltip>
             <ForwardMessageDialog messageToForward={message} />
             <MessageOption
               message={message!}

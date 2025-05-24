@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import MobileNav from "./nav/MobileNav";
 import DesktopNav from "./nav/DesktopNav";
@@ -6,6 +5,7 @@ import RingCall from "../call/RingCall";
 // import VideoCall from "@/app/(root)/_components/VideoCall";
 // import VoiceCall from "@/app/(root)/_components/VoiceCall";
 import { useCallStore } from "@/store/useCallStore";
+import VideoCall from "../VideoCall";
 
 type Props = React.PropsWithChildren<{}>;
 
@@ -24,7 +24,7 @@ const SidebarWrapper = ({ children }: Props) => {
         />
       </main>
       {/* <CallContainer /> */}
-      {/* <VideoCall /> */}
+      <VideoCall />
       {/* <VoiceCall /> */}
       {/* <CallContainer /> */}
     </div>
