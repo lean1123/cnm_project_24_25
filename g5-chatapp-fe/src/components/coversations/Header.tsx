@@ -59,15 +59,9 @@ const Header = ({
         </Link>
         <Avatar className="h-8 w-8">
           {isGroup ? (
-            <AvatarImage
-              src={imageUrl || "src/assets/group.jpg"}
-              alt={firstName}
-            />
+            <AvatarImage src={imageUrl || "/group.jpg"} alt={firstName} />
           ) : (
-            <AvatarImage
-              src={imageUrl || "src/assets/avatar.png"}
-              alt={firstName}
-            />
+            <AvatarImage src={imageUrl || "/avatar.png"} alt={firstName} />
           )}
           <AvatarFallback>
             {getNameFallBack(firstName || "", lastName || "")}

@@ -89,14 +89,12 @@ function ConversationInfo({ isOpen, setOpen, userSelected, isGroup }: Props) {
         <Avatar className="h-16 w-16">
           {isGroup ? (
             <AvatarImage
-              src={
-                selectedConversation?.profilePicture || "src/assets/group.jpg"
-              }
+              src={selectedConversation?.profilePicture || "/group.jpg"}
               alt="Group"
             />
           ) : (
             <AvatarImage
-              src={userSelected?.avatar || "src/assets/avatar.png"}
+              src={userSelected?.avatar || "/avatar.png"}
               alt="User"
             />
           )}

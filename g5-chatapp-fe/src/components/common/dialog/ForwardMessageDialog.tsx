@@ -9,7 +9,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
 import { useMessageStore } from "@/store/useMessageStore";
@@ -89,14 +93,14 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
       <Tooltip>
         <DialogTrigger asChild>
           <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
-        >
-          <Forward className="size-4" />
-        </Button>
-      </TooltipTrigger>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full size-8 bg-background shadow-sm hover:bg-muted"
+            >
+              <Forward className="size-4" />
+            </Button>
+          </TooltipTrigger>
         </DialogTrigger>
         <TooltipContent>Chuyển tiếp</TooltipContent>
       </Tooltip>
@@ -139,10 +143,7 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
                     /> */}
                       <Avatar>
                         <AvatarImage
-                          src={
-                            conversation.profilePicture ||
-                            "src/assets/group.jpg"
-                          }
+                          src={conversation.profilePicture || "/group.jpg"}
                         ></AvatarImage>
                         <AvatarFallback></AvatarFallback>
                       </Avatar>
@@ -161,10 +162,7 @@ const ForwardMessageDialog = ({ messageToForward }: Props) => {
                     /> */}
                       <Avatar>
                         <AvatarImage
-                          src={
-                            getAvatarUrl(conversation) ||
-                            "src/assets/avatar.png"
-                          }
+                          src={getAvatarUrl(conversation) || "/avatar.png"}
                         ></AvatarImage>
                         <AvatarFallback></AvatarFallback>
                       </Avatar>
