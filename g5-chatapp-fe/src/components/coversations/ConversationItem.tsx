@@ -47,8 +47,8 @@ const ConversationItem = ({
             <h4 className="truncate">{name}</h4>
             {lastMessage ? (
               <span className="text-sm text-muted-foreground flex truncate overflow-ellipsis">
-                <p className="font-semibold">
-                  {lastMessage.sender._id === user?._id ? "Bạn :" : ""}
+                <p className={`font-semibold ${lastMessage.sender._id === user?._id ? "pr-1" : ""}`}>
+                  {lastMessage.sender._id === user?._id ? "Bạn:" : ""}
                 </p>
                 {lastMessage.type === "VIDEO" &&
                   lastMessage.files &&

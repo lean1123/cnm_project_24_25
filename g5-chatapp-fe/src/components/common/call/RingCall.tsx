@@ -29,7 +29,21 @@ function RingCall({ showRingCall, setShowRingCall }: RingCallProps) {
 
       return () => clearTimeout(timeout);
     }
-  }, [ongoingCall?.isRinging, callConversationId, isCallGroup]);
+  }, [ongoingCall, callConversationId, isCallGroup]);
+
+  useEffect(() => {
+    console.log("Ongoing call:", ongoingCall);
+  }, [ongoingCall]);
+
+  useEffect(() => {
+    if (ongoingCall?.isRinging) {
+      console.log("Setting showRingCall to true due to ongoingCall");
+      setShowRingCall(true);
+    } else {
+      console.log("Setting showRingCall to false due to no ongoing call");
+      setShowRingCall(false);
+    }
+  }, [ongoingCall, setShowRingCall]);
 
   if (!ongoingCall?.isRinging) return null;
 

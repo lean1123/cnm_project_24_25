@@ -6,6 +6,7 @@ const CALL_TIMEOUT = 30; // 30 giây đếm ngược
 
 const VideoCall = () => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const zegoInstanceRef = useRef<any>(null); // Lưu instance ZegoUIKitPrebuilt
   const [callType, setCallType] = useState<"audio" | "video" | null>("video");
   const [countdown, setCountdown] = useState(CALL_TIMEOUT);
 
@@ -17,9 +18,10 @@ const VideoCall = () => {
     handleCancelCall,
     callConversationId,
     isCallGroup,
+    isCallEnded,
   } = useCallStore();
 
-  const { user } = useAuthStore();
+  const { user, socket } = useAuthStore();
   const roomID = callConversationId || "demo-room";
   const userID = user?._id || "defaultUserID";
   const userName = user?.firstName + " " + user?.lastName || "defaultUserName";
@@ -32,14 +34,11 @@ const VideoCall = () => {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
-
-            // Đặt trong setTimeout để tránh update khi đang render
             setTimeout(() => {
               if (!isCallAccepted) {
                 handleCancelCall(callConversationId!, isCallGroup);
               }
             }, 0);
-
             return 0;
           }
           return prev - 1;
@@ -48,19 +47,37 @@ const VideoCall = () => {
 
       return () => clearInterval(interval);
     }
-  }, [isCallActive, isCallWaiting, isCallAccepted]);
+  }, [
+    isCallActive,
+    isCallWaiting,
+    isCallAccepted,
+    callConversationId,
+    isCallGroup,
+    handleCancelCall,
+  ]);
 
-  const appID = parseInt(import.meta.env.VITE_PUBLIC_ZEGO_APP_ID || "0");
-  const serverSecret = import.meta.env.VITE_PUBLIC_ZEGO_SERVER_SECRET || "";
 
+  // Lắng nghe sự kiện endCall từ socket
+  useEffect(() => {
+    if (zegoInstanceRef.current && isCallEnded) {
+      console.log("Call ended, cleaning up ZEGOCLOUD instance");
+      zegoInstanceRef.current.hangUp();
+      // zegoInstanceRef.current.destroyEngine();
+      zegoInstanceRef.current = null;
+    }
+  }, [isCallEnded]);
+
+
+  // Khởi tạo ZEGOCLOUD
   useEffect(() => {
     if (!isCallActive || !isCallAccepted) return;
 
-    // const appID = parseInt(process.env.NEXT_PUBLIC_ZEGO_APP_ID || "0");
+    const appID = parseInt(import.meta.env.VITE_PUBLIC_ZEGO_APP_ID || "0");
+    const serverSecret = import.meta.env.VITE_PUBLIC_ZEGO_SERVER_SECRET || "";
+
     if (!appID) {
-      throw new Error("NEXT_PUBLIC_ZEGO_APP_ID is not defined or invalid.");
+      throw new Error("VITE_ZEGO_APP_ID is not defined or invalid.");
     }
-    // const serverSecret = process.env.NEXT_PUBLIC_ZEGO_SERVER_SECRET || "";
 
     const init = async () => {
       const { ZegoUIKitPrebuilt } = await import(
@@ -76,6 +93,7 @@ const VideoCall = () => {
       );
 
       const zp = ZegoUIKitPrebuilt.create(kitToken);
+      zegoInstanceRef.current = zp; // Lưu instance vào ref
 
       zp.joinRoom({
         container: containerRef.current!,
@@ -88,13 +106,40 @@ const VideoCall = () => {
         showPreJoinView: false,
         showLeavingView: false,
         onLeaveRoom() {
+          console.log("User left room, cleaning up ZEGOCLOUD");
+          if (zegoInstanceRef.current) {
+            console.log("Ending call and cleaning up ZEGOCLOUD instance");
+            zegoInstanceRef.current.hangUp();
+            // zegoInstanceRef.current.destroyEngine();
+            zegoInstanceRef.current = null;
+          }
           handleEndCall(roomID, isCallGroup);
         },
       });
     };
 
-    init();
-  }, [isCallActive, isCallAccepted]);
+    init().catch((error) => {
+      console.error("Failed to initialize ZEGOCLOUD:", error);
+    });
+
+    // Dọn dẹp khi component unmount hoặc call kết thúc
+    return () => {
+      if (zegoInstanceRef.current) {
+        console.log("Cleaning up ZEGOCLOUD on unmount");
+        zegoInstanceRef.current.hangUp();
+        // zegoInstanceRef.current.destroyEngine();
+        zegoInstanceRef.current = null;
+      }
+    };
+  }, [
+    isCallActive,
+    isCallAccepted,
+    roomID,
+    userID,
+    userName,
+    isCallGroup,
+    handleEndCall,
+  ]);
 
   const shouldShowWaiting = isCallActive && isCallWaiting && !isCallAccepted;
 
