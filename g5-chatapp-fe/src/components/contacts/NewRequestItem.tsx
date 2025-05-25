@@ -25,7 +25,7 @@ function NewRequestItem({ _id, user, contact, createdAt }: Props) {
       <div className="flex items-center gap-2">
         <Avatar>
           <AvatarImage
-            src={userItem?.avatar || "src/assets/avatar.png"}
+            src={userItem?.avatar || "/avatar.png"}
             alt={userItem?.firstName + " " + userItem?.lastName}
           />
           <AvatarFallback>

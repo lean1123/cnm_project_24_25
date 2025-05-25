@@ -101,7 +101,7 @@ export function CheckAdminLeaveGroupDialog({
                   <div className="flex items-center gap-2">
                     <Avatar>
                       <AvatarImage
-                        src={user.avatar || "src/assets/avatar.png"}
+                        src={user.avatar || "/avatar.png"}
                       ></AvatarImage>
                       <AvatarFallback>
                         {getNameFallBack(

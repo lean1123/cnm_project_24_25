@@ -10,6 +10,7 @@ interface CallStoreState {
   isCallWaiting: boolean;
   isCallAccepted: boolean;
   isCallGroup: boolean;
+  isCallEnded: boolean;
   callType: string;
   callStatus: string;
   callDuration: number;
@@ -44,13 +45,15 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
   callDuration: 0,
   ongoingCall: null,
   isCall: false,
+  isCallEnded: false,
   handleCall: (conversationId: string, isGroup: boolean) => {
     set({ isCallActive: true });
     const socket = useAuthStore.getState().socket;
-    if (socket) {
+    const user = useAuthStore.getState().user;
+    if (socket && user) {
       socket.emit("call", {
         conversationId,
-        sender: useAuthStore.getState().user,
+        sender: user,
         type: "video",
         isGroup: isGroup,
       });
@@ -99,7 +102,29 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     });
   },
   handleEndCall: (conversationId: string, isGroup: boolean) => {
-    set({ isCallActive: false, isCallAccepted: false });
+    set({
+      isCallActive: false,
+      isCallAccepted: false,
+      isCallWaiting: false,
+      ongoingCall: null,
+      callConversationId: null,
+      isCallEnded: true,
+    });
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      if (!get().isCallGroup) {
+        socket.emit("endCall", {
+          conversationId: conversationId,
+          userId: useAuthStore.getState().user?._id,
+          isGroup: isGroup,
+        });
+        console.log("End call emitted", {
+          conversationId: conversationId,
+        });
+      }
+    } else {
+      console.error("Socket is not connected");
+    }
   },
   handleCancelCall: (conversationId: string, isGroup: boolean) => {
     set({
@@ -107,6 +132,7 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
       isCallAccepted: false,
       isCallWaiting: false,
       callConversationId: null,
+      ongoingCall: null,
     });
     const socket = useAuthStore.getState().socket;
     if (socket) {
@@ -121,6 +147,7 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.on("goingCall", (data) => {
+        console.log("Incoming call data:", data);
         if (data.sender._id !== useAuthStore.getState().user?._id) {
           set({
             ongoingCall: {
@@ -130,11 +157,14 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
             },
           });
         }
+        console.log("Ongoing call set:", get().ongoingCall);
         set({
           callConversationId: data.conversationId,
           isCallGroup: data.isGroup,
         });
       });
+    } else {
+      console.error("Socket is not connected");
     }
   },
   unsubscribeCall: () => {
@@ -188,7 +218,7 @@ export const useCallStore = create<CallStoreState>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.on("endCall", (data) => {
-        set({ isCallActive: false });
+        set({ isCallActive: false, ongoingCall: null, isCallEnded: true });
       });
     }
   },

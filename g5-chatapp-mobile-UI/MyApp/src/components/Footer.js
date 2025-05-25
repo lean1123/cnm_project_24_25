@@ -18,10 +18,10 @@ const Footer = () => {
   };
 
   const tabs = [
-    { name: 'Chats', icon: 'message-text-outline', screen: 'Home_Chat' },
-    { name: 'Contacts', icon: 'account-multiple-outline', screen: 'FriendsList' },
-    { name: 'Profile', icon: 'account-circle-outline', screen: 'Profile' },
-    { name: 'Settings', icon: 'cog-outline', screen: 'Settings' }
+    { name: 'Tin nhắn', icon: 'message-text-outline', screen: 'Home_Chat' },
+    { name: 'Danh bạ', icon: 'account-multiple-outline', screen: 'FriendsList' },
+    { name: 'Cá nhân', icon: 'account-circle-outline', screen: 'Profile' },
+    { name: 'Cài đặt', icon: 'cog-outline', screen: 'Settings' }
   ];
 
   return (

@@ -8,6 +8,7 @@ import {
   Modal,
   Image,
   Animated,
+  Platform
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
@@ -54,7 +55,7 @@ const Header = ({ onSearch }) => {
             <Icon name="magnify" size={20} color="#666" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Tìm kiếm theo tên cuộc trò chuyện..."
+              placeholder="Nhập tên cuộc trò chuyện..."
               placeholderTextColor="#666"
               autoFocus
               value={searchTerm}
@@ -145,6 +146,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0, 0, 0, 0.1)",
+    paddingTop: Platform.OS === "android" ? 20 : 0,
   },
   headerContent: {
     flexDirection: "row",

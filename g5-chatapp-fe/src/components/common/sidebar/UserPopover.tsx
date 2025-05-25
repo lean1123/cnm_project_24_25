@@ -14,7 +14,7 @@ type Props = {};
 
 const UserPopover = (props: Props) => {
   const { user, getMyProfile, logout } = useAuthStore();
-  const { setSelectedConversation} = useConversationStore();
+  const { setSelectedConversation } = useConversationStore();
 
   const handleLogout = () => {
     // Handle logout logic here, e.g., clear tokens, redirect to login page, etc.

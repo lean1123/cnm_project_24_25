@@ -226,10 +226,7 @@ const MessageComponent = ({
           invisible: lastByUser,
         })}
       >
-        <AvatarImage
-          src={senderImage || "src/assets/avatar.png"}
-          alt={senderName}
-        />
+        <AvatarImage src={senderImage || "/avatar.png"} alt={senderName} />
         <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
       </Avatar>
       {/* chat content */}
@@ -488,11 +485,11 @@ const MessageComponent = ({
             //
             <div
               className={cn(
-                "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1"
-                // {
-                //   "right-auto left-2": fromCurrentUser,
-                //   "right-2": !fromCurrentUser,
-                // }
+                "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+                {
+                  "right-auto left-4": fromCurrentUser,
+                  "right-7": !fromCurrentUser,
+                }
               )}
             >
               {groupReactions(message.reactions).map((reaction) => (
@@ -521,30 +518,30 @@ const MessageComponent = ({
               ))}
             </div>
           )}
-        {!message?.isRevoked &&
-          isHovered &&
-          message &&
-          message.reactions &&
-          message.reactions.length === 0 && (
-            //
-            <div
-              className={cn(
-                "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1"
-                // {
-                //   "right-2": fromCurrentUser,
-                //   "right-2": !fromCurrentUser,
-                // }
-              )}
-              onMouseEnter={handleReactionMouseEnter}
-              onMouseLeave={handleReactionMouseLeave}
-            >
-              <span className="text-xs cursor-pointer hover:opacity-70 rounded-full">
-                <Heart className="size-4 text-muted-foreground" />
-              </span>
-            </div>
-          )}
+        {!message?.isRevoked && isHovered && (
+          // message &&
+          // message.reactions &&
+          // message.reactions.length === 0 &&
+          //
+          <div
+            className={cn(
+              "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1"
+              // {
+              //   "right-2": fromCurrentUser,
+              //   "right-2": !fromCurrentUser,
+              // }
+            )}
+            onMouseEnter={handleReactionMouseEnter}
+            onMouseLeave={handleReactionMouseLeave}
+          >
+            <span className="text-xs cursor-pointer hover:opacity-70 rounded-full">
+              <Heart className="size-4 text-muted-foreground" />
+            </span>
+          </div>
+        )}
 
-        {isReactionHovered && !checkReaction(message) && (
+        {isReactionHovered && (
+          // checkReaction(message) &&
           //&& message?.reactions?.length === 0
           //
           <div

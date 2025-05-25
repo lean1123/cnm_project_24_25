@@ -7,7 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,12 +22,7 @@ import { toStringFromDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { format } from "date-fns";
-import {
-  CalendarIcon,
-  Pencil,
-  PencilLine,
-  Undo
-} from "lucide-react";
+import { CalendarIcon, Pencil, PencilLine, Undo } from "lucide-react";
 import React, { useEffect, useState } from "react";
 type Props = {};
 
@@ -61,7 +56,7 @@ function AccountInformationDialog({}: Props) {
       dob: dob.toISOString(),
     };
     await updateProfile(data);
-  }
+  };
 
   return (
     <Dialog>
@@ -126,7 +121,9 @@ function AccountInformationDialog({}: Props) {
               <div className="flex flex-col gap-4">
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Giới tính</span>
-                  <span className="font-normal">{user?.gender == "male" ? "Nam" : "Nữ"}</span>
+                  <span className="font-normal">
+                    {user?.gender == "male" ? "Nam" : "Nữ"}
+                  </span>
                 </div>
                 <div className="flex flex-row justify-between gap-2">
                   <span className="text-gray-500">Ngày sinh</span>
@@ -151,15 +148,27 @@ function AccountInformationDialog({}: Props) {
             <div className="flex flex-col gap-4 py-4">
               <div className="flex flex-col gap-2">
                 <Label>Tên</Label>
-                <Input placeholder="" value={firstName} onChange={(e) => setFirstName(e.target.value)}/>
+                <Input
+                  placeholder=""
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Họ</Label>
-                <Input placeholder="" value={lastName} onChange={(e) => setLastName(e.target.value)}/>
+                <Input
+                  placeholder=""
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Giới tính</Label>
-                <RadioGroup  value={gender} onValueChange={setGender} className="flex flex-row gap-4">
+                <RadioGroup
+                  value={gender}
+                  onValueChange={setGender}
+                  className="flex flex-row gap-4"
+                >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="male" id="r2" />
                     <Label htmlFor="r2">Nam</Label>
@@ -202,7 +211,9 @@ function AccountInformationDialog({}: Props) {
                 <Undo />
                 Hủy
               </Button>
-              <Button variant="default" onClick={()=> handleUpdateProfile()}>Cập nhật</Button>
+              <Button variant="default" onClick={() => handleUpdateProfile()}>
+                Cập nhật
+              </Button>
             </DialogFooter>
           </>
         )}

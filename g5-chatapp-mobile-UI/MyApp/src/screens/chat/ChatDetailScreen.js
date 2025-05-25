@@ -79,7 +79,7 @@ const customTheme = {
   },
 };
 
-const AudioMessage = ({ file, isMyMessage }) => {
+const AudioMessage = ({ file, isMyMessage, onLongPress }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [position, setPosition] = useState(0);
@@ -240,30 +240,40 @@ const AudioMessage = ({ file, isMyMessage }) => {
         padding: 8,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <IconButton
-          icon={isLoading ? "loading" : isPlaying ? "pause" : "play"}
-          size={20}
-          iconColor={isMyMessage ? "#fff" : "#666"}
-          onPress={handlePlayPause}
-          disabled={isLoading}
-        />
-        <View style={{ flex: 1 }}>
-          <ProgressBar
-            progress={progress}
-            color={isMyMessage ? "#fff" : "#135CAF"}
-            style={{ height: 2, marginBottom: 4 }}
+      <TouchableOpacity
+        onLongPress={() => {
+          // Pass the message to parent for showing options
+          if (onLongPress) {
+            onLongPress();
+          }
+        }}
+        activeOpacity={0.8}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <IconButton
+            icon={isLoading ? "loading" : isPlaying ? "pause" : "play"}
+            size={20}
+            iconColor={isMyMessage ? "#fff" : "#666"}
+            onPress={handlePlayPause}
+            disabled={isLoading}
           />
-          <Text
-            variant="bodySmall"
-            style={{ color: isMyMessage ? "#fff" : "#666", fontSize: 12 }}
-          >
-            {error
-              ? error
-              : `${formatTime(position)} / ${formatTime(duration)}`}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <ProgressBar
+              progress={progress}
+              color={isMyMessage ? "#fff" : "#135CAF"}
+              style={{ height: 2, marginBottom: 4 }}
+            />
+            <Text
+              variant="bodySmall"
+              style={{ color: isMyMessage ? "#fff" : "#666", fontSize: 12 }}
+            >
+              {error
+                ? error
+                : `${formatTime(position)} / ${formatTime(duration)}`}
+            </Text>
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -498,7 +508,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
   }, []);
 
   const handleReturn = () => {
-    navigation.navigate("Home_Chat");
+    // navigation.navigate("Home_Chat");
+    navigation.goBack();
   };
 
   useEffect(() => {
@@ -1182,6 +1193,23 @@ const ChatDetailScreen = ({ navigation, route }) => {
       return null;
     }
 
+    // Check if message is revoked first - this applies to all message types
+    if (item.isRevoked) {
+      return (
+        <Text
+          variant="bodySmall"
+          style={{ color: "#888", fontStyle: "italic", fontSize: 14 }}
+        >
+          Tin nhắn đã được thu hồi
+        </Text>
+      );
+    }
+
+    // Check if message is deleted for current user
+    if (item.deletedFor && item.deletedFor.includes(authenticated)) {
+      return null;
+    }
+
     const isMyMessage = currentUser && item.sender._id === currentUser._id;
     const isTemp = item._id && item._id.startsWith("temp-");
 
@@ -1241,95 +1269,105 @@ const ChatDetailScreen = ({ navigation, route }) => {
       const googleMapsApiKey = "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus";
 
       return wrapForwardedContent(
-        <View
-          style={{
-            width: 200,
-            backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
-            borderRadius: 12,
-            overflow: "hidden",
-          }}
-        >
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate("Location", {
-                conversation: conversation,
-                initialLocation: { latitude, longitude },
-              })
+        <TouchableOpacity
+          onLongPress={() => {
+            if (!isTemp) {
+              setSelectedMessage(item);
+              setShowMessageOptions(true);
             }
+          }}
+          activeOpacity={0.8}
+        >
+          <View
+            style={{
+              width: 200,
+              backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+              borderRadius: 12,
+              overflow: "hidden",
+            }}
           >
-            <View
-              style={{
-                width: "100%",
-                height: 120,
-                backgroundColor: "#f0f0f0",
-                justifyContent: "center",
-                alignItems: "center",
-                position: "relative",
-              }}
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("Location", {
+                  conversation: conversation,
+                  initialLocation: { latitude, longitude },
+                })
+              }
             >
-              <Image
-                source={{
-                  uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=14&size=200x120&markers=color:red|${latitude},${longitude}&key=${googleMapsApiKey}`,
-                }}
-                style={{ width: "100%", height: "100%" }}
-                // Fallback to OSM if Google fails
-                onError={() => {
-                  console.log("Google Maps image failed, using OpenStreetMap");
-                  // We don't actually need to do anything here since the marker will show regardless
-                }}
-              />
-
-              {/* This marker overlay will always be shown, regardless of whether the map loads */}
               <View
                 style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
+                  width: "100%",
+                  height: 120,
+                  backgroundColor: "#f0f0f0",
                   justifyContent: "center",
                   alignItems: "center",
-                  backgroundColor: "rgba(255,255,255,0.1)",
+                  position: "relative",
                 }}
               >
-                <Avatar.Icon
-                  size={36}
-                  icon="map-marker"
-                  style={{
-                    backgroundColor: isMyMessage
-                      ? "rgba(0,105,217,0.8)"
-                      : "rgba(102,102,102,0.8)",
+                <Image
+                  source={{
+                    uri: `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=14&size=200x120&markers=color:red|${latitude},${longitude}&key=${googleMapsApiKey}`,
+                  }}
+                  style={{ width: "100%", height: "100%" }}
+                  // Fallback to OSM if Google fails
+                  onError={() => {
+                    console.log("Google Maps image failed, using OpenStreetMap");
+                    // We don't actually need to do anything here since the marker will show regardless
                   }}
                 />
+
+                {/* This marker overlay will always be shown, regardless of whether the map loads */}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Avatar.Icon
+                    size={36}
+                    icon="map-marker"
+                    style={{
+                      backgroundColor: isMyMessage
+                        ? "rgba(0,105,217,0.8)"
+                        : "rgba(102,102,102,0.8)",
+                    }}
+                  />
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-          <View
-            style={{ flexDirection: "row", alignItems: "center", padding: 8 }}
-          >
-            <Avatar.Icon
-              size={24}
-              icon="map-marker"
-              style={{
-                backgroundColor: isMyMessage
-                  ? "rgba(255,255,255,0.2)"
-                  : "rgba(102,102,102,0.1)",
-                marginRight: 8,
-              }}
-            />
-            <Text
-              variant="bodySmall"
-              style={{
-                color: isMyMessage ? "#fff" : "#333",
-                fontSize: 14,
-                flex: 1,
-              }}
-              numberOfLines={2}
+            </TouchableOpacity>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", padding: 8 }}
             >
-              {item.address || "Đã chia sẻ vị trí"}
-            </Text>
+              <Avatar.Icon
+                size={24}
+                icon="map-marker"
+                style={{
+                  backgroundColor: isMyMessage
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(102,102,102,0.1)",
+                  marginRight: 8,
+                }}
+              />
+              <Text
+                variant="bodySmall"
+                style={{
+                  color: isMyMessage ? "#fff" : "#333",
+                  fontSize: 14,
+                  flex: 1,
+                }}
+                numberOfLines={2}
+              >
+                {item.address || "Đã chia sẻ vị trí"}
+              </Text>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       );
     }
 
@@ -1371,6 +1409,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   onPress={() =>
                     navigation.navigate("ImageViewer", { uri: file.url })
                   }
+                  onLongPress={() => {
+                    if (!isTemp) {
+                      setSelectedMessage(item);
+                      setShowMessageOptions(true);
+                    }
+                  }}
                 >
                   <Image
                     source={{ uri: file.url }}
@@ -1433,6 +1477,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
             onPress={() =>
               navigation.navigate("ImageViewer", { uri: item.files[0].url })
             }
+            onLongPress={() => {
+              if (!isTemp) {
+                setSelectedMessage(item);
+                setShowMessageOptions(true);
+              }
+            }}
           >
             <Image
               source={{ uri: item.files[0].url }}
@@ -1468,6 +1518,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
             onPress={() =>
               navigation.navigate("VideoPlayer", { uri: item.files[0]?.url })
             }
+            onLongPress={() => {
+              if (!isTemp) {
+                setSelectedMessage(item);
+                setShowMessageOptions(true);
+              }
+            }}
           >
             <Video
               source={{ uri: item.files[0]?.url }}
@@ -1508,7 +1564,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
         );
       case "AUDIO":
         return wrapForwardedContent(
-          <AudioMessage file={item.files[0]} isMyMessage={isMyMessage} />
+          <AudioMessage 
+            file={item.files[0]} 
+            isMyMessage={isMyMessage}
+            onLongPress={() => {
+              if (!isTemp) {
+                setSelectedMessage(item);
+                setShowMessageOptions(true);
+              }
+            }}
+          />
         );
       case "FILE":
         const file = item.files && item.files[0];
@@ -1523,77 +1588,116 @@ const ChatDetailScreen = ({ navigation, route }) => {
           /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt)$/i.test(fileName);
 
         return wrapForwardedContent(
-          <View
-            style={{
-              marginVertical: 4,
-              backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
-              borderRadius: 12,
-              padding: 8,
-              maxWidth: 280,
-              minWidth: 200,
+          <TouchableOpacity
+            onLongPress={() => {
+              if (!isTemp) {
+                setSelectedMessage(item);
+                setShowMessageOptions(true);
+              }
             }}
+            activeOpacity={0.8}
           >
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
+                marginVertical: 4,
+                backgroundColor: isMyMessage ? "#0099ff" : "#e4e4e4",
+                borderRadius: 12,
+                padding: 8,
+                maxWidth: 280,
+                minWidth: 200,
               }}
             >
-              <Avatar.Icon
-                size={28}
-                icon={getFileIcon(fileName)}
+              <View
                 style={{
-                  backgroundColor: isMyMessage
-                    ? "rgba(255,255,255,0.2)"
-                    : "rgba(102,102,102,0.1)",
-                  marginRight: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
                 }}
-              />
-              <View style={{ flex: 1, justifyContent: "center" }}>
-                <Text
-                  variant="bodyMedium"
+              >
+                <Avatar.Icon
+                  size={28}
+                  icon={getFileIcon(fileName)}
                   style={{
-                    color: isMyMessage ? "#fff" : "#333",
-                    fontSize: 15,
-                    fontWeight: "500",
-                    lineHeight: 20,
+                    backgroundColor: isMyMessage
+                      ? "rgba(255,255,255,0.2)"
+                      : "rgba(102,102,102,0.1)",
+                    marginRight: 10,
                   }}
-                  numberOfLines={2}
-                  ellipsizeMode="tail"
-                >
-                  {decodeURIComponent(fileName)}
-                </Text>
-              </View>
-              {isTemp && item.status === "sending" && (
-                <ActivityIndicator
-                  size="small"
-                  color={isMyMessage ? "#fff" : "#666"}
-                  style={{ marginLeft: 10 }}
                 />
-              )}
-            </View>
+                <View style={{ flex: 1, justifyContent: "center" }}>
+                  <Text
+                    variant="bodyMedium"
+                    style={{
+                      color: isMyMessage ? "#fff" : "#333",
+                      fontSize: 15,
+                      fontWeight: "500",
+                      lineHeight: 20,
+                    }}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {decodeURIComponent(fileName)}
+                  </Text>
+                </View>
+                {isTemp && item.status === "sending" && (
+                  <ActivityIndicator
+                    size="small"
+                    color={isMyMessage ? "#fff" : "#666"}
+                    style={{ marginLeft: 10 }}
+                  />
+                )}
+              </View>
 
-            {/* Preview and download buttons */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                marginTop: 8,
-                borderTopWidth: 1,
-                borderTopColor: isMyMessage
-                  ? "rgba(255,255,255,0.2)"
-                  : "rgba(0,0,0,0.1)",
-                paddingTop: 8,
-              }}
-            >
-              {isPreviewableFile && (
+              {/* Preview and download buttons */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginTop: 8,
+                  borderTopWidth: 1,
+                  borderTopColor: isMyMessage
+                    ? "rgba(255,255,255,0.2)"
+                    : "rgba(0,0,0,0.1)",
+                  paddingTop: 8,
+                }}
+              >
+                {isPreviewableFile && (
+                  <TouchableOpacity
+                    onPress={() =>
+                      navigation.navigate("FileViewer", {
+                        uri: fileUrl,
+                        fileName: fileName,
+                      })
+                    }
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: isMyMessage
+                        ? "rgba(255,255,255,0.2)"
+                        : "rgba(0,0,0,0.1)",
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 4,
+                    }}
+                  >
+                    <Feather
+                      name="eye"
+                      size={14}
+                      color={isMyMessage ? "#fff" : "#333"}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      style={{
+                        color: isMyMessage ? "#fff" : "#333",
+                        fontSize: 12,
+                      }}
+                    >
+                      Xem trước
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
-                  onPress={() =>
-                    navigation.navigate("FileViewer", {
-                      uri: fileUrl,
-                      fileName: fileName,
-                    })
-                  }
+                  onPress={() => Linking.openURL(fileUrl)}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -1606,66 +1710,22 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   }}
                 >
                   <Feather
-                    name="eye"
+                    name="download"
                     size={14}
                     color={isMyMessage ? "#fff" : "#333"}
                     style={{ marginRight: 4 }}
                   />
                   <Text
-                    style={{
-                      color: isMyMessage ? "#fff" : "#333",
-                      fontSize: 12,
-                    }}
+                    style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 12 }}
                   >
-                    Xem trước
+                    Tải xuống
                   </Text>
                 </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                onPress={() => Linking.openURL(fileUrl)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: isMyMessage
-                    ? "rgba(255,255,255,0.2)"
-                    : "rgba(0,0,0,0.1)",
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderRadius: 4,
-                }}
-              >
-                <Feather
-                  name="download"
-                  size={14}
-                  color={isMyMessage ? "#fff" : "#333"}
-                  style={{ marginRight: 4 }}
-                />
-                <Text
-                  style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 12 }}
-                >
-                  Tải xuống
-                </Text>
-              </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
         );
       default:
-        if (item.isRevoked) {
-          return (
-            <Text
-              variant="bodySmall"
-              style={{ color: "#888", fontStyle: "italic", fontSize: 14 }}
-            >
-              Tin nhắn đã được thu hồi
-            </Text>
-          );
-        }
-
-        if (item.deletedFor && item.deletedFor.includes(authenticated)) {
-          return null;
-        }
-
         return wrapForwardedContent(
           <Text
             variant="bodyMedium"
@@ -1793,7 +1853,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 marginLeft: isMyMessage ? 50 : 0,
               }}
               onLongPress={() => {
-                if (!isTemp) {
+                // Only show options for text messages and other non-media types
+                // Images, videos, files, audio, and location messages handle their own long press
+                const isLocationMessage = (item.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.content)) || item.isLocation;
+                if (!isTemp && item.type === "TEXT" && !isLocationMessage) {
                   setSelectedMessage(item);
                   setShowMessageOptions(true);
                 }
@@ -3556,18 +3619,24 @@ const ChatDetailScreen = ({ navigation, route }) => {
               left={() => <List.Icon icon="arrow-right" />}
               onPress={() => handleMessageForward(selectedMessage)}
             />
-            <List.Item
-              title="Thu hồi tin nhắn ở phía bạn"
-              left={() => <List.Icon icon="trash-can" color="#e74c3c" />}
-              titleStyle={{ color: "#e74c3c" }}
-              onPress={() => handleDeleteForMe(selectedMessage)}
-            />
-            <List.Item
-              title="Xóa tin nhắn"
-              left={() => <List.Icon icon="trash-can" color="#e74c3c" />}
-              titleStyle={{ color: "#e74c3c" }}
-              onPress={() => handleMessageDelete(selectedMessage)}
-            />
+             <List.Item
+                  title="Xóa tin nhắn ở phía bạn"
+                  left={() => <List.Icon icon="trash-can" color="#e74c3c" />}
+                  titleStyle={{ color: "#e74c3c" }}
+                  onPress={() => handleDeleteForMe(selectedMessage)}
+                />
+            {/* Only show delete/revoke options for messages sent by current user */}
+            {selectedMessage && currentUser && selectedMessage.sender._id === currentUser._id && (
+              <>
+               
+                <List.Item
+                  title="Thu hồi"
+                  left={() => <List.Icon icon="trash-can" color="#e74c3c" />}
+                  titleStyle={{ color: "#e74c3c" }}
+                  onPress={() => handleMessageDelete(selectedMessage)}
+                />
+              </>
+            )}
           </PaperModal>
         </Portal>
 

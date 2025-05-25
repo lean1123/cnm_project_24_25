@@ -161,20 +161,21 @@ const useAuthStore = create(
         
         socket.on('connect', () => {
           console.log('Socket connected, sending login event for user:', user._id);
+          // Only pass the userId to avoid cyclical structure
           socket.emit('login', {
-            userId: user._id,
+            userId: String(user._id),
           });
           
           // Đăng ký lắng nghe sự kiện activeUsers khi kết nối thành công
           get().subscribeActiveUsers();
         });
         
-        // Store socket reference in state
-        set({ socket });
+        // Don't store socket reference in state to avoid cyclical structure
+        // set({ socket });
       },
 
       disconnectSocket: () => {
-        const { socket } = get();
+        const socket = getSocket();
         if (socket) {
           // Hủy đăng ký sự kiện trước khi ngắt kết nối
           get().unsubscribeActiveUsers();

@@ -49,7 +49,7 @@ const DesktopNav = () => {
       <div className="flex flex-col items-center gap-8">
         <Link to={"/"}>
           <div className="flex flex-col items-center justify-center">
-            <img src="src\assets\Logo.png" width={40} height={40} alt="Logo" />
+            <img src="/Logo.png" width={40} height={40} alt="Logo" />
             <p className="text-sm font-semibold text-primary">E-chat</p>
           </div>
         </Link>

@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,10 +6,14 @@ import {
   DialogContent,
   DialogFooter,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useContactStore } from "@/store/useContactStore";
 import { useConversationStore } from "@/store/useConversationStore";
@@ -125,10 +128,10 @@ export function CreateGroupDialog() {
       <Tooltip>
         <DialogTrigger asChild>
           <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Users className="h-5 w-5" />
-        </Button>
-      </TooltipTrigger>
+            <Button variant="ghost" size="icon">
+              <Users className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
         </DialogTrigger>
         <TooltipContent>Tạo nhóm</TooltipContent>
       </Tooltip>
@@ -150,7 +153,7 @@ export function CreateGroupDialog() {
                 }}
               >
                 <AvatarImage
-                  src={previewUrl || "src/assets/camera.jpg"}
+                  src={previewUrl || "/camera.jpg"}
                   alt="User"
                   className=""
                 />

@@ -10,7 +10,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
 
 function App() {
-  const { user, hasHydrated } = useAuthStore();
+  const { isAuthenticated, hasHydrated } = useAuthStore();
 
   if (!hasHydrated) {
     return (
@@ -25,15 +25,19 @@ function App() {
         <Routes>
           <Route
             path="/"
-            element={user ? <HomePage /> : <Navigate to={"/login"} />}
+            element={
+              isAuthenticated ? <HomePage /> : <Navigate to={"/login"} />
+            }
           />
           <Route
             path="/login"
-            element={!user ? <LoginPage /> : <Navigate to={"/"} />}
+            element={!isAuthenticated ? <LoginPage /> : <Navigate to={"/"} />}
           />
           <Route
             path="/register"
-            element={!user ? <RegisterPage /> : <Navigate to={"/"} />}
+            element={
+              !isAuthenticated ? <RegisterPage /> : <Navigate to={"/"} />
+            }
           />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
