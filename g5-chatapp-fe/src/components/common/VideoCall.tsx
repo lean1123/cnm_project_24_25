@@ -50,8 +50,8 @@ const VideoCall = () => {
     }
   }, [isCallActive, isCallWaiting, isCallAccepted]);
 
-  const appID = parseInt(import.meta.env.VITE_ZEGO_APP_ID || "0");
-  const serverSecret = import.meta.env.VITE_ZEGO_SERVER_SECRET || "";
+  const appID = parseInt(import.meta.env.VITE_PUBLIC_ZEGO_APP_ID || "0");
+  const serverSecret = import.meta.env.VITE_PUBLIC_ZEGO_SERVER_SECRET || "";
 
   useEffect(() => {
     if (!isCallActive || !isCallAccepted) return;
