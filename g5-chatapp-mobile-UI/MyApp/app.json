@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MyApp",
-    "slug": "MyApp",
+    "name": "Coconut_Chat_App",
+    "slug": "Coconut_Chat_App",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,11 +17,13 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to change your avatar.",
         "NSCameraUsageDescription": "This app needs access to your camera to take photos for your avatar.",
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages."
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMapsApiKey": "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus"
-      }
+      },
+      "bundleIdentifier": "com.anonymous.MyApp"
     },
     "android": {
       "adaptiveIcon": {
@@ -57,14 +59,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "4d3a3662-de19-4e56-ae1a-2a53099ccdc7"
+        "projectId": "9ca8e9c5-3c2a-4151-ae3d-74344705af8a"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/4d3a3662-de19-4e56-ae1a-2a53099ccdc7"
-    }
+    "owner": "lean1123"
   }
 }
