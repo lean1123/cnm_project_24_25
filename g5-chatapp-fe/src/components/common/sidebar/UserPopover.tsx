@@ -14,7 +14,7 @@ type Props = {};
 
 const UserPopover = (props: Props) => {
   const { user, getMyProfile, logout } = useAuthStore();
-  const { setSelectedConversation} = useConversationStore();
+  const { setSelectedConversation } = useConversationStore();
 
   const handleLogout = () => {
     // Handle logout logic here, e.g., clear tokens, redirect to login page, etc.
@@ -32,7 +32,7 @@ const UserPopover = (props: Props) => {
     <Popover>
       <PopoverTrigger asChild>
         <Avatar className="cursor-pointer">
-          <AvatarImage alt="User" src={user?.avatar || "src/assets/avatar.png"} />
+          <AvatarImage alt="User" src={user?.avatar || "/avatar.png"} />
         </Avatar>
       </PopoverTrigger>
       <PopoverContent className="w-52 ml-6 p-0">

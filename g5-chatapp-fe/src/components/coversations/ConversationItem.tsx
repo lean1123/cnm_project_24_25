@@ -3,8 +3,6 @@ import { Card } from "@/components/ui/card";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
 import type { Conversation, LastMessage } from "@/types";
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 
 type Props = {
   id: string;
@@ -21,13 +19,10 @@ const ConversationItem = ({
   lastMessage,
   conversation,
 }: Props) => {
-  const navigate = useNavigate();
-  const path = useLocation().pathname;
   const { user } = useAuthStore();
   const { selectedConversation, setSelectedConversation } =
     useConversationStore();
   const handleClick = () => {
-    // navigate(`/conversations/${id}`);
     setSelectedConversation(conversation as Conversation);
   };
   const isActive = selectedConversation?._id === id;

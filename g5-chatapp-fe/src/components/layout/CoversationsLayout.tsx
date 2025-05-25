@@ -112,7 +112,7 @@ const ConversationsLayout = ({ children }: Props) => {
                   key={conversation._id}
                   id={conversation._id}
                   imageUrl={
-                    conversation.profilePicture || "src/assets/group.jpg"
+                    conversation.profilePicture || "/group.jpg"
                   }
                   name={conversation.name || ""}
                   lastMessage={conversation.lastMessage}
@@ -122,7 +122,7 @@ const ConversationsLayout = ({ children }: Props) => {
                 <ConversationItem
                   key={conversation._id}
                   id={conversation._id}
-                  imageUrl={getAvatarUrl(conversation) || "src/assets/avatar.png"}
+                  imageUrl={getAvatarUrl(conversation) || "/avatar.png"}
                   name={getMemberName(conversation)}
                   lastMessage={conversation.lastMessage}
                   conversation={conversation}
