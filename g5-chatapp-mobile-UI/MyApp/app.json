@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MyApp",
-    "slug": "MyApp",
+    "name": "Coconut_Chat_App",
+    "slug": "Coconut_Chat_App",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -46,8 +46,12 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-video"
-    ]
+    "plugins": ["expo-video"],
+    "extra": {
+      "eas": {
+        "projectId": "9ca8e9c5-3c2a-4151-ae3d-74344705af8a"
+      }
+    },
+    "owner": "lean1123"
   }
 }

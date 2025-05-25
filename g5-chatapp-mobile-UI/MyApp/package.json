@@ -1,5 +1,5 @@
 {
-  "name": "myapp",
+  "name": "G5ChatApp",
   "license": "0BSD",
   "version": "1.0.0",
   "main": "index.js",
@@ -30,7 +30,6 @@
     "expo-image-manipulator": "^13.1.0",
     "expo-image-picker": "^16.1.0",
     "expo-location": "^18.1.0",
-    "expo-permissions": "^14.4.0",
     "expo-sharing": "^13.1.0",
     "expo-status-bar": "^2.1.0",
     "expo-video": "^2.1.0",
@@ -68,5 +67,16 @@
     "@react-native-community/cli": "latest",
     "metro-react-native-babel-preset": "^0.77.0"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "@zegocloud/zego-uikit-prebuilt",
+          "expo-permissions",
+          "myapp"
+        ]
+      }
+    }
+  }
 }
