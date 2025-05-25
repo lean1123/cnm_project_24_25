@@ -17,7 +17,7 @@ import InputField from "../../components/InputField";
 import PasswordField from "../../components/PasswordInput";
 import NotificationModal from "../../components/CustomModal";
 import { signIn } from "../../services/auth/authService";
-import { validateSignIn } from "../../utils/validators";
+import { validateSignIn, isValidEmail, validatePassword } from "../../utils/validators";
 import { CommonActions } from "@react-navigation/native";
 import { initSocket, emitLogin } from "../../services/socket";
 import useAuthStore from "../../store/useAuthStore";
@@ -30,8 +30,53 @@ const SignInScreen = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const { login } = useAuthStore();
+  
+  // Add validation error states
+  const [errors, setErrors] = useState({
+    email: "",
+    password: "",
+  });
+
+  // Validate individual field
+  const validateField = (field, value) => {
+    let error = "";
+    switch (field) {
+      case "email":
+        if (value.trim() !== "" && !isValidEmail(value)) {
+          error = "Please enter a valid email";
+        }
+        break;
+      case "password":
+        if (value.trim() !== "") {
+          const passwordError = validatePassword(value);
+          if (passwordError) error = passwordError;
+        }
+        break;
+      default:
+        break;
+    }
+    setErrors(prev => ({ ...prev, [field]: error }));
+    return error === "";
+  };
+
+  // Update field with validation
+  const updateEmail = (text) => {
+    setEmail(text);
+    validateField("email", text);
+  };
+
+  const updatePassword = (text) => {
+    setPassword(text);
+    validateField("password", text);
+  };
 
   const handleSignIn = async () => {
+    // Clear previous errors
+    setErrors({
+      email: "",
+      password: "",
+    });
+    
     // Validate form
     const validationError = validateSignIn({ email, password });
     if (validationError) {
@@ -135,16 +180,24 @@ const SignInScreen = ({ navigation }) => {
               icon="email"
               placeholder="Email"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={updateEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              error={errors.email}
             />
+            {errors.email ? (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            ) : null}
 
             <PasswordField
               placeholder="Password"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={updatePassword}
+              error={errors.password}
             />
+            {errors.password ? (
+              <Text style={styles.errorText}>{errors.password}</Text>
+            ) : null}
 
             <TouchableOpacity
               style={styles.forgotPasswordButton}
@@ -280,6 +333,12 @@ const styles = StyleSheet.create({
   inputField: {
     borderWidth: 1,
     borderColor: '#E8ECF4',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
   },
 });
 

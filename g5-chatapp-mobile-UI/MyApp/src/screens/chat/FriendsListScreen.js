@@ -28,10 +28,12 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../config/constants";
 import Footer from "../../components/Footer";
+import { useNotification } from "../../components/NotificationManager";
 
 const { width } = Dimensions.get("window");
 
 const FriendsListScreen = ({ navigation }) => {
+  const notification = useNotification();
   const [activeTab, setActiveTab] = useState("friends");
   const [friends, setFriends] = useState([]);
   const [filteredFriends, setFilteredFriends] = useState([]);
@@ -63,9 +65,14 @@ const FriendsListScreen = ({ navigation }) => {
           onNewRequestContact: (data) => {
             console.log("[FriendsListScreen] Received new friend request:", data);
             fetchPendingRequests();
-            Alert.alert(
+            notification.showFriendRequest(
+              `${data.user?.firstName} ${data.user?.lastName} sent you a friend request`,
               "New Friend Request",
-              `${data.user?.firstName} ${data.user?.lastName} sent you a friend request`
+              {
+                onPress: () => {
+                  setActiveTab("requests");
+                }
+              }
             );
           },
           
@@ -73,24 +80,28 @@ const FriendsListScreen = ({ navigation }) => {
             console.log("[FriendsListScreen] Friend request accepted:", data);
             fetchFriends();
             fetchOutgoingRequests();
-            Alert.alert(
-              "Friend Request Accepted",
-              `Your friend request was accepted`
+            notification.showFriendAccept(
+              "Your friend request was accepted",
+              "Friend Request Accepted"
             );
           },
           
           onCancelRequestContact: (contactId) => {
             console.log("[FriendsListScreen] Friend request cancelled:", contactId);
             fetchPendingRequests();
+            notification.showInfo(
+              "A friend request has been cancelled",
+              "Notification"
+            );
           },
           
           onRejectRequestContact: (data) => {
             console.log("[FriendsListScreen] Friend request rejected:", data);
             fetchOutgoingRequests();
             if (data.name) {
-              Alert.alert(
-                "Friend Request Rejected",
-                `${data.name} rejected your friend request`
+              notification.showWarning(
+                `${data.name} rejected your friend request`,
+                "Friend Request Rejected"
               );
             }
           }
@@ -133,6 +144,10 @@ const FriendsListScreen = ({ navigation }) => {
           return {
             ...friend,
             user: friendData || {}, // user ở đây luôn là bạn bè
+            conversation: friend.conversation || friend._id, // Store conversation ID if available
+            avatar: friendData?.avatar || null,
+            name: friendData ? `${friendData.firstName} ${friendData.lastName}` : "Unknown User",
+            isGroup: false,
           };
         });
 
@@ -228,7 +243,7 @@ const FriendsListScreen = ({ navigation }) => {
 
   const handleSearch = async () => {
     if (!searchText.trim()) {
-      Alert.alert("Error", "Please enter an email or name to search");
+      notification.showWarning("Please enter an email or name to search", "Error");
       return;
     }
 
@@ -238,7 +253,7 @@ const FriendsListScreen = ({ navigation }) => {
       if (response.ok) {
         setSearchResults(response.data || []);
       } else {
-        Alert.alert("Error", response.message || "Failed to search users");
+        notification.showError(response.message || "Failed to search users", "Error");
       }
     } catch (error) {
       console.error("Search error:", error);
@@ -260,14 +275,14 @@ const FriendsListScreen = ({ navigation }) => {
           emitSendRequestContact(userId, contact);
         }
         
-        Alert.alert("Success", "Friend request sent successfully");
+        notification.showSuccess("Friend request sent successfully", "Success");
         fetchOutgoingRequests();
       } else {
-        Alert.alert("Error", response.message || "Failed to send friend request");
+        notification.showError(response.message || "Failed to send friend request", "Error");
       }
     } catch (error) {
       console.error("Error adding friend:", error);
-      Alert.alert("Error", error.message || "Failed to send friend request");
+      notification.showError(error.message || "Failed to send friend request", "Error");
     } finally {
       setIsLoading(false);
     }
@@ -284,15 +299,15 @@ const FriendsListScreen = ({ navigation }) => {
         
         emitAcceptRequestContact(contact, conversationId);
         
-        Alert.alert("Success", "Friend request accepted");
+        notification.showSuccess("Friend request accepted", "Success");
         fetchFriends();
         fetchPendingRequests();
       } else {
-        Alert.alert("Error", response.message || "Failed to accept friend request");
+        notification.showError(response.message || "Failed to accept friend request", "Error");
       }
     } catch (error) {
       console.error("Error accepting friend request:", error);
-      Alert.alert("Error", error.message || "Failed to accept friend request");
+      notification.showError(error.message || "Failed to accept friend request", "Error");
     }
   };
 
@@ -325,14 +340,14 @@ const FriendsListScreen = ({ navigation }) => {
                     emitRejectRequestContact(receiverId, name, contactId);
                   }
                   
-                  Alert.alert("Success", "Friend request rejected");
+                  notification.showSuccess("Friend request rejected", "Success");
                   fetchPendingRequests();
                 } else {
-                  Alert.alert("Error", response.message || "Failed to reject friend request");
+                  notification.showError(response.message || "Failed to reject friend request", "Error");
                 }
               } catch (error) {
                 console.error("Error rejecting friend request:", error);
-                Alert.alert("Error", error.message || "Failed to reject friend request");
+                notification.showError(error.message || "Failed to reject friend request", "Error");
               }
             },
           },
@@ -340,7 +355,7 @@ const FriendsListScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error("Error rejecting friend request:", error);
-      Alert.alert("Error", error.message || "Failed to reject friend request");
+      notification.showError(error.message || "Failed to reject friend request", "Error");
     }
   };
 
@@ -372,14 +387,14 @@ const FriendsListScreen = ({ navigation }) => {
                     emitCancelRequestContact(receiverId, contactId);
                   }
                   
-                  Alert.alert("Success", "Friend request cancelled");
+                  notification.showSuccess("Friend request cancelled", "Success");
                   fetchOutgoingRequests();
                 } else {
-                  Alert.alert("Error", response.message || "Failed to cancel friend request");
+                  notification.showError(response.message || "Failed to cancel friend request", "Error");
                 }
               } catch (error) {
                 console.error("Error cancelling friend request:", error);
-                Alert.alert("Error", error.message || "Failed to cancel friend request");
+                notification.showError(error.message || "Failed to cancel friend request", "Error");
               }
             },
           },
@@ -387,7 +402,7 @@ const FriendsListScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error("Error cancelling friend request:", error);
-      Alert.alert("Error", error.message || "Failed to cancel friend request");
+      notification.showError(error.message || "Failed to cancel friend request", "Error");
     }
   };
 
@@ -414,8 +429,9 @@ const FriendsListScreen = ({ navigation }) => {
                     userId: currentUser._id,
                   });
                 }
+                notification.showSuccess("Friend removed successfully", "Success");
               } else {
-                Alert.alert("Error", "Failed to remove friend");
+                notification.showError("Failed to remove friend", "Error");
               }
             },
           },
@@ -423,7 +439,7 @@ const FriendsListScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error("Error removing friend:", error);
-      Alert.alert("Error", "Failed to remove friend");
+      notification.showError("Failed to remove friend", "Error");
     }
   };
 
@@ -433,9 +449,85 @@ const FriendsListScreen = ({ navigation }) => {
     return (
       <TouchableOpacity
         style={styles.friendItem}
-        onPress={() =>
-          navigation.navigate("ChatDetail", { conversation: item })
-        }
+        onPress={async () => {
+          try {
+            setIsLoading(true);
+            
+            // Important: Always try to find the existing conversation first
+            const response = await contactService.getConversationWithUser(user._id);
+            
+            if (response.success && response.data) {
+              console.log(`Found existing conversation: ${response.data._id}`);
+              // Use the returned conversation data
+              const conversationData = {
+                _id: response.data._id,
+                name: item.name || `${user.firstName} ${user.lastName}`,
+                user: user,
+                isGroup: response.data.isGroup || false,
+                members: response.data.members || [
+                  { user: currentUser },
+                  { user: user }
+                ],
+                avatar: user.avatar
+              };
+              
+              navigation.navigate("ChatDetail", { conversation: conversationData });
+            } 
+            // If no conversation found, fallback to conversation ID in contact data
+            else if (item.conversation) {
+              console.log(`Using conversation ID from contact: ${item.conversation}`);
+              const conversationData = {
+                _id: item.conversation,
+                name: item.name || `${user.firstName} ${user.lastName}`,
+                user: user,
+                isGroup: item.isGroup || false,
+                members: item.members || [
+                  { user: currentUser },
+                  { user: user }
+                ],
+                avatar: user.avatar
+              };
+              
+              navigation.navigate("ChatDetail", { conversation: conversationData });
+            } 
+            // Last resort fallback
+            else {
+              console.log(`No conversation found, using contact ID: ${item._id}`);
+              const conversationData = {
+                _id: item._id,
+                name: item.name || `${user.firstName} ${user.lastName}`,
+                user: user,
+                isGroup: false,
+                members: [
+                  { user: currentUser },
+                  { user: user }
+                ],
+                avatar: user.avatar
+              };
+              
+              navigation.navigate("ChatDetail", { conversation: conversationData });
+            }
+          } catch (error) {
+            console.error("Error getting conversation:", error);
+            
+            // Fallback navigation with basic data
+            const conversationData = {
+              _id: item._id,
+              name: item.name || `${user.firstName} ${user.lastName}`,
+              user: user,
+              isGroup: false,
+              members: [
+                { user: currentUser },
+                { user: user }
+              ],
+              avatar: user.avatar
+            };
+            
+            navigation.navigate("ChatDetail", { conversation: conversationData });
+          } finally {
+            setIsLoading(false);
+          }
+        }}
       >
         <View style={styles.avatarContainer}>
           <Image
@@ -549,13 +641,18 @@ const FriendsListScreen = ({ navigation }) => {
   );
 
   const renderSearchItem = ({ item }) => {
+    // Find existing friend relationship, looking specifically for the contact with conversation info
     const existingFriend = friends.find(
       (friend) =>
         friend.user?._id === item._id || friend.contact?._id === item._id
     );
-    console.log("Existing friend:", existingFriend);
-    console.log("avatar:", item.avatar);
-    console.log("name:", item.firstName, item.lastName);
+    
+    // Log relevant debugging information
+    console.log("Search item:", item.firstName, item.lastName);
+    console.log("Existing friend found:", existingFriend ? "Yes" : "No");
+    if (existingFriend) {
+      console.log("Conversation ID:", existingFriend.conversation);
+    }
 
     return (
       <View style={styles.searchItem}>
@@ -582,11 +679,91 @@ const FriendsListScreen = ({ navigation }) => {
         {existingFriend ? (
           <TouchableOpacity
             style={[styles.actionButton, styles.messageButton]}
-            onPress={() =>
-              navigation.navigate("ChatDetail", {
-                conversation: existingFriend,
-              })
-            }
+            onPress={async () => {
+              try {
+                setIsLoading(true);
+                console.log(`Navigating to chat with user from search: ${item.firstName} ${item.lastName}`);
+                
+                // Find the existing conversation between these users
+                const response = await contactService.getConversationWithUser(item._id);
+                
+                if (response.success && response.data) {
+                  console.log(`Found conversation: ${response.data._id}`);
+                  // Use the returned conversation data
+                  const conversationData = {
+                    _id: response.data._id,
+                    name: `${item.firstName} ${item.lastName}`,
+                    user: item,
+                    isGroup: response.data.isGroup || false,
+                    members: response.data.members || [
+                      { user: currentUser },
+                      { user: item }
+                    ],
+                    avatar: item.avatar
+                  };
+                  
+                  navigation.navigate("ChatDetail", {
+                    conversation: conversationData
+                  });
+                } else {
+                  console.log("No conversation found, using existing friend data");
+                  // Use conversation ID from friend data if available
+                  const conversationId = existingFriend.conversation || 
+                                        existingFriend.conversationId || 
+                                        existingFriend._id;
+                  
+                  console.log(`Using conversation ID: ${conversationId}`);
+                  
+                  const conversationData = {
+                    _id: conversationId,
+                    name: `${item.firstName} ${item.lastName}`,
+                    user: item,
+                    isGroup: false,
+                    members: [
+                      { user: currentUser },
+                      { user: item }
+                    ],
+                    avatar: item.avatar
+                  };
+                  
+                  navigation.navigate("ChatDetail", {
+                    conversation: conversationData
+                  });
+                }
+              } catch (error) {
+                console.error("Error getting conversation:", error);
+                
+                Alert.alert(
+                  "Connection Issue",
+                  "Could not find your conversation. Using basic information instead.",
+                  [
+                    {
+                      text: "Continue",
+                      onPress: () => {
+                        // Fallback with basic data
+                        const conversationData = {
+                          _id: existingFriend.conversation || existingFriend.conversationId || existingFriend._id,
+                          name: `${item.firstName} ${item.lastName}`,
+                          user: item,
+                          isGroup: false,
+                          members: [
+                            { user: currentUser },
+                            { user: item }
+                          ],
+                          avatar: item.avatar
+                        };
+                        
+                        navigation.navigate("ChatDetail", {
+                          conversation: conversationData
+                        });
+                      }
+                    }
+                  ]
+                );
+              } finally {
+                setIsLoading(false);
+              }
+            }}
           >
             <Icon name="message-text" size={20} color="#fff" />
           </TouchableOpacity>

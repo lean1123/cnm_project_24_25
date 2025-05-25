@@ -7,11 +7,11 @@ import { CallType } from './callType.enum';
   timestamps: true,
 })
 export class Call {
-  @Prop({ type: Types.ObjectId, ref: "Convensation" })
+  @Prop({ type: Types.ObjectId, ref: 'Convensation' })
   conversationId: Types.ObjectId;
-  @Prop({ type: Types.ObjectId, required: true, ref: "User" })
+  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
   callerId: Types.ObjectId;
-  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }] })
   receiverIds: Types.ObjectId[];
   @Prop({ type: String, enum: CallType })
   type: CallType;
@@ -23,10 +23,10 @@ export class Call {
   endTime: Date;
   @Prop()
   duration: number;
-  @Prop({ type: [Types.ObjectId], ref: "User" })
+  @Prop({ type: [Types.ObjectId], ref: 'User' })
   participants: Types.ObjectId[];
-  @Prop({ type: [Types.ObjectId], ref: "User"})
-  currentParticipants: Types.ObjectId[]
+  @Prop({ type: [Types.ObjectId], ref: 'User' })
+  currentParticipants: Types.ObjectId[];
 }
 
 export const CallSchema = SchemaFactory.createForClass(Call);

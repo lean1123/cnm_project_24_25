@@ -6,7 +6,7 @@ let socket: Socket | null = null;
 export const getSocket = () => {
   if (!socket) {
     const { user, setActiveUsers } = useAuthStore.getState();
-    socket = io("http://localhost:3000", {
+    socket = io(import.meta.env.VITE_BASE_API_URL, {
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 5,
