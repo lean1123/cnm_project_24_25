@@ -95,7 +95,7 @@ function AccountInformationDialog({}: Props) {
                 <div className="relative">
                   <Avatar className="size-28">
                     <AvatarImage
-                      src={user?.avatar || "/avatar.png"}
+                      src={user?.avatar || "src/assets/avatar.png"}
                       alt="User"
                     />
                   </Avatar>

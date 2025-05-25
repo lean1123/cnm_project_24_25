@@ -66,11 +66,9 @@ const Body = (props: Props) => {
             );
           })}
       </div>
-      {isTyping && (
-        <div className="flex items-center gap-2 ml-12">
-          <span className="text-gray-500">Đang nhập...</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2 ml-12 h-2">
+        {isTyping && <span className="text-gray-500">Đang soạn tin...</span>}
+      </div>
     </div>
   );
 };

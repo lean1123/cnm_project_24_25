@@ -32,7 +32,7 @@ const UserPopover = (props: Props) => {
     <Popover>
       <PopoverTrigger asChild>
         <Avatar className="cursor-pointer">
-          <AvatarImage alt="User" src={user?.avatar || "/avatar.png"} />
+          <AvatarImage alt="User" src={user?.avatar || "src/assets/avatar.png"} />
         </Avatar>
       </PopoverTrigger>
       <PopoverContent className="w-52 ml-6 p-0">
