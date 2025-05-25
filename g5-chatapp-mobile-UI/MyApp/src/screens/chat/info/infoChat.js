@@ -699,9 +699,9 @@ const UserInfoScreen = ({ navigation, route }) => {
           <View>
             <Text style={styles.memberName}>
               {user.firstName} {user.lastName}
-              {isSelf ? " (You)" : ""}
+              {isSelf ? " (Bạn)" : ""}
             </Text>
-            {isAdmin && <Text style={styles.adminBadge}>Admin</Text>}
+            {isAdmin && <Text style={styles.adminBadge}>Trưởng nhóm</Text>}
           </View>
         </View>
 
@@ -751,11 +751,11 @@ const UserInfoScreen = ({ navigation, route }) => {
           <View style={styles.badgeContainer}>
             <View style={styles.memberCountBadge}>
               <MaterialIcon name="account-group" size={16} color="#135CAF" />
-              <Text style={styles.memberCount}>{groupMembers.length} members</Text>
+              <Text style={styles.memberCount}>{groupMembers.length} thành viên</Text>
             </View>
             {checkIsAdmin() && (
               <View style={styles.adminBadgeLarge}>
-                <Text style={styles.adminBadgeText}>Admin</Text>
+                <Text style={styles.adminBadgeText}>Trưởng nhóm</Text>
               </View>
             )}
           </View>
@@ -766,7 +766,7 @@ const UserInfoScreen = ({ navigation, route }) => {
               onPress={handleShowAddMemberModal}
             >
               <MaterialIcon name="account-plus" size={22} color="#fff" />
-              <Text style={styles.actionText}>Add</Text>
+              <Text style={styles.actionText}>Thêm</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -774,7 +774,7 @@ const UserInfoScreen = ({ navigation, route }) => {
               onPress={handleLeaveGroup}
             >
               <MaterialIcon name="exit-to-app" size={22} color="#fff" />
-              <Text style={styles.actionText}>Leave</Text>
+              <Text style={styles.actionText}>Rời nhóm</Text>
             </TouchableOpacity>
 
             {checkIsAdmin() && (
@@ -783,7 +783,7 @@ const UserInfoScreen = ({ navigation, route }) => {
                 onPress={() => setShowDissolveGroupModal(true)}
               >
                 <MaterialIcon name="delete" size={22} color="#fff" />
-                <Text style={styles.actionText}>Dissolve</Text>
+                <Text style={styles.actionText}>Giải tán</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -793,7 +793,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleContainer}>
               <MaterialIcon name="account-group" size={20} color="#135CAF" />
-              <Text style={styles.sectionTitle}>Members ({groupMembers.length})</Text>
+              <Text style={styles.sectionTitle}>Thành viên ({groupMembers.length})</Text>
             </View>
             <TouchableOpacity
               onPress={() => setShowAllMembers(!showAllMembers)}
@@ -820,7 +820,7 @@ const UserInfoScreen = ({ navigation, route }) => {
               onPress={() => setShowAllMembers(true)}
             >
               <Text style={styles.showMoreText}>
-                +{groupMembers.length - 3} more members
+                +{groupMembers.length - 3} thành viên
               </Text>
             </TouchableOpacity>
           )}
@@ -831,11 +831,11 @@ const UserInfoScreen = ({ navigation, route }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <MaterialIcon name="image-multiple" size={20} color="#135CAF" />
-                <Text style={styles.sectionTitle}>Shared Photos</Text>
+                <Text style={styles.sectionTitle}>Hình ảnh chia sẻ</Text>
               </View>
               {mediaMessages.images.length > 6 && (
                 <TouchableOpacity style={styles.viewAllTextButton}>
-                  <Text style={styles.viewAllTextButtonLabel}>View All</Text>
+                  <Text style={styles.viewAllTextButtonLabel}>Tất cả</Text>
                   <MaterialIcon name="chevron-right" size={16} color="#135CAF" />
                 </TouchableOpacity>
               )}
@@ -856,11 +856,11 @@ const UserInfoScreen = ({ navigation, route }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <MaterialIcon name="video" size={20} color="#135CAF" />
-                <Text style={styles.sectionTitle}>Shared Videos</Text>
+                <Text style={styles.sectionTitle}>Video chia sẻ</Text>
               </View>
               {mediaMessages.videos.length > 6 && (
                 <TouchableOpacity style={styles.viewAllTextButton}>
-                  <Text style={styles.viewAllTextButtonLabel}>View All</Text>
+                  <Text style={styles.viewAllTextButtonLabel}>Tất cả</Text>
                   <MaterialIcon name="chevron-right" size={16} color="#135CAF" />
                 </TouchableOpacity>
               )}
@@ -881,11 +881,11 @@ const UserInfoScreen = ({ navigation, route }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <MaterialIcon name="file-document-multiple" size={20} color="#135CAF" />
-                <Text style={styles.sectionTitle}>Shared Files</Text>
+                <Text style={styles.sectionTitle}>File đính kèm</Text>
               </View>
               {mediaMessages.files.length > 3 && (
                 <TouchableOpacity style={styles.viewAllTextButton}>
-                  <Text style={styles.viewAllTextButtonLabel}>View All</Text>
+                  <Text style={styles.viewAllTextButtonLabel}>Tất cả</Text>
                   <MaterialIcon name="chevron-right" size={16} color="#135CAF" />
                 </TouchableOpacity>
               )}
@@ -973,11 +973,11 @@ const UserInfoScreen = ({ navigation, route }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <MaterialIcon name="image-multiple" size={20} color="#135CAF" />
-                <Text style={styles.sectionTitle}>Shared Photos</Text>
+                <Text style={styles.sectionTitle}>Hình ảnh chia sẻ</Text>
               </View>
               {mediaMessages.images.length > 6 && (
                 <TouchableOpacity style={styles.viewAllTextButton}>
-                  <Text style={styles.viewAllTextButtonLabel}>View All</Text>
+                  <Text style={styles.viewAllTextButtonLabel}>tất cả</Text>
                   <MaterialIcon name="chevron-right" size={16} color="#135CAF" />
                 </TouchableOpacity>
               )}
@@ -998,11 +998,11 @@ const UserInfoScreen = ({ navigation, route }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <MaterialIcon name="video" size={20} color="#135CAF" />
-                <Text style={styles.sectionTitle}>Shared Videos</Text>
+                <Text style={styles.sectionTitle}>Video chia sẻ</Text>
               </View>
               {mediaMessages.videos.length > 6 && (
                 <TouchableOpacity style={styles.viewAllTextButton}>
-                  <Text style={styles.viewAllTextButtonLabel}>View All</Text>
+                  <Text style={styles.viewAllTextButtonLabel}>Tất cả</Text>
                   <MaterialIcon name="chevron-right" size={16} color="#135CAF" />
                 </TouchableOpacity>
               )}
@@ -1023,11 +1023,11 @@ const UserInfoScreen = ({ navigation, route }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
                 <MaterialIcon name="file-document-multiple" size={20} color="#135CAF" />
-                <Text style={styles.sectionTitle}>Shared Files</Text>
+                <Text style={styles.sectionTitle}>File đính kèm</Text>
               </View>
               {mediaMessages.files.length > 3 && (
                 <TouchableOpacity style={styles.viewAllTextButton}>
-                  <Text style={styles.viewAllTextButtonLabel}>View All</Text>
+                  <Text style={styles.viewAllTextButtonLabel}>Tất cả</Text>
                   <MaterialIcon name="chevron-right" size={16} color="#135CAF" />
                 </TouchableOpacity>
               )}
@@ -1053,7 +1053,7 @@ const UserInfoScreen = ({ navigation, route }) => {
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add Members</Text>
+            <Text style={styles.modalTitle}>Thêm thành viên</Text>
             <TouchableOpacity
               onPress={() => {
                 setShowAddMemberModal(false);
@@ -1067,7 +1067,7 @@ const UserInfoScreen = ({ navigation, route }) => {
 
           {selectedMembers.length > 0 && (
             <View style={styles.selectedMembers}>
-              <Text style={styles.sectionTitle}>Selected Members</Text>
+              <Text style={styles.sectionTitle}>Chọn thành viên</Text>
               <FlatList
                 horizontal
                 data={selectedMembers}
@@ -1157,7 +1157,7 @@ const UserInfoScreen = ({ navigation, route }) => {
                       {contactPerson.firstName} {contactPerson.lastName}
                     </Text>
                     {isMember && (
-                      <Text style={styles.memberStatus}>Already a member</Text>
+                      <Text style={styles.memberStatus}>Đã là thành viên</Text>
                     )}
                   {selectedMembers.some(
                     (member) => member._id === contactPerson._id
@@ -1172,7 +1172,7 @@ const UserInfoScreen = ({ navigation, route }) => {
             keyExtractor={(item) => item._id}
             ListEmptyComponent={
               <Text style={{ textAlign: "center", padding: 20, color: "#666" }}>
-                  No contacts available to add
+                  Không có liên hệ để thêm
                 </Text>
             }
           />
@@ -1182,7 +1182,7 @@ const UserInfoScreen = ({ navigation, route }) => {
               style={styles.addButton}
               onPress={handleAddMembers}
             >
-              <Text style={styles.addButtonText}>Add Selected Members</Text>
+              <Text style={styles.addButtonText}>Thêm thành viên</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1199,14 +1199,14 @@ const UserInfoScreen = ({ navigation, route }) => {
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Leave Group</Text>
+            <Text style={styles.modalTitle}>Rời nhóm</Text>
             <TouchableOpacity onPress={() => setShowLeaveGroupModal(false)}>
               <MaterialIcon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.modalMessage}>
-            Are you sure you want to leave this group?
+            Bạn có chắc chắn muốn rời nhóm này không?
           </Text>
           
           <View style={styles.modalButtons}>
@@ -1214,14 +1214,14 @@ const UserInfoScreen = ({ navigation, route }) => {
               style={[styles.modalButton, styles.cancelButton]}
               onPress={() => setShowLeaveGroupModal(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>Hủy</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.modalButton, styles.confirmButton]}
               onPress={confirmLeaveGroup}
             >
-              <Text style={styles.confirmButtonText}>Leave</Text>
+              <Text style={styles.confirmButtonText}>Rời</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1238,14 +1238,14 @@ const UserInfoScreen = ({ navigation, route }) => {
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Assign New Admin</Text>
+            <Text style={styles.modalTitle}>Thay đổi trưởng nhóm</Text>
             <TouchableOpacity onPress={() => setShowAssignAdminModal(false)}>
               <MaterialIcon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.modalMessage}>
-            Before leaving the group, you must assign another member as admin.
+            Trước khi rời nhóm, bạn phải chọn một thành viên khác làm trưởng nhóm.
           </Text>
           
           <View style={styles.modalButtons}>
@@ -1253,14 +1253,14 @@ const UserInfoScreen = ({ navigation, route }) => {
               style={[styles.modalButton, styles.cancelButton]}
               onPress={() => setShowAssignAdminModal(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>Hủy</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.modalButton, styles.confirmButton]}
               onPress={showAdminSelection}
             >
-              <Text style={styles.confirmButtonText}>Select New Admin</Text>
+              <Text style={styles.confirmButtonText}>Chọn trưởng nhóm</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1277,14 +1277,14 @@ const UserInfoScreen = ({ navigation, route }) => {
       <View style={styles.modalContainer}>
         <View style={[styles.modalContent, { maxHeight: "70%" }]}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select New Admin</Text>
+            <Text style={styles.modalTitle}>Chọn trưởng nhóm</Text>
             <TouchableOpacity onPress={() => setShowAdminSelectionModal(false)}>
               <MaterialIcon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.modalMessage}>
-            Choose a member to be the new admin:
+            Chọn một thành viên để làm trưởng nhóm:
           </Text>
           
           <FlatList
@@ -1312,7 +1312,7 @@ const UserInfoScreen = ({ navigation, route }) => {
             )}
             ListEmptyComponent={
               <Text style={{ textAlign: "center", padding: 20, color: "#666" }}>
-                  No other members to assign as admin.
+                  Không có thành viên khác để chọn làm trưởng nhóm.
                 </Text>
             }
           />
@@ -1321,7 +1321,7 @@ const UserInfoScreen = ({ navigation, route }) => {
             style={[styles.modalButton, styles.cancelButton, { marginTop: 10 }]}
             onPress={() => setShowAdminSelectionModal(false)}
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={styles.cancelButtonText}>Hủy</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1337,14 +1337,14 @@ const UserInfoScreen = ({ navigation, route }) => {
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Dissolve Group</Text>
+            <Text style={styles.modalTitle}>Giải tán nhóm</Text>
             <TouchableOpacity onPress={() => setShowDissolveGroupModal(false)}>
               <MaterialIcon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           
           <Text style={styles.modalMessage}>
-            You are the only member in this group. Do you want to dissolve it?
+            Bạn là thành viên duy nhất trong nhóm này. Bạn có muốn giải tán nó không?
           </Text>
           
           <View style={styles.modalButtons}>
@@ -1352,14 +1352,14 @@ const UserInfoScreen = ({ navigation, route }) => {
               style={[styles.modalButton, styles.cancelButton]}
               onPress={() => setShowDissolveGroupModal(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>Hủy</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.modalButton, styles.dissolveButton]}
               onPress={dissolveGroup}
             >
-              <Text style={styles.confirmButtonText}>Dissolve Group</Text>
+              <Text style={styles.confirmButtonText}>Giải tán</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1381,25 +1381,17 @@ const UserInfoScreen = ({ navigation, route }) => {
       >
         <View style={styles.actionModalContent}>
           <Text style={styles.actionModalTitle}>
-            Member Actions
+            Tùy chọn
           </Text>
           
           {selectedMember && (
             <>
               <TouchableOpacity
                 style={styles.actionModalItem}
-                onPress={() => handleChangeRole(selectedMember._id)}
-              >
-                <MaterialIcon name="shield-account" size={22} color="#135CAF" />
-                <Text style={styles.actionModalItemText}>Make Owner</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.actionModalItem}
                 onPress={() => handleMakeAdmin(selectedMember._id)}
               >
                   <MaterialIcon name="shield-account" size={22} color="#4CAF50" />
-                <Text style={styles.actionModalItemText}>Make Admin</Text>
+                <Text style={styles.actionModalItemText}>Chuyển thành trưởng nhóm</Text>
               </TouchableOpacity>
             </>
           )}
@@ -1410,7 +1402,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           >
               <MaterialIcon name="account-remove" size={22} color="#e53935" />
             <Text style={[styles.actionModalItemText, styles.removeActionText]}>
-              Remove
+              Xóa thành viên
             </Text>
           </TouchableOpacity>
           
@@ -1418,7 +1410,7 @@ const UserInfoScreen = ({ navigation, route }) => {
             style={styles.cancelButton}
             onPress={() => setShowActionModal(false)}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>Hủy</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>

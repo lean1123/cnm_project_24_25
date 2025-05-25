@@ -133,7 +133,7 @@ export const emitLogin = (userId) => {
   const socket = getSocket();
   if (socket && socket.connected) {
     console.log(`[Socket] Emitting login event for user ${userId}`);
-    socket.emit('login', { userId });
+    socket.emit('login', { userId: String(userId) });
   } else {
     console.log(`[Socket] Cannot emit login: socket ${socket ? 'not connected' : 'is null'}`);
   }
