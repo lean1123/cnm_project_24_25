@@ -56,6 +56,7 @@ const VideoCall = () => {
     handleCancelCall,
   ]);
 
+
   // Lắng nghe sự kiện endCall từ socket
   useEffect(() => {
     if (zegoInstanceRef.current && isCallEnded) {
@@ -66,12 +67,13 @@ const VideoCall = () => {
     }
   }, [isCallEnded]);
 
+
   // Khởi tạo ZEGOCLOUD
   useEffect(() => {
     if (!isCallActive || !isCallAccepted) return;
 
-    const appID = parseInt(import.meta.env.VITE_ZEGO_APP_ID || "0");
-    const serverSecret = import.meta.env.VITE_ZEGO_SERVER_SECRET || "";
+    const appID = parseInt(import.meta.env.VITE_PUBLIC_ZEGO_APP_ID || "0");
+    const serverSecret = import.meta.env.VITE_PUBLIC_ZEGO_SERVER_SECRET || "";
 
     if (!appID) {
       throw new Error("VITE_ZEGO_APP_ID is not defined or invalid.");

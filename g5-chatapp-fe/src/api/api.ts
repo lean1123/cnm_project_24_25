@@ -2,8 +2,8 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000",
-  withCredentials: true,
+  baseURL: import.meta.env.VITE_BASE_API_URL,
+  withCredentials: true, // Enable sending cookies with requests
 });
 
 const getAccessToken = () => {

@@ -5,6 +5,7 @@ import { navigationRef } from './src/navigation/Navigator';
 import useAuthStore from './src/store/useAuthStore';
 import MainNavigator from './src/navigation/Navigator';
 import { AuthProvider } from './src/contexts/AuthContext';
+import NotificationProvider from './src/components/NotificationManager';
 
 export default function App() {
   const { checkAuth, user, isAuthenticated } = useAuthStore();
@@ -19,11 +20,13 @@ export default function App() {
 
   return (
     <PaperProvider>
-      <AuthProvider>
-        <NavigationContainer ref={navigationRef}>
-          <MainNavigator />
-        </NavigationContainer>
-      </AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
+          <NavigationContainer ref={navigationRef}>
+            <MainNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </NotificationProvider>
     </PaperProvider>
   );
 } 

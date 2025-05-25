@@ -39,8 +39,6 @@ import Home_Chat from "../screens/chat/home_chat";
 import AddFriendScreen from "../screens/chat/addFriend";
 import AddGroupScreen from "../screens/chat/addGroup";
 import GroupCallScreen from "../screens/chat/callGroup";
-import LoginScreen from "../screens/account/loginAccount";
-import RegisterScreen from "../screens/account/registerAccount";
 import chatDetailScreen from "../screens/chat/ChatDetailScreen";
 import ProfileScreen from "../screens/chat/ProfileScreen";
 import FriendsListScreen from "../screens/chat/FriendsListScreen";
@@ -60,14 +58,13 @@ import TestCall from "../screens/chat/call/testCall";
 import SignUpScreen from "../screens/auth/register";
 import SignInScreen from "../screens/auth/login";
 import VerifyOTPScreen from "../screens/auth/verifyOTP";
-import ForgotPasswordScreen from "../screens/account/forgotPassword";
+import ForgotPasswordScreen from "../screens/auth/forgotPassword";
 import { useNavigation } from "@react-navigation/native";
 
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   const { user, loading } = useAuth();
-
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -77,28 +74,23 @@ const MainNavigator = () => {
         routes: [{ name: 'Home_Chat' }],
       });
     }
-  }, [user]);
+  }, [user, navigation]);
 
-  // Initialize socket and maintain connection
   useEffect(() => {
     const setupSocket = async () => {
       try {
         console.log("[Navigator] Setting up socket connection");
         
-        // Initialize socket if not already initialized
         await initSocket();
         
-        // Get current user data
         const userData = await AsyncStorage.getItem('userData');
         if (userData) {
           const user = JSON.parse(userData);
           if (user && user._id) {
             console.log(`[Navigator] Found user ${user._id}, emitting login event`);
             
-            // Emit login event
             emitLogin(user._id);
             
-            // Setup periodic reconnection check
             const intervalId = setInterval(async () => {
               const socket = getSocket();
               if (socket && !socket.connected) {
@@ -129,9 +121,11 @@ const MainNavigator = () => {
     );
   }
 
+  const initialRoute = user ? "Home_Chat" : "SignInScreen";
+
   return (
     <Stack.Navigator 
-      initialRouteName={"SignInScreen"}
+      initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
         gestureEnabled: true,
@@ -172,8 +166,6 @@ const MainNavigator = () => {
         name="Introduce"
         component={Introduce}
       />
-
-      {/* Screens that should be accessible regardless of login state */}
       <Stack.Screen
         name="IncomingCall"
         component={IncomingCall}
@@ -189,75 +181,71 @@ const MainNavigator = () => {
         }}
       />
 
-      {/* Main App Screens - Only accessible when logged in */}
-      {user && (
-        <>
-          <Stack.Screen
-            name="Home_Chat"
-            component={Home_Chat}
-          />
-          <Stack.Screen
-            name="AddFriend"
-            component={AddFriendScreen}
-          />
-          <Stack.Screen
-            name="AddGroupScreen"
-            component={AddGroupScreen}
-          />
-          <Stack.Screen
-            name="GroupCallScreen"
-            component={GroupCallScreen}
-          />
-          <Stack.Screen
-            name="ChatDetail"
-            component={chatDetailScreen}
-          />
-          <Stack.Screen
-            name="Profile"
-            component={ProfileScreen}
-          />
-          <Stack.Screen
-            name="FriendsList"
-            component={FriendsListScreen}
-          />
-          <Stack.Screen
-            name="Location"
-            component={LocationScreen}
-          />
-          <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-          />
-          <Stack.Screen
-            name="UserInfo"
-            component={UserInfoScreen}
-          />
-          <Stack.Screen
-            name="ContactRequests"
-            component={ContactRequestsScreen}
-          />
-          <Stack.Screen
-            name="Call"
-            component={CallScreen}
-          />
-          <Stack.Screen
-            name="Calling"
-            component={CallingScreen}
-          />
-          <Stack.Screen
-            name="ImageViewer"
-            component={ImageViewerScreen}
-          />
-          <Stack.Screen
-            name="VideoPlayer"
-            component={VideoPlayer}
-          />
-          <Stack.Screen
-            name="FileViewer"
-            component={FileViewer}
-          />
-        </>
-      )}
+      {/* Main App Screens */}
+      <Stack.Screen
+        name="Home_Chat"
+        component={Home_Chat}
+      />
+      <Stack.Screen
+        name="AddFriend"
+        component={AddFriendScreen}
+      />
+      <Stack.Screen
+        name="AddGroupScreen"
+        component={AddGroupScreen}
+      />
+      <Stack.Screen
+        name="GroupCallScreen"
+        component={GroupCallScreen}
+      />
+      <Stack.Screen
+        name="ChatDetail"
+        component={chatDetailScreen}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+      />
+      <Stack.Screen
+        name="FriendsList"
+        component={FriendsListScreen}
+      />
+      <Stack.Screen
+        name="Location"
+        component={LocationScreen}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+      />
+      <Stack.Screen
+        name="UserInfo"
+        component={UserInfoScreen}
+      />
+      <Stack.Screen
+        name="ContactRequests"
+        component={ContactRequestsScreen}
+      />
+      <Stack.Screen
+        name="Call"
+        component={CallScreen}
+      />
+      <Stack.Screen
+        name="Calling"
+        component={CallingScreen}
+      />
+      <Stack.Screen
+        name="ImageViewer"
+        component={ImageViewerScreen}
+      />
+      <Stack.Screen
+        name="VideoPlayer"
+        component={VideoPlayer}
+      />
+      <Stack.Screen
+        name="FileViewer"
+        component={FileViewer}
+      />
     </Stack.Navigator>
   );
 };

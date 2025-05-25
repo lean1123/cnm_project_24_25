@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -11,10 +11,11 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
 import { ContactResponseDto } from 'src/contact/dto/contactResponse.dto';
+import { Contact } from 'src/contact/schema/contact.schema';
+import { AdminRemoveMemberRequest } from 'src/conversation/dto/requests/adminRemoveMember.request';
 import { Convensation } from 'src/conversation/schema/convensation.schema';
 import { MessageRequest } from 'src/message/dtos/requests/message.request';
 import { User } from 'src/user/schema/user.schema';
-import { ContactService } from '../../contact/contact.service';
 import { TypinationRequest } from '../dtos/requests/typination.request';
 import { Message } from '../schema/messege.chema';
 import { HandleCall } from './handleCall';
@@ -22,8 +23,6 @@ import { HandleConnection } from './handleConnection';
 import { HandleContact } from './handleContact';
 import { HandleConversation } from './handleConvsersation';
 import { HandleMessage } from './handleMessage';
-import { Contact } from 'src/contact/schema/contact.schema';
-import { AdminRemoveMemberRequest } from 'src/conversation/dto/requests/adminRemoveMember.request';
 
 @WebSocketGateway({
   cors: {
@@ -33,6 +32,8 @@ import { AdminRemoveMemberRequest } from 'src/conversation/dto/requests/adminRem
       'http://localhost:8081',
       'http://localhost:8082',
       'https://d3vkdcq3kcj9ec.cloudfront.net',
+      'http://localhost:3001',
+      'https://cnm-project-24-25.vercel.app',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
@@ -331,7 +332,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('endCall')
   handleEndCall(
     @MessageBody()
-    { userId, conversationId, isGroup }: { userId: string; conversationId: string, isGroup: boolean },
+    {
+      userId,
+      conversationId,
+      isGroup,
+    }: {
+      userId: string;
+      conversationId: string;
+      isGroup: boolean;
+    },
   ) {
     this.handleCallService.handleEndCall(
       { userId, conversationId, isGroup },

@@ -8,8 +8,9 @@ import Redis from 'ioredis';
       provide: 'REDIS_CLIENT',
       useFactory: () => {
         const redis = new Redis({
-          host: 'localhost',
-          port: 6379,
+          host: process.env.REDIS_HOST || 'localhost',
+          port: Number(process.env.REDIS_PORT) || 6379,
+          password: process.env.REDIS_PASSWORD || undefined,
         });
 
         redis.on('connect', () => {
