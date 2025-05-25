@@ -17,11 +17,13 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to change your avatar.",
         "NSCameraUsageDescription": "This app needs access to your camera to take photos for your avatar.",
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages."
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMapsApiKey": "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus"
-      }
+      },
+      "bundleIdentifier": "com.anonymous.MyApp"
     },
     "android": {
       "adaptiveIcon": {
@@ -46,7 +48,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-video"],
+    "plugins": [
+      "expo-video"
+    ],
     "extra": {
       "eas": {
         "projectId": "9ca8e9c5-3c2a-4151-ae3d-74344705af8a"
