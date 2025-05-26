@@ -1,5 +1,4 @@
 import {
-  forwardRef,
   Inject,
   Injectable,
   Logger,
@@ -9,9 +8,10 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import Redis from 'ioredis';
-import { Model, ObjectId, Date } from 'mongoose';
+import { Date, Model, ObjectId } from 'mongoose';
 import { OtpService } from 'src/mail/otpGenerator/otp.service';
 import { User } from 'src/user/schema/user.schema';
+import { v4 as uuidv4 } from 'uuid';
 import { ChangePasswordDto } from './dtos/request/changePassword.dto';
 import { ForgotPassword } from './dtos/request/forgotPassword.dto';
 import { ForgotPasswordVerificationDto } from './dtos/request/forgotPasswordVerification.dto';
@@ -20,14 +20,7 @@ import type { SignUpDto } from './dtos/request/signUp.dto';
 import type { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
-import { ChatGateway } from 'src/message/gateway/chat.gateway';
-import { v4 as uuidv4 } from 'uuid';
 
-interface JwtDecoded {
-  sub: string;
-  iat: number;
-  exp: number;
-}
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -37,8 +30,6 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly otpService: OtpService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
-    @Inject(forwardRef(() => ChatGateway))
-    private readonly chatGateway: ChatGateway,
   ) {}
 
   async signUp(signUpDto: SignUpDto): Promise<TempUser> {
@@ -377,12 +368,17 @@ export class AuthService {
     return { sessionId, qrData: `app://qr-login?sessionId=${sessionId}` };
   }
 
-  async verifyQRLogin(sessionId: string, userToken: string) {
+  async verifyQRLogin(sessionId: string, userId: string) {
     const qrKey = `qr:${sessionId}`;
     const qrData = await this.redis.get(qrKey);
 
     if (!qrData) {
       throw new UnauthorizedException('QR session expired or not found');
+    }
+
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
 
     const parsedQrData = JSON.parse(qrData) as {
@@ -395,30 +391,32 @@ export class AuthService {
       throw new UnauthorizedException('QR session already used or expired');
     }
 
-    const decoded = this.jwtService.verify<JwtDecoded>(userToken, {
-      secret: process.env.JWT_SECRET,
-    });
-
-    console.log(`Decoded user token: ${JSON.stringify(decoded)}`);
-
-    if (!decoded) {
-      throw new UnauthorizedException('Invalid user token');
-    }
-
-    this.logger.log(`QR login verified for user: ${decoded.sub}`);
+    this.logger.log(`QR login verified for user: ${userId}`);
 
     const newQrSession = {
       status: 'used',
-      userId: decoded.sub,
+      userId: userId,
       verifiedAt: Date.now(),
     };
 
     await this.redis.set(qrKey, JSON.stringify(newQrSession), 'EX', 120);
 
+    const tokenForUser = this.jwtService.sign(
+      { sub: userId },
+      {
+        expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES,
+        secret: process.env.JWT_SECRET,
+      },
+    );
+
     return {
       message: 'QR login verified successfully',
       sessionId,
-      userId: decoded.sub,
+      user: {
+        id: user._id as string,
+        email: user.email,
+      },
+      tokenForUser,
     };
   }
 }
