@@ -4,51 +4,48 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { getSocket } from "@/lib/socket";
+import Cookies from "js-cookie";
 
 const LoginQRCode = () => {
-  const { generateQRCode } = useAuthStore();
+  const { generateQRCode, setUser, setIsAuthenticated } = useAuthStore();
   const [sessionId, setSessionId] = useState("");
   const [qrData, setQrData] = useState("");
+  const socket = getSocket();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!socket) return;
+    console.log("Socket connected:", socket.id);
+
+    socket.on("logInResult", (data) => {
+      console.log("Login result received:", data);
+      Cookies.set("accessToken", data.token, {
+        expires: 1,
+        secure: true,
+        sameSite: "Strict",
+      });
+      setUser(data.user);
+      setIsAuthenticated(true);
+      navigate("/");
+    });
+
+    return () => {
+      socket.off("logInResult");
+    };
+  }, [socket, navigate]);
 
   const fetchData = async () => {
     const data = await generateQRCode();
     setSessionId(data.sessionId);
     setQrData(data.qrData);
+
+    socket.emit("join-qr-room", {
+      sessionId: data.sessionId,
+    });
   };
 
   useEffect(() => {
     fetchData();
   }, []);
-
-  const navigate = useNavigate();
-
-  const socket = getSocket();
-  useEffect(() => {
-    if (!socket) return;
-    console.log("Socket connected:", socket.id);
-
-    socket.on("qrCodeData", (data) => {
-      console.log("Received QR code data:", data);
-      setSessionId(data.sessionId);
-      setQrData(data.qrData);
-    });
-
-    socket.on("loginSuccess", (data) => {
-      console.log("Login successful:", data);
-      navigate("/chat");
-    });
-
-    socket.on("loginError", (error) => {
-      console.error("Login error:", error);
-      alert("Đăng nhập thất bại. Vui lòng thử lại.");
-    });
-
-    return () => {
-      socket.off("qrCodeData");
-      socket.off("loginSuccess");
-      socket.off("loginError");
-    };
-  }, [socket, navigate]);
 
   return (
     <div className="flex flex-col items-center gap-2 justify-center min-h-screen">

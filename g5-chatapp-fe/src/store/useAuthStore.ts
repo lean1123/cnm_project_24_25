@@ -40,6 +40,8 @@ interface iAuthStore {
   setSelectedHomePage: (value: string) => void;
 
   generateQRCode: () => Promise<GenerateQRCodeRes>;
+  setUser: (user: User) => void;
+  setIsAuthenticated: (value: boolean) => void;
 }
 
 export const useAuthStore = create<iAuthStore>()(
@@ -57,6 +59,12 @@ export const useAuthStore = create<iAuthStore>()(
       activeUsers: [],
 
       hasHydrated: false,
+      setUser: (user: User) => {
+        set({ user });
+      },
+      setIsAuthenticated: (value: boolean) => {
+        set({ isAuthenticated: value });
+      },
       setHasHydrated: (value: boolean) => {
         set({ hasHydrated: value });
       },
