@@ -41,10 +41,41 @@ jobs:
           chmod 600 key.pem
 
       - name: Deploy to EC2 via SSH
-        run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'EOF'
-            docker pull ${{ secrets.DOCKER_USERNAME }}/nestjs-app:latest
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p /home/ubuntu/app
+      
+            cat > /home/ubuntu/app/.env << EOF
+            MONGO_URI=${{ secrets.MONGO_URI }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}
+            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            JWT_REFRESH_TOKEN_EXPIRES=${{ secrets.JWT_REFRESH_TOKEN_EXPIRES }}
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
+            AWS_CLOUDFRONT_URL=${{ secrets.AWS_CLOUDFRONT_URL }}
+            THROTTLE_TTL=${{ secrets.THROTTLE_TTL }}
+            THROTTLE_LIMIT=${{ secrets.THROTTLE_LIMIT }}
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            EOF
+      
+            docker pull lean1123/nestjs-app
             docker stop nestjs-app || true
             docker rm nestjs-app || true
-            docker run -d -p 3000:3000 --name nestjs-app ${{ secrets.DOCKER_USERNAME }}/nestjs-app:latest
-          EOF
+            docker run -d \
+              --name nestjs-app \
+              -p 3000:3000 \
+              --env-file /home/ubuntu/app/.env \
+              lean1123/nestjs-app
