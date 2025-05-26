@@ -42,6 +42,8 @@ const HomePage = (props: Props) => {
     unsubscribeRejectContact,
     subscribeAcceptContact,
     unsubscribeAcceptContact,
+    subscribeUnfriendContact,
+    unsubscribeUnfriendContact,
   } = useContactStore();
   const {
     subscribeCall,
@@ -97,6 +99,7 @@ const HomePage = (props: Props) => {
       subscribeCancelCall();
       subscribeAcceptContact();
       subscribeUpdateGroup();
+      subscribeUnfriendContact();
       return () => {
         unsubscribeContact();
         unsubscribeCancelContact();
@@ -116,6 +119,7 @@ const HomePage = (props: Props) => {
         unsubscribeCancelCall();
         unsubscribeAcceptContact();
         unsubscribeUpdateGroup();
+        unsubscribeUnfriendContact();
       };
     }
   }, [isAuthenticated, socket]);

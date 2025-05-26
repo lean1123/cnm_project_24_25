@@ -2,6 +2,7 @@ import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
+import { useMessageStore } from "@/store/useMessageStore";
 import type { Conversation, LastMessage } from "@/types";
 
 type Props = {
@@ -22,8 +23,10 @@ const ConversationItem = ({
   const { user } = useAuthStore();
   const { selectedConversation, setSelectedConversation } =
     useConversationStore();
+  const { clearMessages } = useMessageStore();
   const handleClick = () => {
     setSelectedConversation(conversation as Conversation);
+    clearMessages();
   };
   const isActive = selectedConversation?._id === id;
   return (
@@ -42,7 +45,11 @@ const ConversationItem = ({
             <h4 className="truncate">{name}</h4>
             {lastMessage ? (
               <span className="text-sm text-muted-foreground flex truncate overflow-ellipsis">
-                <p className={`font-semibold ${lastMessage.sender._id === user?._id ? "pr-1" : ""}`}>
+                <p
+                  className={`font-semibold ${
+                    lastMessage.sender._id === user?._id ? "pr-1" : ""
+                  }`}
+                >
                   {lastMessage.sender._id === user?._id ? "Bạn:" : ""}
                 </p>
                 {lastMessage.type === "VIDEO" &&

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ContactService } from './contact.service';
 import { ContactDto } from './dto/contact.dto';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
@@ -81,5 +81,16 @@ export class ContactController {
   @UseGuards(AuthGuard('jwt'))
   async getContactById(@Param('id') id: string) {
     return await this.contactService.getContactById(id);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteContactById(@UserDecorator() userPayload: JwtPayload ,@Param('id') id: string) {
+    const deletedContact = await this.contactService.deleteContact(userPayload, id);
+    this.chatGateway.handleDeleteContact(
+      deletedContact.contact,
+      deletedContact.conversation,
+    );
+    return deletedContact;
   }
 }

@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/tooltip";
 
 type Props = {
-  message: Message | null;
+  message: Message;
   fromCurrentUser: boolean;
   senderImage: string;
   file?: MessageFile[];
@@ -177,7 +177,8 @@ const MessageComponent = ({
   const handleReactionMouseEnter = () => setIsReactionHovered(true);
   const handleReactionMouseLeave = () => setIsReactionHovered(false);
 
-  const { reactionMessage, unReactionMessage } = useMessageStore();
+  const { reactionMessage, unReactionMessage, setReplyMessage } =
+    useMessageStore();
 
   const checkReaction = (message: Message | null) => {
     if (!message) return false;
@@ -211,6 +212,12 @@ const MessageComponent = ({
       count: data.count,
       reactedByCurrentUser: data.reactedByCurrentUser,
     }));
+  };
+
+  const handleReply = () => {
+    if (message) {
+      setReplyMessage?.(message);
+    }
   };
 
   return (
@@ -262,6 +269,46 @@ const MessageComponent = ({
               "rounded-bl-none": !lastByUser && !fromCurrentUser,
             })}
           >
+            {message.replyTo && (
+              <div
+                className={cn(
+                  "flex gap-2 z-10 text-foreground text-xs mb-1 bg-primary/50 p-2 rounded-lg",
+                  fromCurrentUser ? "-top-8 right-1" : "-top-8 left-1"
+                )}
+              >
+                <span className="font-semibold">
+                  {message.replyTo.sender?.firstName +
+                    " " +
+                    message.replyTo.sender?.lastName}
+                  :
+                </span>
+                <span className="text-muted-foreground">
+                  {message.replyTo.content?.length > 40
+                    ? `${message.replyTo.content.slice(0, 40)}...`
+                    : message.replyTo.content}
+                </span>
+                {message.replyTo.type === "IMAGE" && (
+                  <span className="text-muted-foreground">
+                    <FileImage className="size-4 inline" /> Hình ảnh
+                  </span>
+                )}
+                {message.replyTo.type === "VIDEO" && (
+                  <span className="text-muted-foreground">
+                    <FileVideo className="size-4 inline" /> Video
+                  </span>
+                )}
+                {message.replyTo.type === "AUDIO" && (
+                  <span className="text-muted-foreground">
+                    <FileAudio className="size-4 inline" /> Tin nhắn thoại
+                  </span>
+                )}
+                {message.replyTo.type === "FILE" && (
+                  <span className="text-muted-foreground">
+                    <File className="size-4 inline" /> Tệp đính kèm
+                  </span>
+                )}
+              </div>
+            )}
             {!message?.isRevoked &&
             type === "TEXT" &&
             !isLocationMessage(message) ? (
@@ -485,7 +532,7 @@ const MessageComponent = ({
             //
             <div
               className={cn(
-                "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1",
+                "absolute -bottom-2 right-2 flex gap-1 bg-background rounded-full shadow-md p-1",
                 {
                   "right-auto left-4": fromCurrentUser,
                   "right-7": !fromCurrentUser,
@@ -525,7 +572,7 @@ const MessageComponent = ({
           //
           <div
             className={cn(
-              "absolute -bottom-2 right-2 flex gap-1 z-20 bg-background rounded-full shadow-md p-1"
+              "absolute -bottom-2 right-2 flex gap-1 bg-background rounded-full shadow-md p-1"
               // {
               //   "right-2": fromCurrentUser,
               //   "right-2": !fromCurrentUser,
@@ -585,6 +632,7 @@ const MessageComponent = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     // Handle reply logic
+                    handleReply();
                   }}
                 >
                   <MessageSquareText className="size-4" />

@@ -9,6 +9,7 @@ interface iMessageStore {
   isLoading: boolean;
   error: string | null;
   messages: Message[];
+  clearMessages: () => void;
   messagesTemp: Message[];
   isLoadingMessages: boolean;
   fetchMessages: (conversationId: string) => Promise<void>;
@@ -40,6 +41,8 @@ interface iMessageStore {
   unsubscribeFromReaction: () => void;
   subscribeToUnReaction: () => void;
   unsubscribeFromUnReaction: () => void;
+  replyMessage: Message | null;
+  setReplyMessage?: (message: Message | null) => void;
 }
 
 export const useMessageStore = create<iMessageStore>((set, get) => ({
@@ -56,6 +59,10 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
   isSuccessSendMessage: false,
   isTyping: false,
   membersCreateGroup: [],
+  replyMessage: null,
+  setReplyMessage: (message: Message | null) => {
+    set({ replyMessage: message });
+  },
   typing: (conversationId: string) => {
     const socket = useAuthStore.getState().socket; // Ensure socket is initialized
     if (socket) {
@@ -64,6 +71,9 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
         userId: useAuthStore.getState().user?.id,
       });
     }
+  },
+  clearMessages: () => {
+    set({ messages: [], messagesTemp: [] });
   },
   fetchMessages: async (conversationId: string) => {
     set({ isLoadingMessages: true, error: null });
@@ -83,6 +93,9 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
     set({ isLoadingSendMessage: true, errorSendMessage: null });
     const formData = new FormData();
     formData.append("content", message.content);
+    if (message.replyTo) {
+      formData.append("replyTo", message.replyTo);
+    }
     message.files &&
       message?.files.forEach((file) => {
         formData.append("files", file); // tên 'files' này cần trùng với bên backend

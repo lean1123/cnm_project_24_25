@@ -27,6 +27,13 @@ export class Message extends Document {
     required: false,
   })
   forwardFrom: Types.ObjectId;
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Message',
+    default: null,
+    required: false,
+  })
+  replyTo: Types.ObjectId;
   @Prop({ type: String, default: [], required: false })
   type: MessageType;
 

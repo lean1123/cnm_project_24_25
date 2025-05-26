@@ -21,6 +21,7 @@ interface iContactStore {
   rejectContact: (contactId: string) => Promise<void>;
   cancelContact: (contactId: string) => Promise<void>;
   getContactById: (contactId: string) => Promise<Contact | null>;
+  unfriend: (contactId: string) => Promise<void>;
   subscribeContact: () => void;
   unsubscribeContact: () => void;
   subscribeCancelContact: () => void;
@@ -29,6 +30,8 @@ interface iContactStore {
   unsubscribeRejectContact: () => void;
   subscribeAcceptContact: () => void;
   unsubscribeAcceptContact: () => void;
+  subscribeUnfriendContact: () => void;
+  unsubscribeUnfriendContact: () => void;
 }
 
 export const useContactStore = create<iContactStore>((set, get) => ({
@@ -209,6 +212,25 @@ export const useContactStore = create<iContactStore>((set, get) => ({
     }
     return null;
   },
+  unfriend: async (contactId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.delete(`/contact/${contactId}`);
+      if (data.success) {
+        set((state) => ({
+          contacts: state.contacts?.filter(
+            (contact) => contact._id !== contactId
+          ),
+        }));
+        toast.success("Unfriended successfully!");
+      }
+    } catch (error) {
+      set({ error: "Failed to unfriend" });
+      toast.error("Failed to unfriend. Please try again.");
+    } finally {
+      set({ isLoading: false });
+    }
+  },
   subscribeContact: () => {
     const socket = useAuthStore.getState().socket;
     if (socket) {
@@ -299,6 +321,34 @@ export const useContactStore = create<iContactStore>((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (socket) {
       socket.off("acceptRequestContact");
+    }
+  },
+  subscribeUnfriendContact: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      console.log("Subscribing to unfriend contact events...");
+      socket.on("deleteContact", (data) => {
+        set((state) => ({
+          contacts: state.contacts?.filter(
+            (contact) => contact._id !== data.contactId
+          ),
+        }));
+        // toast.success("Unfriended successfully!");
+        const selectedConversation =
+          useConversationStore.getState().selectedConversation;
+        if (selectedConversation?._id === data.conversation) {
+          useConversationStore.getState().setSelectedConversation(null);
+        }
+        useConversationStore
+          .getState()
+          .getConversations(useAuthStore.getState().user?._id as string);
+      });
+    }
+  },
+  unsubscribeUnfriendContact: () => {
+    const socket = useAuthStore.getState().socket;
+    if (socket) {
+      socket.off("deleteContact");
     }
   },
 }));
