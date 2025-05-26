@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  forwardRef,
+  Get,
+  Inject,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UserDecorator } from 'src/common/decorator/user.decorator';
 import { AuthService } from './auth.service';
@@ -11,10 +20,15 @@ import { SignUpDto } from './dtos/request/signUp.dto';
 import { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
+import { ChatGateway } from 'src/message/gateway/chat.gateway';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    @Inject(forwardRef(() => ChatGateway))
+    private readonly chatGateway: ChatGateway,
+  ) {}
 
   @Post('sign-up')
   async signUp(@Body() signupDto: SignUpDto): Promise<TempUser> {
@@ -80,12 +94,20 @@ export class AuthController {
   }
 
   @Post('verify-qr-code')
+  @UseGuards(AuthGuard('jwt'))
   async verifyQRCode(
-    @Body() verifitionBody: { sessionId: string; userToken: string },
+    @Body() verifitionBody: { sessionId: string },
+    req: JwtPayload,
   ) {
-    return await this.authService.verifyQRLogin(
+    const loginQRResult = await this.authService.verifyQRLogin(
       verifitionBody.sessionId,
-      verifitionBody.userToken,
+      req._id,
     );
+
+    this.chatGateway.handleLoginByQrCodeResult({
+      sessionId: verifitionBody.sessionId,
+      user: loginQRResult.user,
+      token: loginQRResult.tokenForUser,
+    });
   }
 }

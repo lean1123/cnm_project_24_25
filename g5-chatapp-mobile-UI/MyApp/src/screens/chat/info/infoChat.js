@@ -925,48 +925,8 @@ const UserInfoScreen = ({ navigation, route }) => {
           <Text style={styles.name}>
             {otherUser?.firstName} {otherUser?.lastName}
           </Text>
-          
-          
-
-          <View style={styles.userInfoSection}>
-            <View style={styles.infoRow}>
-              <MaterialIcon name="email-outline" size={20} color="#666" />
-              <Text style={styles.infoText}>
-                {otherUser?.email || "No email"}
-              </Text>
-            </View>
-
-            {otherUser?.phone && (
-              <View style={styles.infoRow}>
-                <MaterialIcon name="phone-outline" size={20} color="#666" />
-                <Text style={styles.infoText}>{otherUser.phone}</Text>
-              </View>
-            )}
-          </View>
-
         </View>
 
-        <View style={styles.privacySection}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <MaterialIcon name="cog" size={20} color="#135CAF" />
-              <Text style={styles.sectionTitle}>Settings</Text>
-            </View>
-          </View>
-          
-          <View style={styles.privacyOption}>
-            <View style={styles.privacyOptionInfo}>
-              <MaterialIcon name="bell-outline" size={24} color="#333" />
-              <Text style={styles.privacyOptionText}>Mute notifications</Text>
-            </View>
-            <Switch
-              value={false}
-              onValueChange={() => {}}
-              trackColor={{ false: "#d3d3d3", true: "#135CAF" }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View>
 
         {mediaMessages.images.length > 0 && (
           <View style={styles.section}>
@@ -1464,7 +1424,7 @@ const UserInfoScreen = ({ navigation, route }) => {
           <Icon name="chevron-left" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isGroup ? "Group Info" : "Contact Info"}
+          {isGroup ? "Thông tin nhóm" : "Thông tin liên hệ"}
         </Text>
         <View style={{ width: 20 }} />
       </View>
@@ -1513,6 +1473,7 @@ const styles = {
     shadowRadius: 4,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
+    marginTop: 15,
   },
   headerTitle: {
     fontSize: 20,

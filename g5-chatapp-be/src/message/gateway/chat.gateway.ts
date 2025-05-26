@@ -19,10 +19,10 @@ import { User } from 'src/user/schema/user.schema';
 import { TypinationRequest } from '../dtos/requests/typination.request';
 import { Message } from '../schema/messege.chema';
 import { HandleCall } from './handleCall';
-import { HandleConnection } from './handleConnection';
 import { HandleContact } from './handleContact';
 import { HandleConversation } from './handleConvsersation';
 import { HandleMessage } from './handleMessage';
+import { HandleConnection } from './handleConnection';
 
 @WebSocketGateway({
   cors: {
@@ -87,6 +87,33 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client,
       this.logger,
       this.activeUsers,
+      this.server,
+    );
+  }
+
+  @SubscribeMessage('join-qr-room')
+  async handleJoinQrRoom(
+    @MessageBody() { sessionId }: { sessionId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    await client.join(sessionId);
+  }
+
+  handleLoginByQrCodeResult(
+    @MessageBody()
+    {
+      sessionId,
+      user,
+      token,
+    }: {
+      sessionId: string;
+      user: { id: string; email: string };
+      token: string;
+    },
+  ) {
+    this.handleConnectionService.handleLoginByQrCodeResult(
+      { sessionId, user, token },
+
       this.server,
     );
   }

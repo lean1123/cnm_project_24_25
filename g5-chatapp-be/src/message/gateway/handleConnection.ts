@@ -33,6 +33,27 @@ export class HandleConnection {
     });
   }
 
+  handleLoginByQrCodeResult(
+    {
+      sessionId,
+      user,
+      token,
+    }: {
+      sessionId: string;
+      user: { id: string; email: string };
+      token: string;
+    },
+    server: Server,
+  ) {
+    server.to(sessionId).emit('logInResult', {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+    });
+  }
+
   async handleJoin(
     {
       userId,

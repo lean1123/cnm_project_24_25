@@ -523,6 +523,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
+    
   },
   conversationName: {
     fontSize: 16,

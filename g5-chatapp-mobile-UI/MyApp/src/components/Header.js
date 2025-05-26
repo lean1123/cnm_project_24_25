@@ -93,12 +93,7 @@ const Header = ({ onSearch }) => {
             >
               <Icon name="magnify" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => setIsModalVisible(true)}
-            >
-              <Icon name="plus" size={24} color="#fff" />
-            </TouchableOpacity>
+            
           </View>
         </View>
       )}
@@ -203,6 +198,7 @@ const styles = StyleSheet.create({
     height: 36,
     fontSize: 16,
     color: "#000",
+    paddingVertical: 4,
   },
   clearButton: {
     padding: 4,

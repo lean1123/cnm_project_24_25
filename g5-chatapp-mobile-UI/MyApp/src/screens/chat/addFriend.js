@@ -21,10 +21,40 @@ const AddFriendScreen = ({ navigation }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [language, setLanguage] = useState("vi"); // Default to Vietnamese
+
+    const languageData = {
+        en: {
+            addFriendTitle: "Add Friend",
+            searchPlaceholder: "Search by email or name",
+            errorTitle: "Error",
+            enterEmailOrNameToSearch: "Please enter email or name to search",
+            searchUserError: "Error searching for user",
+            successTitle: "Success",
+            friendRequestSent: "Friend request sent successfully",
+            okButton: "OK",
+            failedToSendRequest: "Failed to send friend request",
+            somethingWentWrong: "Something went wrong",
+        },
+        vi: {
+            addFriendTitle: "Thêm bạn bè",
+            searchPlaceholder: "Tìm kiếm bằng email hoặc tên",
+            errorTitle: "Lỗi",
+            enterEmailOrNameToSearch: "Vui lòng nhập email hoặc tên để tìm kiếm",
+            searchUserError: "Lỗi tìm kiếm người dùng",
+            successTitle: "Thành công",
+            friendRequestSent: "Yêu cầu kết bạn đã được gửi thành công",
+            okButton: "OK",
+            failedToSendRequest: "Không thể gửi yêu cầu kết bạn",
+            somethingWentWrong: "Đã có lỗi xảy ra",
+        },
+    };
+
+    const getText = (key) => languageData[language][key] || languageData['en'][key];
 
     const handleSearch = async () => {
         if (!searchText.trim()) {
-            Alert.alert("Error", "Please enter an email or name to search");
+            Alert.alert(getText("errorTitle"), getText("enterEmailOrNameToSearch"));
             return;
         }
 
@@ -34,11 +64,11 @@ const AddFriendScreen = ({ navigation }) => {
             if (response.ok) {
                 setSearchResults(response.data || []);
             } else {
-                Alert.alert("Error", response.message || "Failed to search users");
+                Alert.alert(getText("errorTitle"), response.message || getText("searchUserError"));
             }
         } catch (error) {
             console.log('Search error:', error);
-            Alert.alert("Error", "Failed to search users");
+            Alert.alert(getText("errorTitle"), getText("searchUserError"));
         } finally {
             setIsSearching(false);
         }
@@ -50,11 +80,11 @@ const AddFriendScreen = ({ navigation }) => {
             const response = await contactService.createContact(userId);
             if (response.success) {
                 Alert.alert(
-                    "Success", 
-                    "Friend request sent successfully",
+                    getText("successTitle"), 
+                    getText("friendRequestSent"),
                     [
                         {
-                            text: "OK",
+                            text: getText("okButton"),
                             onPress: () => navigation.goBack()
                         }
                     ]
@@ -62,16 +92,16 @@ const AddFriendScreen = ({ navigation }) => {
             } else {
                 const errorMessage = Array.isArray(response.message) 
                     ? response.message[0] 
-                    : (response.message || "Failed to send friend request");
-                Alert.alert("Error", errorMessage);
+                    : (response.message || getText("failedToSendRequest"));
+                Alert.alert(getText("errorTitle"), errorMessage);
             }
         } catch (error) {
             console.log('Error details:', error);
             const errorMessage = error.message;
             if (Array.isArray(errorMessage)) {
-                Alert.alert("Error", errorMessage[0] || "Something went wrong");
+                Alert.alert(getText("errorTitle"), errorMessage[0] || getText("somethingWentWrong"));
             } else {
-                Alert.alert("Error", errorMessage || "Something went wrong");
+                Alert.alert(getText("errorTitle"), errorMessage || getText("somethingWentWrong"));
             }
         } finally {
             setIsLoading(false);
@@ -116,14 +146,14 @@ const AddFriendScreen = ({ navigation }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Icon name="chevron-left" size={30} color="#fff" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Add Friend</Text>
+                <Text style={styles.title}>{getText("addFriendTitle")}</Text>
             </View>
 
             {/* Search Input */}
             <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Search by email or name"
+                    placeholder={getText("searchPlaceholder")}
                     placeholderTextColor="#aaa"
                     value={searchText}
                     onChangeText={setSearchText}
