@@ -28,6 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DissolveGroupDialog } from "@/components/common/dialog/DissolveGroupDialog";
 
 type Props = {
   isOpen: boolean;
@@ -183,20 +184,21 @@ function ConversationInfo({ isOpen, setOpen, userSelected, isGroup }: Props) {
                 {/* <span className="text-base-content text-sm">Rời nhóm</span> */}
               </div>
               {isAdmin && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex flex-col items-center gap-1">
-                      <Button
-                        className="rounded-full size-8 flex justify-center items-center"
-                        variant="destructive"
-                        onClick={handleDissolveGroup}
-                      >
-                        <Trash2 className="size-4 text-base-content" />
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>Giải tán nhóm</TooltipContent>
-                </Tooltip>
+                // <Tooltip>
+                //   <TooltipTrigger asChild>
+                //     <div className="flex flex-col items-center gap-1">
+                //       <Button
+                //         className="rounded-full size-8 flex justify-center items-center"
+                //         variant="destructive"
+                //         onClick={handleDissolveGroup}
+                //       >
+                //         <Trash2 className="size-4 text-base-content" />
+                //       </Button>
+                //     </div>
+                //   </TooltipTrigger>
+                //   <TooltipContent>Giải tán nhóm</TooltipContent>
+                // </Tooltip>
+                <DissolveGroupDialog />
               )}
             </>
           )}

@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
 import type { Conversation } from "@/types";
 import ConversationItem from "../coversations/ConversationItem";
+import SearchNav from "../common/search/SearchNav";
 
 type Props = React.PropsWithChildren<{}>;
 
@@ -57,11 +58,31 @@ const ConversationsLayout = ({ children }: Props) => {
     fetchConversations();
   }, [user]);
 
+  const [filteredConversations, setFilteredConversations] = useState<
+    Conversation[] | undefined
+  >(conversations);
+
   useEffect(() => {
-    const filteredConversations = conversations?.filter((conversation) =>
-      conversation.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    console.log("Filtered conversations:", filteredConversations);
+    if (!conversations) return;
+
+    const filtered = conversations.filter((conversation) => {
+      const lowerSearch = searchTerm.toLowerCase();
+
+      // Check if group name matches
+      const matchName = conversation.name?.toLowerCase().includes(lowerSearch);
+
+      // Check if any member matches full name
+      const matchMember = conversation.members.some((member) => {
+        const fullName =
+          `${member.user.firstName} ${member.user.lastName}`.toLowerCase();
+        return fullName.includes(lowerSearch);
+      });
+
+      return matchName || matchMember;
+    });
+
+    console.log("Filtered conversations:", filtered);
+    setFilteredConversations(filtered);
   }, [searchTerm, conversations]);
 
   const getMemberName = (conversation: Conversation) => {
@@ -88,6 +109,16 @@ const ConversationsLayout = ({ children }: Props) => {
   return (
     <>
       <ItemList title="Conversations">
+        <div className="mb-1 flex items-center justify-between">
+          {/* <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+                {action ? action : null} */}
+          <SearchNav
+            isOpenSearchResult={false}
+            setIsOpenSearchResult={() => {}}
+            search={searchTerm}
+            setSearch={setSearchTerm}
+          />
+        </div>
         {/* search */}
         {/* Search Input */}
         {/* <div className="relative mb-4 w-full">
@@ -101,19 +132,17 @@ const ConversationsLayout = ({ children }: Props) => {
           />
         </div> */}
 
-        {conversations ? (
-          conversations.length === 0 ? (
+        {filteredConversations ? (
+          filteredConversations.length === 0 ? (
             <p>No conversations found</p>
           ) : (
-            conversations &&
-            conversations.map((conversation) => {
+            filteredConversations &&
+            filteredConversations.map((conversation) => {
               return conversation.isGroup ? (
                 <ConversationItem
                   key={conversation._id}
                   id={conversation._id}
-                  imageUrl={
-                    conversation.profilePicture || "/group.jpg"
-                  }
+                  imageUrl={conversation.profilePicture || "/group.jpg"}
                   name={conversation.name || ""}
                   lastMessage={conversation.lastMessage}
                   conversation={conversation}

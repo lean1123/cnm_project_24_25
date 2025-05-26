@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
@@ -247,5 +253,49 @@ export class ContactService {
     }
 
     return updatedContact;
+  }
+
+  async deleteContact(
+    userPayload: JwtPayload,
+    contactId: string,
+  ): Promise<{contact: Contact, conversation: string}> {
+    const deletedByUser = await this.userService.findById(userPayload._id);
+    if (!deletedByUser) {
+      throw new NotFoundException('User not found in deleted contact');
+    }
+
+    const contact = await this.contactModel.findById(contactId).exec();
+    if (!contact || contact.status !== Status.ACTIVE) {
+      throw new BadRequestException('Contact not found or already inactive');
+    }
+
+    // Kiểm tra quyền xóa
+    const isUserInContact =
+      contact.user.equals(deletedByUser._id as Types.ObjectId) ||
+      contact.contact.equals(deletedByUser._id as Types.ObjectId);
+
+    if (!isUserInContact) {
+      throw new ForbiddenException(
+        "You don't have permission to delete this contact",
+      );
+    }
+    const conversation = await
+      this.conversationService.findConversationForDeleteContact(
+        contact.user._id.toString(),
+        contact.contact._id.toString(),
+      );
+
+    // Xóa contact (hoặc bạn có thể dùng soft delete: cập nhật status thành DELETED)
+    const deleted = await this.contactModel.findByIdAndDelete(contactId);
+    if (!deleted) {
+      throw new InternalServerErrorException('Failed to delete contact');
+    }
+    await this.conversationService.deleteConversationForDeleteContact(
+      conversation._id.toString()
+    );
+    return {
+      contact: deleted,
+      conversation: conversation._id.toString(),
+    };
   }
 }

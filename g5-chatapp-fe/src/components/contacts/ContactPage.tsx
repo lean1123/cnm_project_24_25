@@ -73,12 +73,56 @@ const ContactPage = (props: Props) => {
       setShowListGroups(true);
     }
   }, [selectedContactPage]);
+
+  const [search, setSearch] = React.useState("");
+  const [sortOption, setSortOption] = React.useState("a-z");
+
+  const [filteredContacts, setFilteredContacts] = React.useState(contacts);
+
+  useEffect(() => {
+    if (!contacts || !user) return;
+
+    let filtered = contacts.filter((contact) => {
+      const contactInfo =
+        contact.contact._id === user._id ? contact.user : contact.contact;
+      return (
+        `${contactInfo.firstName} ${contactInfo.lastName}`
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+        contactInfo.email.toLowerCase().includes(search.toLowerCase())
+      );
+    });
+
+    // Sort theo sortOption
+    filtered.sort((a, b) => {
+      const aName =
+        a.contact._id === user._id
+          ? `${a.user.lastName} ${a.user.firstName}`
+          : `${a.user.lastName} ${a.user.firstName}`;
+      const bName =
+        b.contact._id === user._id
+          ? `${b.user.lastName} ${b.user.firstName}`
+          : `${b.user.lastName} ${b.user.firstName}`;
+
+      return sortOption === "a-z"
+        ? aName.localeCompare(bName)
+        : bName.localeCompare(aName);
+    });
+
+    setFilteredContacts(filtered);
+  }, [search, contacts, user, sortOption]);
+
   if (showListFriends)
     return (
       <ContactContainer title="Danh sách bạn bè">
-        <Filter />
+        <Filter
+          search={search}
+          setSearch={setSearch}
+          sortOption={sortOption}
+          setSortOption={setSortOption}
+        />
         <div className="mt-4 flex flex-col w-full">
-          {contacts.map((contact) => (
+          {filteredContacts.map((contact) => (
             <FriendItem
               key={contact._id}
               info={
@@ -86,6 +130,7 @@ const ContactPage = (props: Props) => {
                   ? contact.user
                   : contact.contact
               }
+              contactId={contact._id}
             />
           ))}
         </div>
@@ -126,7 +171,7 @@ const ContactPage = (props: Props) => {
   if (showListGroups)
     return (
       <ContactContainer title="Joined groups">
-        <Filter />
+        {/* <Filter /> */}
         <div className="mt-4 flex flex-col w-full">
           {groups.map((group) => (
             <GroupItem key={group.id} {...group} />

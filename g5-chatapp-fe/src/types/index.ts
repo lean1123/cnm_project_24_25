@@ -71,6 +71,14 @@ export type Message = {
     isTemp?: boolean;
     isError?: boolean;
     reactions?: Reactions[];
+    replyTo?: ReplyTo | null;
+}
+
+export type ReplyTo = {
+    _id: string;
+    sender: User;
+    content: string;
+    type: string;
 }
 
 export type MessageRequest = {
@@ -78,6 +86,7 @@ export type MessageRequest = {
     files?: File[] | null;
     isRevoked?: boolean;
     forwardFrom?: string | null;
+    replyTo?: string | null;
 }
 
 export type MessageFile = {

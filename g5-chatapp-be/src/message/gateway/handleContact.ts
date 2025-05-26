@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { JwtPayload } from 'src/auth/interfaces/jwtPayload.interface';
+import { ContactService } from 'src/contact/contact.service';
 import { ContactResponseDto } from 'src/contact/dto/contactResponse.dto';
 import { Contact } from 'src/contact/schema/contact.schema';
 
 @Injectable()
 export class HandleContact {
-  constructor() {}
+  constructor(private readonly contactService: ContactService) {}
 
   handleRequestContact(
     {
@@ -120,5 +122,25 @@ export class HandleContact {
     // Gửi sự kiện
     await client.join(conversationId);
     // server.to(userId).emit('joinNewConversation', conversationId);
+  }
+
+  handleDeleteContact(
+    contact: Contact,
+    server: Server,
+    conversation: string,
+  ) {
+    server.to(contact.user._id.toString()).emit('deleteContact', {
+      contactId: contact._id,
+      conversation,
+    });
+
+    server.to(contact.contact._id.toString()).emit('deleteContact', {
+      contactId: contact._id,
+      conversation,
+    });
+    console.log(
+      `[Contact] Contact ${contact._id as string} deleted by ${contact.user.toString()}`,
+    );
+    // this.contactService.deleteContact(contact.user._id.toString(), contact._id.toString());
   }
 }
