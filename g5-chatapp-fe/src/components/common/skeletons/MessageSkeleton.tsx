@@ -22,11 +22,11 @@ const MessageSkeleton = () => {
             {/* Message block */}
             <div className="flex flex-col space-y-2">
               {/* Sender name */}
-              {/* <div
+              <div
                 className={`h-4 w-20 bg-gray-300 rounded animate-pulse ${
                   isSender ? "self-end" : "self-start"
                 }`}
-              /> */}
+              />
 
               {/* Bubble */}
               <div

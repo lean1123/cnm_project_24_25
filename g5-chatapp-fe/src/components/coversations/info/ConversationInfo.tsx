@@ -14,6 +14,7 @@ import {
   Trash,
   Trash2,
   UserPlus,
+  Users,
 } from "lucide-react";
 
 import React, { useEffect } from "react";
@@ -29,16 +30,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DissolveGroupDialog } from "@/components/common/dialog/DissolveGroupDialog";
+import { CreateGroupWithUserDialog } from "@/components/common/dialog/CreateGroupWithUserDialog";
 
 type Props = {
   isOpen: boolean;
   setOpen: (open: boolean) => void;
-  userSelected?: User | null;
   isGroup?: boolean;
 };
 
-function ConversationInfo({ isOpen, setOpen, userSelected, isGroup }: Props) {
-  const { selectedConversation, leaveGroup, dissolveGroup } =
+function ConversationInfo({ isOpen, setOpen, isGroup }: Props) {
+  const { selectedConversation, leaveGroup, dissolveGroup, userSelected } =
     useConversationStore();
   const [showGroupMember, setShowGroupMember] = React.useState(false);
   const { user } = useAuthStore();
@@ -119,7 +120,7 @@ function ConversationInfo({ isOpen, setOpen, userSelected, isGroup }: Props) {
         <div className="mt-2 flex justify-evenly items-start w-full">
           {!isGroup && (
             <>
-              <div className="flex flex-col items-center gap-1">
+              {/* <div className="flex flex-col items-center gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -131,20 +132,22 @@ function ConversationInfo({ isOpen, setOpen, userSelected, isGroup }: Props) {
                   </TooltipTrigger>
                   <TooltipContent>Tắt thông báo</TooltipContent>
                 </Tooltip>
-              </div>
+              </div> */}
 
               <div className="flex flex-col items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="rounded-full size-8 flex justify-center items-center"
-                      variant="secondary"
-                    >
-                      <Search className="size-4 text-base-content" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Tìm kiếm tin nhắn</TooltipContent>
-                </Tooltip>
+                {/* <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        className="rounded-full size-8 flex justify-center items-center"
+                        variant="secondary"
+                        onClick={handleLeaveGroup}
+                      >
+                        <Users className="size-4 text-base-content" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Tạo nhóm</TooltipContent>
+                  </Tooltip> */}
+                <CreateGroupWithUserDialog />
               </div>
             </>
           )}
