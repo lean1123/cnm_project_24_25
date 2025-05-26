@@ -137,3 +137,8 @@ export type CreateGroupRequest = {
     members: string[];
     profilePicture?: string | null;
 }
+
+export type GenerateQRCodeRes = {
+    sessionId: string;
+    qrData: string;
+}

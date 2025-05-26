@@ -13,6 +13,17 @@ export const getSocket = () => {
       reconnectionDelay: 1000,
     });
 
+    if (!user) {
+      //
+      socket.on("connect", () => {
+        console.log("Socket connected without user:", socket?.id);
+      });
+      socket.on("disconnect", () => {
+        console.log("Socket disconnected without user:", socket?.id);
+      });
+      return socket;
+    }
+
     socket.on("connect", () => {
       console.log("Socket connected:", socket?.id);
       if (user?.id) {
