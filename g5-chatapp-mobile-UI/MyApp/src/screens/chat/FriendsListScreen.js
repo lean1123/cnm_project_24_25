@@ -38,8 +38,8 @@ const { width } = Dimensions.get("window");
 // Language data for online/offline status
 const languageData = {
   en: {
-    online: "Online",
-    offline: "Offline",
+    online: "",
+    offline: "",
     viewProfile: "View Profile",
     unfriend: "Unfriend",
     searchFriendsPlaceholder: "Search friends...",
@@ -82,8 +82,8 @@ const languageData = {
     contactsTitle: "Contacts",
   },
   vi: {
-    online: "Đang hoạt động",
-    offline: "Ngoại tuyến",
+    online: "",
+    offline: "",
     viewProfile: "Xem trang cá nhân",
     unfriend: "Hủy kết bạn",
     searchFriendsPlaceholder: "Tìm bạn bè...",
@@ -777,9 +777,7 @@ const FriendsListScreen = ({ navigation }) => {
                  <Icon name="dots-horizontal" size={24} color="#555" />
             </TouchableOpacity>
           </View>
-          <Text style={[styles.statusText, user.isOnline ? styles.onlineText : styles.offlineText]}>
-            {user.isOnline ? getText("online") : getText("offline")}
-          </Text>
+          
         </View>
       </TouchableOpacity>
     );

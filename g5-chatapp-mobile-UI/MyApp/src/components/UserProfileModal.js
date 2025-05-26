@@ -53,21 +53,7 @@ const UserProfileModal = ({ visible, onClose, user }) => {
                   descriptionStyle={styles.listItemDescription}
                 />
                 <Divider />
-                <List.Item
-                  title="Ngày sinh"
-                  description={user.dob ? format(new Date(user.dob), 'dd/MM/yyyy') : 'N/A'}
-                  left={() => <List.Icon icon="cake-variant" color="#FF69B4" />}
-                  titleStyle={styles.listItemTitle}
-                  descriptionStyle={styles.listItemDescription}
-                />
-                 <Divider />
-                <List.Item
-                  title="Giới tính"
-                  description={user.gender || 'N/A'}
-                  left={() => <List.Icon icon={user.gender === 'male' ? 'gender-male' : user.gender === 'female' ? 'gender-female' : 'gender-transgender'} color="#4CAF50" />}
-                  titleStyle={styles.listItemTitle}
-                  descriptionStyle={styles.listItemDescription}
-                />
+                
               </List.Section>
             </Card.Content>
             
@@ -80,73 +66,82 @@ const UserProfileModal = ({ visible, onClose, user }) => {
 
 const styles = StyleSheet.create({
   modalContainer: {
-    backgroundColor: 'rgba(0,0,0,0.0)', // Transparent background for the modal itself
-    padding: 0, // Let the card handle padding
-    margin: 20, // Give some margin around the card
-    borderRadius: 15,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Làm nền tối mờ
+    padding: 0,
+    margin: 0,
+    justifyContent: 'center',
+    flex: 1,
   },
   scrollViewContent: {
     flexGrow: 1,
     justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 30,
   },
   card: {
-    borderRadius: 15,
-    elevation: 4, // For Android shadow
-    shadowColor: '#000', // For iOS shadow
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   closeButton: {
     position: 'absolute',
     top: 10,
     right: 10,
     zIndex: 1,
-    padding: 5,
+    backgroundColor: '#eee',
+    borderRadius: 20,
+    padding: 6,
   },
   header: {
     alignItems: 'center',
-    paddingTop: 30, 
-    paddingBottom: 15,
-    backgroundColor: '#f7f7f7', // Light background for header
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
+    paddingTop: 30,
+    paddingBottom: 20,
+    backgroundColor: '#f0f4f8',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
   avatar: {
-    marginBottom: 10,
+    marginBottom: 12,
     borderColor: '#007AFF',
     borderWidth: 3,
+    backgroundColor: '#fff',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#1c1c1e',
+    textAlign: 'center',
     marginTop: 8,
   },
   content: {
-    paddingHorizontal: 5, // Reduced horizontal padding for list items
-    paddingVertical: 10,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
+    backgroundColor: '#fff',
   },
   subheader: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#007AFF',
-    paddingBottom: 5,
-    paddingLeft: 16, // Align with List.Item default padding
+    marginBottom: 8,
   },
   listItemTitle: {
     fontSize: 16,
-    color: '#444',
+    color: '#1c1c1e',
     fontWeight: '500',
   },
   listItemDescription: {
     fontSize: 14,
-    color: '#666',
-  },
-  actions: {
-    justifyContent: 'center',
-    paddingBottom: 15,
+    color: '#555',
   },
 });
+
 
 export default UserProfileModal; 
