@@ -298,6 +298,8 @@ export function CreateGroupDialog() {
               onClick={() => {
                 handleCreateGroup();
                 console.log("membersCreateGroup", membersCreateGroup);
+                setIsDialogOpen(false);
+                resetMembersCreateGroup(); // Reset members after creating group
               }}
             >
               Tạo

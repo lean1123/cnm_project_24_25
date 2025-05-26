@@ -220,11 +220,11 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
         originalMessageId,
         conversationIds,
       });
-      toast.success("Message forwarded successfully!");
+      toast.success("Chuyển tiếp tin nhắn thành công!");
       console.log("Forwarded message:", response.data);
     } catch (error) {
       console.error("Failed to forward message:", error);
-      toast.error("Failed to forward message");
+      toast.error("Không thể chuyển tiếp tin nhắn");
     }
   },
   deleteMessage: async (message: Message) => {
@@ -240,7 +240,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
       console.log("Deleted message:", response.data);
     } catch (error) {
       console.error("Failed to delete message:", error);
-      toast.error("Failed to delete message");
+      toast.error("Không thể xóa tin nhắn");
     }
   },
   revokeMessage: async (message: Message) => {
@@ -255,7 +255,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
       console.log("Revoked message:", response.data);
     } catch (error) {
       console.error("Failed to revoke message:", error);
-      toast.error("Failed to revoke message");
+      toast.error("Không thể thu hồi tin nhắn");
     }
   },
   reactionMessage: async (messageId: string, reaction: string) => {

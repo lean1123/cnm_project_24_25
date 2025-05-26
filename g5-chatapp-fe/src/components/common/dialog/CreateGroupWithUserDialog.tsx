@@ -46,7 +46,11 @@ export function CreateGroupWithUserDialog() {
   const [friends, setFriends] = useState<User[]>([]);
 
   useEffect(() => {
-    if (!userSelected || membersCreateGroup.find((m) => m._id === userSelected._id)) return;
+    if (
+      !userSelected ||
+      membersCreateGroup.find((m) => m._id === userSelected._id)
+    )
+      return;
     addMemberCreateGroup(userSelected);
   }, [userSelected, membersCreateGroup]);
   const handleCreateGroup = async () => {
@@ -304,6 +308,8 @@ export function CreateGroupWithUserDialog() {
               onClick={() => {
                 handleCreateGroup();
                 console.log("membersCreateGroup", membersCreateGroup);
+                setIsOpen(false); // Đóng dialog sau khi tạo nhóm
+                resetMembersCreateGroup(); // Reset danh sách thành viên
               }}
             >
               Tạo

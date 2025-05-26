@@ -167,7 +167,7 @@ export const useAuthStore = create<iAuthStore>()(
         try {
           const { data } = await api.post(`/auth/provide-otp/${userId}`);
           set({ userRegistrationId: data.data.userId });
-          toast.success("OTP sent successfully!");
+          toast.success("Yêu cầu cấp OTP thành công!");
         } catch (error) {
           // set({ error: "Failed to send OTP" });
         } finally {
@@ -189,7 +189,7 @@ export const useAuthStore = create<iAuthStore>()(
           }
         } catch (error) {
           // set({ error: "Failed to reset password" });
-          toast.error("Failed to reset password. Please try again.");
+          toast.error("Không thể đặt lại mật khẩu. Vui lòng thử lại.");
         } finally {
           // set({ isLoading: false });
         }
@@ -206,7 +206,7 @@ export const useAuthStore = create<iAuthStore>()(
           );
           if (data.success) {
             set({ emailForgotPassword: email });
-            toast.success("OTP verified successfully!");
+            toast.success("Đặt lại mật khẩu thành công!");
             setTimeout(() => {
               window.location.href = "/auth/login";
             }, 1000);
@@ -261,7 +261,7 @@ export const useAuthStore = create<iAuthStore>()(
         const formData = new FormData();
         formData.append("file", file);
         try {
-          toast.loading("Uploading avatar...", {
+          toast.loading("Đang tải ảnh...", {
             id: "avatar-upload",
           });
           const { data } = await api.put("/users/change-avatar", formData);
@@ -277,19 +277,19 @@ export const useAuthStore = create<iAuthStore>()(
               dob: get().user?.dob || "",
             };
             set({ user: updatedUser });
-            toast.success("Avatar updated successfully!", {
+            toast.success("Cập nhật ảnh đại diện thành công", {
               id: "avatar-upload",
             });
           }
         } catch (error) {
-          toast.error("Failed to update avatar. Please try again.", {
+          toast.error("Không thể tải ảnh, vui lòng thử lại!", {
             id: "avatar-upload",
           });
         }
       },
       updateProfile: async (data: UserUpdate) => {
         try {
-          toast.loading("Updating profile...", {
+          toast.loading("Đang cập nhật...", {
             id: "profile-update",
           });
           const formData = new FormData();
@@ -300,12 +300,12 @@ export const useAuthStore = create<iAuthStore>()(
           const { data: response } = await api.put("/users", formData);
           if (response.success) {
             set({ user: response.data });
-            toast.success("Profile updated successfully!", {
+            toast.success("Cập nhật thông tin thành công!", {
               id: "profile-update",
             });
           }
         } catch (error) {
-          toast.error("Failed to update profile. Please try again.", {
+          toast.error("Không thể cập nhật, vui lòng thử lại.", {
             id: "profile-update",
           });
         }

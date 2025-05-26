@@ -1,15 +1,19 @@
 import CryptoJS from "crypto-js";
 
 export function encryptMessage(message: string, key: string): string {
-    if (message === "" || message === "[Nội dung không hợp lệ]") {
-        return "";
-    }
+  if (message === "" || message === "[Nội dung không hợp lệ]") {
+    return "";
+  }
   return CryptoJS.AES.encrypt(message, key).toString();
 }
 
 export function decryptMessage(encrypted: string, key: string): string {
   if (encrypted === "" || encrypted === "[Nội dung không hợp lệ]") {
     return "";
+  }
+  if (/^-?\d+\.?\d*,-?\d+\.?\d*$/.test(encrypted)) {
+    // Nếu chuỗi là tọa độ, không cần giải mã
+    return encrypted;
   }
   try {
     const bytes = CryptoJS.AES.decrypt(encrypted, key);
