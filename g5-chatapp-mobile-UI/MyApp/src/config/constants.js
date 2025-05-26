@@ -7,8 +7,8 @@
 //   "http://192.168.1.10:3000";https://cnm-project-24-25.onrender.com
 
 
-export const API_URL = "https://cnm-project-24-25.onrender.com";
-export const SOCKET_URL = "https://cnm-project-24-25.onrender.com";  // nếu websocket có SSL
+export const API_URL = "https://lean1123.online";
+export const SOCKET_URL = "https://lean1123.online";  // nếu websocket có SSL
 
 
 // export const API_URL = "https://3811-58-186-28-253.ngrok-free.app";

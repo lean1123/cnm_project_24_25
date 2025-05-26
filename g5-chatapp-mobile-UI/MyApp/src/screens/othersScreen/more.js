@@ -14,7 +14,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import Footer from "../../components/Footer";
 
 const SettingsScreen = () => {
-  const [language, setLanguage] = useState("en");
+  const [language, setLanguage] = useState("vi");
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   const languageData = {
@@ -28,21 +28,27 @@ const SettingsScreen = () => {
       privacy: "Privacy",
       security: "Security",
       storage: "Storage and Data",
+      preferencesSection: "Display Preferences",
+      appSettingsSection: "App Settings",
+      aboutSection: "About App"
     },
     vi: {
       language: "Ngôn ngữ",
       darkMode: "Chế độ tối",
       settings: "Cài đặt",
-      about: "Về chúng tôi",
+      about: "Về ứng dụng",
       help: "Trợ giúp",
       notifications: "Thông báo",
       privacy: "Quyền riêng tư",
       security: "Bảo mật",
-      storage: "Bộ nhớ và dữ liệu",
+      storage: "Lưu trữ và dữ liệu",
+      preferencesSection: "Tùy chọn hiển thị",
+      appSettingsSection: "Cài đặt ứng dụng",
+      aboutSection: "Về ứng dụng"
     },
   };
 
-  const getText = (key) => languageData[language][key];
+  const getText = (key) => languageData[language][key] || languageData['en'][key];
 
   const handleSettingPress = (setting) => {
     Alert.alert(`${setting} Pressed`);
@@ -53,7 +59,7 @@ const SettingsScreen = () => {
       <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={styles.headerTitle}>{getText("settings")}</Text>
           <TouchableOpacity style={styles.headerButton}>
               <Icon name="cog" size={24} color="#fff" />
           </TouchableOpacity>
@@ -61,7 +67,7 @@ const SettingsScreen = () => {
 
         <View style={styles.contentContainer}>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preferences</Text>
+            <Text style={styles.sectionTitle}>{getText("preferencesSection")}</Text>
             <View style={styles.menuContainer}>
               <TouchableSettingItem
                 icon="translate"
@@ -87,7 +93,7 @@ const SettingsScreen = () => {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>App Settings</Text>
+            <Text style={styles.sectionTitle}>{getText("appSettingsSection")}</Text>
             <View style={styles.menuContainer}>
               <TouchableSettingItem
                 icon="bell-outline"
@@ -113,7 +119,7 @@ const SettingsScreen = () => {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={styles.sectionTitle}>{getText("aboutSection")}</Text>
             <View style={styles.menuContainer}>
               <TouchableSettingItem
                 icon="information-outline"
@@ -174,6 +180,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#135CAF',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    marginTop: 10,
   },
   headerTitle: {
     fontSize: 24,

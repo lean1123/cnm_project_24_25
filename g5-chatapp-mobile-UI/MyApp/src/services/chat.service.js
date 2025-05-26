@@ -32,6 +32,10 @@ const chatService = {
     try {
       const formData = new FormData();
       formData.append("content", message.content || "");
+      // Add replyTo if it exists in message
+      if (message.replyTo) {
+        formData.append("replyTo", message.replyTo);
+      }
 
       // Nếu có file đính kèm thì thêm vào
       if (message.file) {
@@ -85,6 +89,10 @@ const chatService = {
       formData.append("content", messageData.content || "");
       formData.append("type", messageData.type || "TEXT");
       formData.append("sender", messageData.sender);
+      // Add replyTo if it exists in messageData
+      if (messageData.replyTo) {
+        formData.append("replyTo", messageData.replyTo);
+      }
 
       if (file) {
         const fileName =
@@ -607,41 +615,6 @@ const chatService = {
       }
     } catch (error) {
       console.error("Error sending typing indicator:", error);
-    }
-  },
-
-  sendMessageWithFile: async (conversationId, message, file = null) => {
-    try {
-      const formData = new FormData();
-
-      if (file) {
-        formData.append("files", file);
-      }
-
-      formData.append("content", message.content);
-      formData.append("type", message.type);
-      formData.append("sender", message.sender);
-
-      const response = await axiosInstance.post(
-        `/message/send-message/${conversationId}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error("Error sending message:", error);
-      return {
-        success: false,
-        error: error.response?.data || error.message,
-      };
     }
   },
 
