@@ -29,8 +29,103 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../../config/constants";
 import Footer from "../../components/Footer";
 import { useNotification } from "../../components/NotificationManager";
+import useChatStore from "../../store/useChatStore";
+import UserProfileModal from "../../components/UserProfileModal";
+import { Menu, Divider, Provider as PaperProvider } from 'react-native-paper';
 
 const { width } = Dimensions.get("window");
+
+// Language data for online/offline status
+const languageData = {
+  en: {
+    online: "Online",
+    offline: "Offline",
+    viewProfile: "View Profile",
+    unfriend: "Unfriend",
+    searchFriendsPlaceholder: "Search friends...",
+    searchUserPlaceholder: "Search by email or name",
+    friendsTab: "Friends",
+    requestsTab: "Requests",
+    sentTab: "Sent",
+    searchTab: "Search",
+    noFriendsFound: "No friends found",
+    noFriendsYet: "No friends yet",
+    noRequests: "No requests",
+    noSentRequests: "No sent requests",
+    searchForFriends: "Search for friends",
+    error: "Error",
+    success: "Success",
+    confirmUnfriendTitle: "Confirm Unfriend",
+    confirmUnfriendMessage: "Are you sure you want to unfriend {name}? This action will also delete your conversation.",
+    cancel: "Cancel",
+    unfriendButton: "Unfriend",
+    friendRequestSent: "Friend request sent successfully",
+    failedToSendRequest: "Failed to send friend request",
+    requestAccepted: "Friend request accepted",
+    failedToAcceptRequest: "Failed to accept friend request",
+    requestRejected: "Friend request rejected",
+    failedToRejectRequest: "Failed to reject friend request",
+    requestCancelled: "Sent request cancelled",
+    failedToCancelRequest: "Failed to cancel sent request",
+    unfriendedSuccessfully: "Unfriended successfully",
+    failedToUnfriend: "Failed to unfriend",
+    friendRemovedNotification: "A friend has been removed.",
+    userNotAuthenticated: "User not authenticated. Please log in again.",
+    validationError: "Validation Error",
+    enterNameToSearch: "Please enter email or name to search.",
+    cannotFindUser: "Cannot find user.",
+    unexpectedSearchError: "An unexpected error occurred during search.",
+    cannotShowUserInfo: "Cannot show user information.",
+    conversationErrorTitle: "Connection Issue",
+    conversationErrorMessage: "Could not find your conversation. Using basic information instead.",
+    continue: "Continue",
+    contactsTitle: "Contacts",
+  },
+  vi: {
+    online: "Đang hoạt động",
+    offline: "Ngoại tuyến",
+    viewProfile: "Xem trang cá nhân",
+    unfriend: "Hủy kết bạn",
+    searchFriendsPlaceholder: "Tìm bạn bè...",
+    searchUserPlaceholder: "Tìm bằng email hoặc tên",
+    friendsTab: "Bạn bè",
+    requestsTab: "Lời mời",
+    sentTab: "Đã gửi",
+    searchTab: "Tìm kiếm",
+    noFriendsFound: "Không tìm thấy bạn bè",
+    noFriendsYet: "Chưa có bạn bè nào",
+    noRequests: "Không có lời mời nào",
+    noSentRequests: "Chưa gửi lời mời nào",
+    searchForFriends: "Tìm kiếm bạn bè",
+    error: "Lỗi",
+    success: "Thành công",
+    confirmUnfriendTitle: "Xác nhận hủy kết bạn",
+    confirmUnfriendMessage: "Bạn có chắc chắn muốn hủy kết bạn với {name}? Hành động này cũng sẽ xóa cuộc trò chuyện của bạn.",
+    cancel: "Hủy bỏ",
+    unfriendButton: "Hủy kết bạn",
+    friendRequestSent: "Gửi lời mời kết bạn thành công",
+    failedToSendRequest: "Gửi lời mời kết bạn thất bại",
+    requestAccepted: "Chấp nhận lời mời thành công",
+    failedToAcceptRequest: "Chấp nhận lời mời thất bại",
+    requestRejected: "Từ chối lời mời thành công",
+    failedToRejectRequest: "Từ chối lời mời thất bại",
+    requestCancelled: "Hủy lời mời đã gửi thành công",
+    failedToCancelRequest: "Hủy lời mời thất bại",
+    unfriendedSuccessfully: "Đã hủy kết bạn thành công.",
+    failedToUnfriend: "Không thể hủy kết bạn",
+    friendRemovedNotification: "Một người bạn đã bị xóa.",
+    userNotAuthenticated: "Người dùng chưa xác thực. Vui lòng đăng nhập lại.",
+    validationError: "Lỗi xác thực",
+    enterNameToSearch: "Vui lòng nhập email hoặc tên để tìm kiếm.",
+    cannotFindUser: "Không thể tìm người dùng.",
+    unexpectedSearchError: "Đã có lỗi không mong muốn xảy ra trong quá trình tìm kiếm.",
+    cannotShowUserInfo: "Không thể hiển thị thông tin người dùng.",
+    conversationErrorTitle: "Sự cố kết nối",
+    conversationErrorMessage: "Không thể tìm thấy cuộc trò chuyện của bạn. Sử dụng thông tin cơ bản thay thế.",
+    continue: "Tiếp tục",
+    contactsTitle: "Danh bạ",
+  },
+};
 
 const FriendsListScreen = ({ navigation }) => {
   const notification = useNotification();
@@ -44,11 +139,30 @@ const FriendsListScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [socket, setSocket] = useState(null);
   const [outgoingRequests, setOutgoingRequests] = useState([]);
   const [isUnfriendModalVisible, setIsUnfriendModalVisible] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState(null);
+  const { clearMessages: clearConversationMessages } = useChatStore();
 
+  // State for UserProfileModal
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [selectedUserForProfile, setSelectedUserForProfile] = useState(null);
+
+  // State for individual friend item menu
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
+  const [selectedFriendForMenu, setSelectedFriendForMenu] = useState(null);
+
+  const [onlineUsers, setOnlineUsers] = useState(new Set()); // To track online user IDs from sockets
+  const [currentLanguage, setCurrentLanguage] = useState("vi"); // Default to Vietnamese
+
+  const getText = (key, params = {}) => {
+    let text = languageData[currentLanguage][key] || languageData['en'][key] || key;
+    Object.keys(params).forEach(paramKey => {
+      text = text.replace(`{${paramKey}}`, params[paramKey]);
+    });
+    return text;
+  };
 
   useEffect(() => {
     const initializeSocket = async () => {
@@ -57,7 +171,54 @@ const FriendsListScreen = ({ navigation }) => {
         const user = JSON.parse(userData);
         setCurrentUser(user);
         
-        // Setup socket event listeners using the new socket service
+        const currentSocket = getSocket();
+        if (currentSocket) {
+          currentSocket.off("contactDeleted");
+          currentSocket.on("contactDeleted", (data) => {
+            console.log("[FriendsListScreen] Received contactDeleted event:", data);
+            if (data && data.contactId) {
+              setFriends((prevFriends) => prevFriends.filter(f => f._id !== data.contactId && f.user?._id !== data.contactId && f.contact?._id !== data.contactId ));
+              setFilteredFriends((prevFriends) => prevFriends.filter(f => f._id !== data.contactId && f.user?._id !== data.contactId && f.contact?._id !== data.contactId));
+            }
+            if (data && data.conversationId) {
+              clearConversationMessages(data.conversationId);
+            }
+            notification.showInfo(getText("friendRemovedNotification"), getText("success"));
+          });
+
+          // Listen for user status changes
+          currentSocket.off('userStatusChanged'); // Remove previous listener if any
+          currentSocket.on('userStatusChanged', (data) => {
+            console.log("[FriendsListScreen] Received userStatusChanged event:", data);
+            if (data && data.userId) {
+              setFriends(prevFriends => 
+                prevFriends.map(friend => 
+                  friend.user?._id === data.userId 
+                    ? { ...friend, user: { ...friend.user, isOnline: data.isOnline } } 
+                    : friend
+                )
+              );
+              setFilteredFriends(prevFiltered => 
+                prevFiltered.map(friend => 
+                  friend.user?._id === data.userId 
+                    ? { ...friend, user: { ...friend.user, isOnline: data.isOnline } } 
+                    : friend
+                )
+              );
+              // Also update the onlineUsers set for quick checks if needed elsewhere
+              setOnlineUsers(prevOnlineUsers => {
+                const newOnlineUsers = new Set(prevOnlineUsers);
+                if (data.isOnline) {
+                  newOnlineUsers.add(data.userId);
+                } else {
+                  newOnlineUsers.delete(data.userId);
+                }
+                return newOnlineUsers;
+              });
+            }
+          });
+        }
+        
         console.log("[FriendsListScreen] Setting up socket event handlers");
         
         const chatEventHandlers = {
@@ -81,27 +242,27 @@ const FriendsListScreen = ({ navigation }) => {
             fetchFriends();
             fetchOutgoingRequests();
             notification.showFriendAccept(
-              "Your friend request was accepted",
-              "Friend Request Accepted"
+              getText("requestAccepted"),
+              getText("success")
             );
           },
           
           onCancelRequestContact: (contactId) => {
-            console.log("[FriendsListScreen] Friend request cancelled:", contactId);
+            console.log("[Socket] Friend request cancelled:", contactId);
             fetchPendingRequests();
             notification.showInfo(
-              "A friend request has been cancelled",
+              getText("requestCancelled"),
               "Notification"
             );
           },
           
           onRejectRequestContact: (data) => {
-            console.log("[FriendsListScreen] Friend request rejected:", data);
+            console.log("[Socket] Friend request rejected:", data);
             fetchOutgoingRequests();
             if (data.name) {
               notification.showWarning(
-                `${data.name} rejected your friend request`,
-                "Friend Request Rejected"
+                `${data.name} ${getText("requestRejected")}`,
+                getText("success")
               );
             }
           }
@@ -118,8 +279,12 @@ const FriendsListScreen = ({ navigation }) => {
     fetchOutgoingRequests();
 
     return () => {
-      // Unsubscribe from all events when component unmounts
-      unsubscribeFromChatEvents();
+      const currentSocket = getSocket();
+      if (currentSocket) {
+        currentSocket.off("contactDeleted");
+        currentSocket.off("userStatusChanged");
+      }
+      // unsubscribeFromChatEvents();
     };
   }, []);
 
@@ -132,21 +297,27 @@ const FriendsListScreen = ({ navigation }) => {
       setIsLoading(true);
       const response = await contactService.getMyContacts();
       const userDataStr = await AsyncStorage.getItem("userData");
-      const currentUser = JSON.parse(userDataStr);
+      const localCurrentUser = JSON.parse(userDataStr);
 
       console.log("fetchFriends response:", response);
 
       if (response.success) {
         const formattedFriends = (response.data || []).map((friend) => {
-          const isCurrentUser = friend.user._id === currentUser._id;
-          const friendData = isCurrentUser ? friend.contact : friend.user;
+          const isCurrentUserRelation = friend.user._id === localCurrentUser._id;
+          const friendData = isCurrentUserRelation ? friend.contact : friend.user;
+          
+          // Ensure friendData and its properties exist, and merge with initial online status
+          const populatedFriendData = friendData || {};
 
           return {
             ...friend,
-            user: friendData || {}, // user ở đây luôn là bạn bè
-            conversation: friend.conversation || friend._id, // Store conversation ID if available
-            avatar: friendData?.avatar || null,
-            name: friendData ? `${friendData.firstName} ${friendData.lastName}` : "Unknown User",
+            user: {
+              ...populatedFriendData,
+              // Assume backend provides friendData.isOnline or default to false
+              isOnline: populatedFriendData.isOnline || false 
+            },
+            avatar: populatedFriendData.avatar || null,
+            name: populatedFriendData ? `${populatedFriendData.firstName || ''} ${populatedFriendData.lastName || ''}`.trim() : "Unknown User",
             isGroup: false,
           };
         });
@@ -156,11 +327,11 @@ const FriendsListScreen = ({ navigation }) => {
         setFilteredFriends(formattedFriends);
       } else {
         console.error("fetchFriends failed:", response.message);
-        Alert.alert("Error", response.message || "Failed to fetch friends");
+        Alert.alert(getText("error"), response.message || getText("failedToLoadFriends"));
       }
     } catch (error) {
       console.error("Error fetching friends:", error);
-      Alert.alert("Error", "Failed to fetch friends");
+      Alert.alert(getText("error"), getText("failedToLoadFriends"));
     } finally {
       setIsLoading(false);
     }
@@ -207,7 +378,7 @@ const FriendsListScreen = ({ navigation }) => {
       );
     }
 
-    Alert.alert("Notification", "A friend request has been cancelled");
+    Alert.alert(getText("success"), getText("requestCancelled"));
 
     fetchPendingRequests();
   };
@@ -242,8 +413,13 @@ const FriendsListScreen = ({ navigation }) => {
   );
 
   const handleSearch = async () => {
+    if (!currentUser) {
+      notification.showError(getText("userNotAuthenticated"), getText("validationError"));
+      setIsSearching(false);
+      return;
+    }
     if (!searchText.trim()) {
-      notification.showWarning("Please enter an email or name to search", "Error");
+      notification.showWarning(getText("enterNameToSearch"), getText("error"));
       return;
     }
 
@@ -253,10 +429,11 @@ const FriendsListScreen = ({ navigation }) => {
       if (response.ok) {
         setSearchResults(response.data || []);
       } else {
-        notification.showError(response.message || "Failed to search users", "Error");
+        notification.showError(response.message || getText("cannotFindUser"), getText("error"));
       }
     } catch (error) {
       console.error("Search error:", error);
+      notification.showError(error.message || getText("unexpectedSearchError"), getText("error")); // More generic error
     } finally {
       setIsSearching(false);
     }
@@ -275,14 +452,14 @@ const FriendsListScreen = ({ navigation }) => {
           emitSendRequestContact(userId, contact);
         }
         
-        notification.showSuccess("Friend request sent successfully", "Success");
+        notification.showSuccess(getText("friendRequestSent"), getText("success"));
         fetchOutgoingRequests();
       } else {
-        notification.showError(response.message || "Failed to send friend request", "Error");
+        notification.showError(response.message || getText("failedToSendRequest"), getText("error"));
       }
     } catch (error) {
       console.error("Error adding friend:", error);
-      notification.showError(error.message || "Failed to send friend request", "Error");
+      notification.showError(error.message || getText("failedToSendRequest"), getText("error"));
     } finally {
       setIsLoading(false);
     }
@@ -299,15 +476,15 @@ const FriendsListScreen = ({ navigation }) => {
         
         emitAcceptRequestContact(contact, conversationId);
         
-        notification.showSuccess("Friend request accepted", "Success");
+        notification.showSuccess(getText("requestAccepted"), getText("success"));
         fetchFriends();
         fetchPendingRequests();
       } else {
-        notification.showError(response.message || "Failed to accept friend request", "Error");
+        notification.showError(response.message || getText("failedToAcceptRequest"), getText("error"));
       }
     } catch (error) {
       console.error("Error accepting friend request:", error);
-      notification.showError(error.message || "Failed to accept friend request", "Error");
+      notification.showError(error.message || getText("failedToAcceptRequest"), getText("error"));
     }
   };
 
@@ -316,15 +493,15 @@ const FriendsListScreen = ({ navigation }) => {
       setSelectedContactId(contactId);
       
       Alert.alert(
-        "Reject Friend Request",
-        "Are you sure you want to reject this friend request?",
+        getText("requestRejected"),
+        getText("confirmUnfriendMessage", { name: pendingRequests.find(req => req._id === contactId)?.user?.firstName || "this user" }),
         [
           {
-            text: "Cancel",
+            text: getText("cancel"),
             style: "cancel",
           },
           {
-            text: "Reject",
+            text: getText("requestRejected"),
             style: "destructive",
             onPress: async () => {
               try {
@@ -340,14 +517,14 @@ const FriendsListScreen = ({ navigation }) => {
                     emitRejectRequestContact(receiverId, name, contactId);
                   }
                   
-                  notification.showSuccess("Friend request rejected", "Success");
+                  notification.showSuccess(getText("requestRejected"), getText("success"));
                   fetchPendingRequests();
                 } else {
-                  notification.showError(response.message || "Failed to reject friend request", "Error");
+                  notification.showError(response.message || getText("failedToRejectRequest"), getText("error"));
                 }
               } catch (error) {
                 console.error("Error rejecting friend request:", error);
-                notification.showError(error.message || "Failed to reject friend request", "Error");
+                notification.showError(error.message || getText("failedToRejectRequest"), getText("error"));
               }
             },
           },
@@ -355,7 +532,7 @@ const FriendsListScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error("Error rejecting friend request:", error);
-      notification.showError(error.message || "Failed to reject friend request", "Error");
+      notification.showError(error.message || getText("failedToRejectRequest"), getText("error"));
     }
   };
 
@@ -364,15 +541,15 @@ const FriendsListScreen = ({ navigation }) => {
       setSelectedContactId(contactId);
       
       Alert.alert(
-        "Cancel Friend Request",
-        "Are you sure you want to cancel this friend request?",
+        getText("requestCancelled"),
+        "Bạn có chắc muốn hủy lời mời kết bạn đã gửi?",
         [
           {
-            text: "No",
+            text: "Không",
             style: "cancel",
           },
           {
-            text: "Yes",
+            text: "Có",
             style: "destructive",
             onPress: async () => {
               try {
@@ -387,14 +564,14 @@ const FriendsListScreen = ({ navigation }) => {
                     emitCancelRequestContact(receiverId, contactId);
                   }
                   
-                  notification.showSuccess("Friend request cancelled", "Success");
+                  notification.showSuccess(getText("requestCancelled"), getText("success"));
                   fetchOutgoingRequests();
                 } else {
-                  notification.showError(response.message || "Failed to cancel friend request", "Error");
+                  notification.showError(response.message || getText("failedToCancelRequest"), getText("error"));
                 }
               } catch (error) {
                 console.error("Error cancelling friend request:", error);
-                notification.showError(error.message || "Failed to cancel friend request", "Error");
+                notification.showError(error.message || getText("failedToCancelRequest"), getText("error"));
               }
             },
           },
@@ -402,45 +579,84 @@ const FriendsListScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error("Error cancelling friend request:", error);
-      notification.showError(error.message || "Failed to cancel friend request", "Error");
+      notification.showError(error.message || getText("failedToCancelRequest"), getText("error"));
     }
   };
 
-  const handleUnfriend = async (contactId) => {
+  const handleUnfriend = async (contactIdToUnfriend, contactName) => {
     try {
       Alert.alert(
-        "Confirm Unfriend",
-        "Are you sure you want to remove this friend?",
-        [
+        getText("confirmUnfriendTitle"),
+        getText("confirmUnfriendMessage", { name: contactName }),        [
           {
-            text: "Cancel",
+            text: getText("cancel"),
             style: "cancel",
           },
           {
-            text: "Unfriend",
+            text: getText("unfriendButton"),
             style: "destructive",
             onPress: async () => {
-              const response = await contactService.deleteContact(contactId);
-              if (response.success) {
-                fetchFriends();
-                if (socket) {
-                  socket.emit("unfriend", {
-                    contactId,
-                    userId: currentUser._id,
-                  });
+              try {
+                const response = await contactService.deleteContact(contactIdToUnfriend);
+                if (response.success) {
+                  notification.showSuccess(response.message || getText("unfriendedSuccessfully"));
+                  // UI update will be handled by the 'contactDeleted' socket event listener
+                } else {
+                  notification.showError(response.message || getText("failedToUnfriend"));
                 }
-                notification.showSuccess("Friend removed successfully", "Success");
-              } else {
-                notification.showError("Failed to remove friend", "Error");
+              } catch (innerError) {
+                console.error("Error during unfriend confirmation:", innerError);
+                notification.showError(innerError.message || getText("failedToUnfriend"));
               }
             },
           },
         ]
       );
     } catch (error) {
-      console.error("Error removing friend:", error);
-      notification.showError("Failed to remove friend", "Error");
+      console.error("Error initiating unfriend:", error);
+      notification.showError(getText("failedToUnfriend"));
     }
+  };
+
+  const openMenu = (event, friendItem) => {
+    const { nativeEvent } = event;
+    setMenuAnchor({ x: nativeEvent.pageX, y: nativeEvent.pageY });
+    setSelectedFriendForMenu(friendItem); // Store the whole friend item
+    setMenuVisible(true);
+  };
+
+  const closeMenu = () => {
+    setMenuVisible(false);
+    setSelectedFriendForMenu(null);
+  };
+
+  const handleViewProfile = () => {
+    if (selectedFriendForMenu) {
+      // The actual user object with full details is expected to be in selectedFriendForMenu.user
+      const userToView = selectedFriendForMenu.user;
+      console.log("[FriendsListScreen] Attempting to view profile for:", JSON.stringify(userToView, null, 2));
+      
+      if (userToView && userToView._id) { // Ensure userToView is valid and has an ID
+        setSelectedUserForProfile(userToView);
+        setProfileModalVisible(true);
+        console.log("[FriendsListScreen] setProfileModalVisible set to true. selectedUserForProfile:", JSON.stringify(userToView, null, 2));
+      } else {
+        console.warn("[FriendsListScreen] No valid user data found in selectedFriendForMenu.user to display profile.");
+        notification.showError(getText("cannotShowUserInfo"), getText("error"));
+      }
+    } else {
+      console.warn("[FriendsListScreen] handleViewProfile called without selectedFriendForMenu.");
+    }
+    closeMenu();
+  };
+
+  const handleUnfriendFromMenu = () => {
+    if (selectedFriendForMenu) {
+      const userToUnfriend = selectedFriendForMenu.user || selectedFriendForMenu.contact || {};
+      const contactName = `${userToUnfriend.firstName || ''} ${userToUnfriend.lastName || ''}`.trim() || "this user";
+      handleUnfriend(selectedFriendForMenu._id, contactName); // Pass contact ID and name
+    }
+    closeMenu();
   };
 
   const renderFriendItem = ({ item }) => {
@@ -448,7 +664,7 @@ const FriendsListScreen = ({ navigation }) => {
     const user = item.user || item.contact || {}; // Handle both user and contact
     return (
       <TouchableOpacity
-        style={styles.friendItem}
+        style={styles.friendItemContainer}
         onPress={async () => {
           try {
             setIsLoading(true);
@@ -542,24 +758,27 @@ const FriendsListScreen = ({ navigation }) => {
             }
             style={styles.avatar}
           />
-          {user.isOnline && <View style={styles.onlineIndicator} />}
+          {/* Display online indicator based on user.isOnline */}
+          <View 
+            style={[
+              styles.onlineIndicatorBadge, 
+              user.isOnline ? styles.onlineBadge : styles.offlineBadge
+            ]} 
+          />
         </View>
         <View style={styles.friendInfo}>
-          <View style={styles.nameContainer}>
+          <View style={styles.nameAndMenuContainer}>
             <Text style={styles.name}>
               {user.firstName
-                ? `${user.firstName} ${user.lastName || ""}`
+                ? `${user.firstName} ${user.lastName || ""}`.trim()
                 : "Unknown User"}
             </Text>
-            <TouchableOpacity
-              style={styles.moreButton}
-              onPress={() => handleUnfriend(item._id)}
-            >
-              <Icon name="dots-horizontal" size={20} color="#666" />
+            <TouchableOpacity onPress={(event) => openMenu(event, item)} style={styles.moreButton}>
+                 <Icon name="dots-horizontal" size={24} color="#555" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.lastSeen}>
-            {user.isOnline ? "Active now" : "Offline"}
+          <Text style={[styles.statusText, user.isOnline ? styles.onlineText : styles.offlineText]}>
+            {user.isOnline ? getText("online") : getText("offline")}
           </Text>
         </View>
       </TouchableOpacity>
@@ -734,11 +953,11 @@ const FriendsListScreen = ({ navigation }) => {
                 console.error("Error getting conversation:", error);
                 
                 Alert.alert(
-                  "Connection Issue",
-                  "Could not find your conversation. Using basic information instead.",
+                  getText("conversationErrorTitle"),
+                  getText("conversationErrorMessage"),
                   [
                     {
-                      text: "Continue",
+                      text: getText("continue"),
                       onPress: () => {
                         // Fallback with basic data
                         const conversationData = {
@@ -782,189 +1001,207 @@ const FriendsListScreen = ({ navigation }) => {
   
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
-      <View style={styles.mainContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Contacts</Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
+    <PaperProvider>
+      <SafeAreaView style={styles.container}>
+        <StatusBar backgroundColor="#135CAF" barStyle="light-content" />
+        <View style={styles.mainContainer}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>{getText("contactsTitle")}</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => {
+                  if (activeTab === "search") {
+                    handleSearch();
+                  } else {
+                    setActiveTab("search");
+                  }
+                }}
+              >
+                <Icon name="account-plus" size={24} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => navigation.navigate("AddGroupScreen")}
+              >
+                <Icon name="account-group" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <Icon
+              name="magnify"
+              size={20}
+              color="#666"
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={
+                activeTab === "friends"
+                  ? getText("searchFriendsPlaceholder")
+                  : getText("searchUserPlaceholder")
+              }
+              value={activeTab === "friends" ? friendSearchText : searchText}
+              onChangeText={
+                activeTab === "friends" ? setFriendSearchText : setSearchText
+              }
+              onSubmitEditing={activeTab === "search" ? handleSearch : null}
+              placeholderTextColor="#999"
+            />
+            {activeTab === "search" && (
+              <TouchableOpacity
+                style={styles.searchButton}
+                onPress={handleSearch}
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.searchButtonText}>Tìm kiếm</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.tabContainer}>
             <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => {
-                if (activeTab === "search") {
-                  handleSearch();
-                } else {
-                  setActiveTab("search");
-                }
-              }}
+              style={[styles.tab, activeTab === "friends" && styles.activeTab]}
+              onPress={() => setActiveTab("friends")}
             >
-              <Icon name="account-plus" size={24} color="#fff" />
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "friends" && styles.activeTabText,
+                ]}
+              >
+                {getText("friendsTab")}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => navigation.navigate("AddGroupScreen")}
+              style={[styles.tab, activeTab === "requests" && styles.activeTab]}
+              onPress={() => setActiveTab("requests")}
             >
-              <Icon name="account-group" size={24} color="#fff" />
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "requests" && styles.activeTabText,
+                ]}
+              >
+                {getText("requestsTab")} {pendingRequests.length > 0 ? `(${pendingRequests.length})` : ""}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "outgoing" && styles.activeTab]}
+              onPress={() => setActiveTab("outgoing")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "outgoing" && styles.activeTabText,
+                ]}
+              >
+                {getText("sentTab")} {outgoingRequests.length > 0 ? `(${outgoingRequests.length})` : ""}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "search" && styles.activeTab]}
+              onPress={() => setActiveTab("search")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "search" && styles.activeTabText,
+                ]}
+              >
+                {getText("searchTab")} 
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        <View style={styles.searchContainer}>
-          <Icon
-            name="magnify"
-            size={20}
-            color="#666"
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={
-              activeTab === "friends"
-                ? "Search friends..."
-                : "Search by email or name"
-            }
-            value={activeTab === "friends" ? friendSearchText : searchText}
-            onChangeText={
-              activeTab === "friends" ? setFriendSearchText : setSearchText
-            }
-            onSubmitEditing={activeTab === "search" ? handleSearch : null}
-            placeholderTextColor="#999"
-          />
-          {activeTab === "search" && (
-            <TouchableOpacity
-              style={styles.searchButton}
-              onPress={handleSearch}
-              disabled={isSearching}
-            >
-              {isSearching ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.searchButtonText}>Search</Text>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#135CAF" />
+            </View>
+          ) : (
+            <FlatList
+              data={
+                activeTab === "friends"
+                  ? filteredFriends
+                  : activeTab === "requests"
+                  ? pendingRequests
+                  : activeTab === "outgoing"
+                  ? outgoingRequests
+                  : searchResults
+              }
+              renderItem={
+                activeTab === "friends"
+                  ? renderFriendItem
+                  : activeTab === "requests"
+                  ? renderRequestItem
+                  : activeTab === "outgoing"
+                  ? renderOutgoingRequestItem
+                  : renderSearchItem
+              }
+              keyExtractor={(item) => item._id}
+              contentContainerStyle={styles.listContent}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyContainer}>
+                  <Icon
+                    name={
+                      activeTab === "friends"
+                        ? "account-group"
+                        : activeTab === "requests"
+                        ? "account-clock"
+                        : activeTab === "outgoing"
+                        ? "account-arrow-right"
+                        : "account-search"
+                    }
+                    size={50}
+                    color="#ccc"
+                  />
+                  <Text style={styles.emptyText}>
+                    {activeTab === "friends"
+                      ? friendSearchText
+                        ? getText("noFriendsFound")
+                        : getText("noFriendsYet")
+                      : activeTab === "requests"
+                      ? getText("noRequests")
+                      : activeTab === "outgoing"
+                      ? getText("noSentRequests")
+                      : searchText
+                      ? getText("cannotFindUser")
+                      : getText("searchForFriends")}
+                  </Text>
+                </View>
               )}
-            </TouchableOpacity>
+            />
           )}
         </View>
 
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "friends" && styles.activeTab]}
-            onPress={() => setActiveTab("friends")}
+        {selectedFriendForMenu && (
+          <Menu
+            visible={menuVisible}
+            onDismiss={closeMenu}
+            anchor={menuAnchor}
           >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "friends" && styles.activeTabText,
-              ]}
-            >
-              Friends
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "requests" && styles.activeTab]}
-            onPress={() => setActiveTab("requests")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "requests" && styles.activeTabText,
-              ]}
-            >
-              Requests{" "}
-              {pendingRequests.length > 0 ? `(${pendingRequests.length})` : ""}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "outgoing" && styles.activeTab]}
-            onPress={() => setActiveTab("outgoing")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "outgoing" && styles.activeTabText,
-              ]}
-            >
-              Sent{" "}
-              {outgoingRequests.length > 0
-                ? `(${outgoingRequests.length})`
-                : ""}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "search" && styles.activeTab]}
-            onPress={() => setActiveTab("search")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "search" && styles.activeTabText,
-              ]}
-            >
-              Find
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <Menu.Item onPress={handleViewProfile} title={getText("viewProfile")} icon="account-details" />
+            <Divider />
+            <Menu.Item onPress={handleUnfriendFromMenu} title={getText("unfriend")} titleStyle={{ color: 'red' }} icon="account-remove" />
+          </Menu>
+        )}
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#135CAF" />
-          </View>
-        ) : (
-          <FlatList
-            data={
-              activeTab === "friends"
-                ? filteredFriends
-                : activeTab === "requests"
-                ? pendingRequests
-                : activeTab === "outgoing"
-                ? outgoingRequests
-                : searchResults
-            }
-            renderItem={
-              activeTab === "friends"
-                ? renderFriendItem
-                : activeTab === "requests"
-                ? renderRequestItem
-                : activeTab === "outgoing"
-                ? renderOutgoingRequestItem
-                : renderSearchItem
-            }
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={() => (
-              <View style={styles.emptyContainer}>
-                <Icon
-                  name={
-                    activeTab === "friends"
-                      ? "account-group"
-                      : activeTab === "requests"
-                      ? "account-clock"
-                      : activeTab === "outgoing"
-                      ? "account-arrow-right"
-                      : "account-search"
-                  }
-                  size={50}
-                  color="#ccc"
-                />
-                <Text style={styles.emptyText}>
-                  {activeTab === "friends"
-                    ? friendSearchText
-                      ? "No friends found"
-                      : "No friends yet"
-                    : activeTab === "requests"
-                    ? "No pending requests"
-                    : activeTab === "outgoing"
-                    ? "No outgoing requests"
-                    : searchText
-                    ? "No users found"
-                    : "Search for friends"}
-                </Text>
-              </View>
-            )}
+        {selectedUserForProfile && (
+          <UserProfileModal 
+            visible={profileModalVisible} 
+            onClose={() => setProfileModalVisible(false)} 
+            user={selectedUserForProfile} 
           />
         )}
-      </View>
+      </SafeAreaView>
       <Footer />
-    </SafeAreaView>
+    </PaperProvider>
   );
 };
 
@@ -986,6 +1223,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#135CAF",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+    marginTop: 10,
   },
   headerTitle: {
     fontSize: 24,
@@ -1049,56 +1287,78 @@ const styles = StyleSheet.create({
     color: "#135CAF",
     fontWeight: "600",
   },
-  friendItem: {
+  friendItemContainer: {
     flexDirection: "row",
     padding: 12,
     marginHorizontal: 16,
-    marginVertical: 4,
-    backgroundColor: "#fff",
+    marginVertical: 6,
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.20,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
   avatarContainer: {
     position: "relative",
+    marginRight: 12,
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#E9E9E9",
   },
-  onlineIndicator: {
+  onlineIndicatorBadge: {
     position: "absolute",
     bottom: 2,
     right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#4CAF50",
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: "#FFFFFF",
+  },
+  onlineBadge: {
+    backgroundColor: "#4CAF50",
+  },
+  offlineBadge: {
+    backgroundColor: "#BDBDBD",
   },
   friendInfo: {
     flex: 1,
-    marginLeft: 12,
+    justifyContent: 'center',
   },
-  nameContainer: {
+  nameAndMenuContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
     marginBottom: 4,
   },
-  lastSeen: {
+  name: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#212121",
+  },
+  statusText: {
     fontSize: 13,
-    color: "#666",
+    color: "#757575",
+  },
+  onlineText: {
+    color: "#4CAF50",
+    fontWeight: '500',
+  },
+  offlineText: {
+    color: "#757575",
   },
   moreButton: {
-    padding: 4,
+    padding: 8,
+    marginLeft: 8,
   },
   requestItem: {
     flexDirection: "row",
@@ -1208,6 +1468,7 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 1,
     paddingVertical: 8,
+    paddingBottom: 30,
   },
 });
 

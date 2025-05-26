@@ -149,5 +149,44 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
+  },
+  repliedMessageContainer: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 5,
+  },
+  repliedSenderName: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    color: '#333',
+  },
+  repliedContentPreview: {
+    fontSize: 12,
+    color: '#555',
+  },
+  replyPreviewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#f0f0f0',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  replyPreviewTextContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  replyPreviewTitle: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    color: '#333',
+  },
+  replyPreviewContent: {
+    fontSize: 12,
+    color: '#555',
+  },
+  cancelReplyButton: {
+    padding: 4,
   }
 }); 

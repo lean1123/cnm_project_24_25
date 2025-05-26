@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { styles } from '../styles/ChatDetailStyles';
 import { MessageType } from '../constants';
 
-const ChatMessage = ({ message, userId, onOpenDocument }) => {
+const ChatMessage = ({ message, userId, onOpenDocument, onReply }) => {
   if (!message) return null;
 
   const getSenderId = (sender) => {
@@ -41,6 +41,30 @@ const ChatMessage = ({ message, userId, onOpenDocument }) => {
   const senderId = getSenderId(message.sender);
   const isMyMessage = senderId && userId && String(senderId) === String(userId);
   const isError = message.isError;
+
+  const renderRepliedMessage = () => {
+    if (!message.replyTo) return null;
+
+    const repliedSenderName = getSenderName(message.replyTo.sender);
+    let repliedContentPreview = message.replyTo.content;
+    if (repliedContentPreview && repliedContentPreview.length > 40) {
+      repliedContentPreview = `${repliedContentPreview.slice(0, 40)}...`;
+    }
+
+    let repliedFileTypePreview = null;
+    if (message.replyTo.type === MessageType.IMAGE) {
+      repliedFileTypePreview = "Hình ảnh";
+    }
+    // Add other file types as needed (VIDEO, FILE, AUDIO)
+
+    return (
+      <View style={styles.repliedMessageContainer}>
+        <Text style={styles.repliedSenderName}>{repliedSenderName}</Text>
+        {repliedContentPreview && <Text style={styles.repliedContentPreview}>{repliedContentPreview}</Text>}
+        {repliedFileTypePreview && <Text style={styles.repliedContentPreview}>{repliedFileTypePreview}</Text>}
+      </View>
+    );
+  };
 
   const messageContent = () => {
     switch (message.type) {
@@ -105,29 +129,32 @@ const ChatMessage = ({ message, userId, onOpenDocument }) => {
   };
 
   return (
-    <View style={[
-      styles.messageContainer,
-      isMyMessage ? styles.userMessage : styles.friendMessage,
-      isError && styles.errorMessage
-    ]}>
-      {!isMyMessage && message.sender && (
-        <Text style={styles.senderName}>
-          {getSenderName(message.sender)}
+    <TouchableOpacity onLongPress={() => onReply && onReply(message)} delayLongPress={200}>
+      <View style={[
+        styles.messageContainer,
+        isMyMessage ? styles.userMessage : styles.friendMessage,
+        isError && styles.errorMessage
+      ]}>
+        {renderRepliedMessage()}
+        {!isMyMessage && message.sender && (
+          <Text style={styles.senderName}>
+            {getSenderName(message.sender)}
+          </Text>
+        )}
+        {messageContent()}
+        <Text style={[styles.messageTime, !isMyMessage && { color: 'gray' }]}>
+          {new Date(message.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
         </Text>
-      )}
-      {messageContent()}
-      <Text style={[styles.messageTime, !isMyMessage && { color: 'gray' }]}>
-        {new Date(message.createdAt).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </Text>
-      {isError && (
-        <View style={styles.errorIndicator}>
-          <Ionicons name="alert-circle" size={16} color="red" />
-        </View>
-      )}
-    </View>
+        {isError && (
+          <View style={styles.errorIndicator}>
+            <Ionicons name="alert-circle" size={16} color="red" />
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 };
 

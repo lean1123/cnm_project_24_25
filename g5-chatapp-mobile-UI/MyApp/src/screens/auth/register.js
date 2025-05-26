@@ -34,6 +34,7 @@ const SignUpScreen = ({ navigation }) => {
   const [modalMessage, setModalMessage] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
   const [dobPickerVisible, setDobPickerVisible] = useState(false);
+  const [language, setLanguage] = useState("vi"); // Default to Vietnamese
   
   // Add validation error states for each field
   const [errors, setErrors] = useState({
@@ -46,6 +47,55 @@ const SignUpScreen = ({ navigation }) => {
 
   const toggleSecure = () => setSecureTextEntry(!secureTextEntry);
 
+  const languageData = {
+    en: {
+      createAccount: "Create Account",
+      fillFormContinue: "Please fill in the form to continue",
+      firstNameLabel: "First Name",
+      lastNameLabel: "Last Name",
+      emailLabel: "Email",
+      passwordLabel: "Password",
+      passwordHint: "Password must be at least 6 characters long and must not contain spaces",
+      dobLabel: "Date of Birth",
+      createAccountButton: "Create Account",
+      alreadyAccount: "Already have an account?",
+      signInButton: "Sign In",
+      nameValidationError: "name can only contain letters and hyphens",
+      emailValidationError: "Please enter a valid email",
+      dobValidationError: "You must be at least 13 years old",
+      otpSentSuccess: "OTP has been sent to your email. Please verify.",
+      registrationFailedError: "Registration failed. Please try again.",
+      genericError: "An error occurred during registration. Please try again."
+    },
+    vi: {
+      createAccount: "Tạo tài khoản",
+      fillFormContinue: "Vui lòng điền vào biểu mẫu để tiếp tục",
+      firstNameLabel: "Tên",
+      lastNameLabel: "Họ",
+      emailLabel: "Email",
+      passwordLabel: "Mật khẩu",
+      passwordHint: "Mật khẩu phải dài ít nhất 6 ký tự và không được chứa dấu cách",
+      dobLabel: "Ngày sinh",
+      createAccountButton: "Tạo tài khoản",
+      alreadyAccount: "Đã có tài khoản?",
+      signInButton: "Đăng nhập",
+      nameValidationError: "chỉ có thể chứa các chữ cái và dấu gạch ngang",
+      emailValidationError: "Vui lòng nhập một email hợp lệ",
+      dobValidationError: "Bạn phải đủ 13 tuổi trở lên",
+      otpSentSuccess: "Mã OTP đã được gửi đến email của bạn. Vui lòng xác minh.",
+      registrationFailedError: "Đăng ký thất bại. Vui lòng thử lại.",
+      genericError: "Đã xảy ra lỗi trong quá trình đăng ký. Vui lòng thử lại."
+    },
+  };
+
+  const getText = (key, fieldName = "") => {
+    let text = languageData[language][key] || languageData['en'][key];
+    if (fieldName) {
+        text = fieldName + " " + text;
+    }
+    return text;
+  }
+
   // Handle individual field validation
   const validateField = (field, value) => {
     let error = "";
@@ -53,12 +103,12 @@ const SignUpScreen = ({ navigation }) => {
       case "firstName":
       case "lastName":
         if (value.trim() !== "" && !isValidName(value)) {
-          error = `${field === "firstName" ? "First" : "Last"} name can only contain letters and hyphens`;
+          error = getText("nameValidationError", field === "firstName" ? getText("firstNameLabel") : getText("lastNameLabel"));
         }
         break;
       case "email":
         if (value.trim() !== "" && !isValidEmail(value)) {
-          error = "Please enter a valid email";
+          error = getText("emailValidationError");
         }
         break;
       case "password":
@@ -69,7 +119,7 @@ const SignUpScreen = ({ navigation }) => {
         break;
       case "dob":
         if (value && !isValidDob(value)) {
-          error = "You must be at least 13 years old";
+          error = getText("dobValidationError");
         }
         break;
       default:
@@ -110,7 +160,7 @@ const SignUpScreen = ({ navigation }) => {
         await AsyncStorage.setItem("tempUserId", result.userId);
         // console.log("Stored tempUserId:", result.userId);
 
-        setModalMessage("OTP has been sent to your email. Please verify.");
+        setModalMessage(getText("otpSentSuccess"));
         setModalVisible(true);
         setTimeout(() => {
           navigation.navigate("VerifyOTPScreen", {
@@ -119,14 +169,14 @@ const SignUpScreen = ({ navigation }) => {
         }, 1500);
       } else {
         setModalMessage(
-          result.message || "Registration failed. Please try again."
+          result.message || getText("registrationFailedError")
         );
         setModalVisible(true);
       }
     } catch (error) {
       console.error("Sign up error:", error);
       setModalMessage(
-        "An error occurred during registration. Please try again."
+        getText("genericError")
       );
       setModalVisible(true);
     }
@@ -149,8 +199,8 @@ const SignUpScreen = ({ navigation }) => {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.welcomeText}>Create Account</Text>
-            <Text style={styles.subText}>Please fill in the form to continue</Text>
+            <Text style={styles.welcomeText}>{getText("createAccount")}</Text>
+            <Text style={styles.subText}>{getText("fillFormContinue")}</Text>
           </View>
 
           <View style={styles.formContainer}>
@@ -158,7 +208,7 @@ const SignUpScreen = ({ navigation }) => {
             <View style={[styles.inputWrapper, styles.halfWidth]}>
                 <InputField
                   icon="account"
-                  placeholder="First Name"
+                  placeholder={getText("firstNameLabel")}
                   value={form.firstName}
                   onChangeText={(text) => updateField("firstName", text)}
                   error={errors.firstName}
@@ -171,7 +221,7 @@ const SignUpScreen = ({ navigation }) => {
               <View style={[styles.inputWrapper, styles.halfWidth]}>
                 <InputField
                   icon="account"
-                  placeholder="Last Name"
+                  placeholder={getText("lastNameLabel")}
                   value={form.lastName}
                   onChangeText={(text) => updateField("lastName", text)}
                   error={errors.lastName}
@@ -183,7 +233,7 @@ const SignUpScreen = ({ navigation }) => {
 
             <InputField
               icon="email"
-              placeholder="Email"
+              placeholder={getText("emailLabel")}
               value={form.email}
               onChangeText={(text) => updateField("email", text)}
               keyboardType="email-address"
@@ -195,7 +245,7 @@ const SignUpScreen = ({ navigation }) => {
             ) : null}
 
             <PasswordField
-              placeholder="Password"
+              placeholder={getText("passwordLabel")}
               value={form.password}
               onChangeText={(text) => updateField("password", text)}
               error={errors.password}
@@ -204,7 +254,7 @@ const SignUpScreen = ({ navigation }) => {
               <Text style={styles.errorText}>{errors.password}</Text>
             ) : null}
             <Text style={styles.passwordHint}>
-              Password must be at least 6 characters long and must not contain spaces
+              {getText("passwordHint")}
             </Text>
 
             <View style={styles.genderContainer}>
@@ -215,7 +265,7 @@ const SignUpScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.dobContainer}>
-              <Text style={styles.sectionTitle}>Date of Birth</Text>
+              <Text style={styles.sectionTitle}>{getText("dobLabel")}</Text>
               <DateInputField
                 value={form.dob}
                 onPress={() => setDobPickerVisible(true)}
@@ -260,16 +310,16 @@ const SignUpScreen = ({ navigation }) => {
               onPress={handleSignUp}
               activeOpacity={0.8}
             >
-              <Text style={styles.registerButtonText}>Create Account</Text>
+              <Text style={styles.registerButtonText}>{getText("createAccountButton")}</Text>
             </TouchableOpacity>
 
             <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>Already have an account?</Text>
+              <Text style={styles.loginText}>{getText("alreadyAccount")}</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate("SignInScreen")}
                 style={styles.loginButton}
               >
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text style={styles.loginButtonText}>{getText("signInButton")}</Text>
               </TouchableOpacity>
             </View>
           </View>

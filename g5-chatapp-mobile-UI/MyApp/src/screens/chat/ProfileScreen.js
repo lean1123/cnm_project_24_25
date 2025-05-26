@@ -56,7 +56,7 @@ const ProfileScreen = ({ navigation }) => {
       console.log("userId:", userId);
       console.log("Token:", token);
       if (!token) {
-        showNotification("Please login again");
+        showNotification("Vui lòng đăng nhập lại");
         navigation.navigate("SignInScreen");
         return;
       }
@@ -81,7 +81,7 @@ const ProfileScreen = ({ navigation }) => {
           firstName: userData.firstName || "",
           lastName: userData.lastName || "",
           email: userData.email || "",
-          gender: userData.gender || "Not set",
+          gender: userData.gender || "Chưa thiết lập",
           role: Array.isArray(userData.role)
             ? userData.role
             : [userData.role].filter(Boolean),
@@ -92,7 +92,7 @@ const ProfileScreen = ({ navigation }) => {
     } catch (error) {
       console.error("Profile fetch error:", error);
       showNotification(
-        error.message || "An error occurred while loading profile"
+        error.message || "Đã xảy ra lỗi khi tải thông tin cá nhân"
       );
     } finally {
       setLoading(false);
@@ -120,14 +120,14 @@ const ProfileScreen = ({ navigation }) => {
       if (result.ok) {
         setUser(result.data);
         setEditModalVisible(false);
-        showNotification("Profile updated successfully");
+        showNotification("Cập nhật thông tin thành công");
         fetchUserProfile();
       } else {
-        showNotification(result.message || "Failed to update profile");
+        showNotification(result.message || "Cập nhật thông tin thất bại");
       }
     } catch (error) {
       console.error("Update profile error:", error);
-      showNotification("An error occurred while updating profile");
+      showNotification("Đã xảy ra lỗi khi cập nhật thông tin");
     }
   };
 
@@ -142,19 +142,19 @@ const ProfileScreen = ({ navigation }) => {
   const validatePassword = (password) => {
     const minLength = 6;
     if (password.length < minLength) {
-      return "Password must be at least 6 characters long";
+      return "Mật khẩu phải có ít nhất 6 ký tự";
     }
     return null;
   };
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      showNotification("Please fill in all fields");
+      showNotification("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showNotification("New passwords do not match");
+      showNotification("Mật khẩu mới không khớp");
       return;
     }
 
@@ -168,24 +168,24 @@ const ProfileScreen = ({ navigation }) => {
       const response = await changePassword(oldPassword, newPassword);
 
       if (response.ok) {
-        showNotification("Password changed successfully");
+        showNotification("Thay đổi mật khẩu thành công");
         setShowChangePassword(false);
         setOldPassword("");
         setNewPassword("");
         setConfirmPassword("");
       } else {
-        showNotification(response.message || "Failed to change password");
+        showNotification(response.message || "Thay đổi mật khẩu thất bại");
       }
     } catch (error) {
       console.error("Change password error details:", error);
-      showNotification("An error occurred. Please try again later.");
+      showNotification("Đã xảy ra lỗi. Vui lòng thử lại sau.");
     }
   };
 
   const handleChangeAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      showNotification("Permission to access photo library is required!");
+      showNotification("Cần quyền truy cập thư viện ảnh!");
       return;
     }
 
@@ -212,17 +212,17 @@ const ProfileScreen = ({ navigation }) => {
             ...prevUser,
             avatar: response.data.avatar,
           }));
-          showNotification("Avatar changed successfully");
+          showNotification("Thay đổi ảnh đại diện thành công");
           fetchUserProfile();
         } else {
-          showNotification(response.message || "Failed to change avatar");
+          showNotification(response.message || "Thay đổi ảnh đại diện thất bại");
         }
       } else {
-        showNotification("No image selected");
+        showNotification("Chưa chọn ảnh nào");
       }
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      showNotification("An error occurred while changing the avatar");
+      showNotification("Đã xảy ra lỗi khi đổi ảnh đại diện");
     }
   };
 
@@ -237,7 +237,7 @@ const ProfileScreen = ({ navigation }) => {
   if (!user) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>No profile data available</Text>
+        <Text>Không có dữ liệu hồ sơ</Text>
       </SafeAreaView>
     );
   }
@@ -277,19 +277,13 @@ const ProfileScreen = ({ navigation }) => {
           </View>
           <View style={styles.section}>
             <View style={styles.infoContainer}>
-            <Text style={styles.sectionTitle}>Perersonal Information</Text>
+              <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
 
               <InfoRow label="Email" value={user.email} icon="email" />
+              <InfoRow label="Giới tính" value={user.gender} icon="gender-male-female" />
               <InfoRow
-                label="Gender"
-                value={user.gender}
-                icon="gender-male-female"
-              />
-              <InfoRow
-                label="Birthday"
-                value={
-                  user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Not set"
-                }
+                label="Ngày sinh"
+                value={user.dob ? dayjs(user.dob).format("DD/MM/YYYY") : "Chưa thiết lập"}
                 icon="cake-variant"
               />
             </View>
@@ -299,12 +293,12 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => setEditModalVisible(true)}
             >
               <Icon name="account-edit" size={20} color="#fff" />
-              <Text style={styles.buttonText}>Edit Profile</Text>
+              <Text style={styles.buttonText}>Chỉnh sửa hồ sơ</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Security</Text>
+            <Text style={styles.sectionTitle}>Bảo mật</Text>
             <TouchableOpacity
               style={[
                 styles.menuItem,
@@ -314,7 +308,7 @@ const ProfileScreen = ({ navigation }) => {
             >
               <View style={styles.menuItemLeft}>
                 <Icon name="lock" size={24} color="#135CAF" />
-                <Text style={styles.menuItemText}>Change Password</Text>
+                <Text style={styles.menuItemText}>Đổi mật khẩu</Text>
               </View>
               <Icon
                 name={showChangePassword ? "chevron-up" : "chevron-right"}
@@ -334,7 +328,7 @@ const ProfileScreen = ({ navigation }) => {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="Current Password"
+                    placeholder="Mật khẩu hiện tại"
                     value={oldPassword}
                     onChangeText={setOldPassword}
                     secureTextEntry={!showOldPassword}
@@ -361,7 +355,7 @@ const ProfileScreen = ({ navigation }) => {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="New Password"
+                    placeholder="Mật khẩu mới"
                     value={newPassword}
                     onChangeText={setNewPassword}
                     secureTextEntry={!showNewPassword}
@@ -388,7 +382,7 @@ const ProfileScreen = ({ navigation }) => {
                   />
                   <TextInput
                     style={styles.input}
-                    placeholder="Confirm New Password"
+                    placeholder="Xác nhận mật khẩu mới"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showConfirmPassword}
@@ -406,15 +400,13 @@ const ProfileScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.passwordRequirements}>
-                  Password must be at least 6 characters long
-                </Text>
+                <Text style={styles.passwordRequirements}>Mật khẩu phải có ít nhất 6 ký tự</Text>
 
                 <TouchableOpacity
                   style={styles.submitButton}
                   onPress={handleChangePassword}
                 >
-                  <Text style={styles.submitButtonText}>Update Password</Text>
+                  <Text style={styles.submitButtonText}>Cập nhật mật khẩu</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -424,7 +416,7 @@ const ProfileScreen = ({ navigation }) => {
               onPress={handleLogout}
             >
               <Icon name="logout" size={24} color="#E74C3C" />
-              <Text style={styles.logoutText}>Logout</Text>
+              <Text style={styles.logoutText}>Đăng xuất</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -456,7 +448,7 @@ const InfoRow = ({ label, value, icon }) => {
         <Icon name={icon} size={20} color="#666" style={styles.infoIcon} />
         <Text style={styles.infoLabel}>{label}</Text>
       </View>
-      <Text style={styles.infoValue}>{displayValue || "Not set"}</Text>
+      <Text style={styles.infoValue}>{displayValue || "Chưa thiết lập"}</Text>
     </View>
   );
 };

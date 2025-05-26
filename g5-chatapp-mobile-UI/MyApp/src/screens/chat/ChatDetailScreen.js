@@ -67,6 +67,8 @@ import {
   Badge,
 } from "react-native-paper";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import useChatStore from "../../store/useChatStore"; // Import useChatStore
+import { styles } from "./styles/ChatDetailStyles"; // Add this import
 
 const customTheme = {
   colors: {
@@ -444,6 +446,7 @@ const AudioRecordingModal = ({ visible, onClose, onSend }) => {
 const ChatDetailScreen = ({ navigation, route }) => {
   const { conversation } = route.params || {};
   const insets = useSafeAreaInsets();
+  const { setReplyMessage, replyMessage } = useChatStore(); // Get setReplyMessage from store
 
   const [showOptions, setShowOptions] = useState(false);
   const [newMessage, setNewMessage] = useState("");
@@ -508,8 +511,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
   }, []);
 
   const handleReturn = () => {
-    // navigation.navigate("Home_Chat");
-    navigation.goBack();
+    navigation.navigate("Home_Chat");
+    // navigation.goBack();
   };
 
   useEffect(() => {
@@ -886,11 +889,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
       messageData.content &&
       /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(messageData.content);
 
+    // Access replyMessage from the store directly (it should be available in this component's scope)
     if (
       (!newMessage.trim() &&
         !messageData?.files?.length &&
         !messageData?.content &&
-        !isLocationMessage) ||
+        !isLocationMessage &&
+        !replyMessage) || // Add !replyMessage here: only return if no text, no files, AND not a reply
       !socket ||
       !currentUser ||
       !conversation?._id
@@ -947,13 +952,14 @@ const ChatDetailScreen = ({ navigation, route }) => {
       let response;
       const messagePayload = {
         content,
-        type: messageType,
+        type: messageData?.type || (isLocationMessage ? "LOCATION" : "TEXT"),
         sender: currentUser._id,
-        address: messageData?.address,
-        isLocation: messageData?.isLocation,
+        // Revert to use message's ID for replyTo
+        replyTo: replyMessage ? replyMessage._id : null,
+        conversation: conversation._id,
       };
 
-      if (files.length > 0) {
+      if (messageData?.files && messageData.files.length > 0) {
         const preparedFiles = files.map((file) => ({
           uri: file.uri,
           type:
@@ -1002,8 +1008,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
       if (response.success) {
         setTempMessages((prev) => prev.filter((msg) => msg._id !== tempId));
+        // When a reply is successfully sent, clear the replyMessage state
+        if (replyMessage) {
+          setReplyMessage(null);
+        }
 
-        const newMessage = {
+        const newMessageData = {
           ...response.data,
           sender: {
             _id: currentUser._id,
@@ -1737,6 +1747,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleReplyMessage = (message) => {
+    console.log("[ChatDetailScreen] handleReplyMessage called with:", message);
+    setReplyMessage(message);
+    // Optionally, you might want to focus the input field here
+  };
+
   const renderMessage = ({ item, index }) => {
     if (!item || !item.sender) {
       return null;
@@ -1853,15 +1869,29 @@ const ChatDetailScreen = ({ navigation, route }) => {
                 marginLeft: isMyMessage ? 50 : 0,
               }}
               onLongPress={() => {
-                // Only show options for text messages and other non-media types
-                // Images, videos, files, audio, and location messages handle their own long press
-                const isLocationMessage = (item.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.content)) || item.isLocation;
-                if (!isTemp && item.type === "TEXT" && !isLocationMessage) {
-                  setSelectedMessage(item);
-                  setShowMessageOptions(true);
-                }
+                // Set the selected message and open the options modal
+                setSelectedMessage(item);
+                setShowMessageOptions(true);
+                // The direct call to handleReplyMessage(item) is removed from here.
               }}
+              delayLongPress={200} 
             >
+              {/* Conditionally render replied message info */} 
+              {item.replyTo && (
+                <View style={styles.repliedMessageContainer} /* Make sure styles.repliedMessageContainer is defined */>
+                  <Text style={styles.repliedSenderName}>{item.replyTo.sender?.firstName} {item.replyTo.sender?.lastName}</Text>
+                  {item.replyTo.content && item.replyTo.content.length > 0 && (
+                    <Text style={styles.repliedContentPreview}>
+                      {item.replyTo.content.length > 40 ? `${item.replyTo.content.slice(0, 40)}...` : item.replyTo.content}
+                    </Text>
+                  )}
+                  {/* Add previews for other types like IMAGE, FILE etc. similar to ChatMessage.js */}
+                  {item.replyTo.type === 'IMAGE' && <Text style={styles.repliedContentPreview}>Hình ảnh</Text>}
+                  {item.replyTo.type === 'VIDEO' && <Text style={styles.repliedContentPreview}>Video</Text>}
+                  {item.replyTo.type === 'AUDIO' && <Text style={styles.repliedContentPreview}>Tin nhắn thoại</Text>}
+                  {item.replyTo.type === 'FILE' && <Text style={styles.repliedContentPreview}>Tệp đính kèm</Text>}
+                </View>
+              )}
               {renderMessageContent(item)}
               {item.type === "TEXT" && !item.isRevoked && (
                 <Text
@@ -3221,6 +3251,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
     }
   };
 
+  const cancelReply = () => {
+    setReplyMessage(null);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
@@ -3253,7 +3287,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   return (
     <PaperProvider theme={customTheme}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent", marginTop: 15 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
@@ -3448,6 +3482,25 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
           <PinnedMessageBar />
 
+          {/* ADD REPLY PREVIEW UI HERE, directly in ChatDetailScreen */}
+          {replyMessage && (
+            <View style={styles.replyPreviewContainer} /* Make sure styles.replyPreviewContainer is defined and imported */>
+              <View style={styles.replyPreviewTextContainer}>
+                <TouchableOpacity onPress={() => { /* Optional: scroll to original message? */ }}>
+                  <Text style={styles.replyPreviewTitle}>
+                    Replying to {replyMessage.sender?.firstName || 'User'} {replyMessage.sender?.lastName || ''}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.replyPreviewContent}>
+                    {replyMessage.content || (replyMessage.files && replyMessage.files.length > 0 ? `File: ${replyMessage.files[0].fileName || 'Attachment'}` : 'Message')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity onPress={cancelReply} style={styles.cancelReplyButton}>
+                <Ionicons name="close-circle" size={24} color="#999" />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <ImageBackground
             source={{
               uri: "https://i.pinimg.com/474x/d1/df/71/d1df71180f6604a205baa38b4dd231b4.jpg",
@@ -3526,7 +3579,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
               onSubmitEditing={handleSubmitEditing}
               onFocus={scrollToBottom}
             />
-            {newMessage.trim().length > 0 ? (
+            {/* Update send button to be enabled if replying, even with empty newMessage */}
+            {(newMessage.trim().length > 0 || replyMessage) ? (
               <IconButton
                 icon="send"
                 iconColor="#fff"
@@ -3607,6 +3661,19 @@ const ChatDetailScreen = ({ navigation, route }) => {
             </View>
 
             <Divider style={{ marginVertical: 8 }} />
+
+            {/* Add Reply option here */}
+            <List.Item
+              title="Trả lời"
+              left={() => <List.Icon icon="reply" />}
+              onPress={() => {
+                console.log("[ChatDetailScreen] Reply option pressed, selectedMessage:", selectedMessage);
+                if (selectedMessage) {
+                  handleReplyMessage(selectedMessage);
+                }
+                setShowMessageOptions(false);
+              }}
+            />
 
             {/* Existing options */}
             <List.Item
