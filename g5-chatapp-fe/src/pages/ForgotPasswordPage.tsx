@@ -58,7 +58,6 @@ const ForgotPasswordPage = (props: Props) => {
     try {
       await forgotPassword(data.email, data.newPassword);
       // toast.success("Password reset successfully!");
-      navigate("/verify-opt");
     } catch (error) {
       toast.error("Gửi yêu cầu thất bại. Vui lòng thử lại sau.");
     }

@@ -94,14 +94,31 @@ export const useAuthStore = create<iAuthStore>()(
           errorRegistering: null,
           emailForgotPassword: null,
         });
+
         try {
           const { data } = await api.post("/auth/sign-up", dataRegister);
+
+          // ✅ Kiểm tra kết quả trả về từ server
+          if (!data.success) {
+            set({ errorRegistering: "Registration failed" });
+            toast.error("Đăng ký không thành công. Vui lòng thử lại.");
+            return; // 🛑 Ngăn việc chuyển hướng nếu lỗi logic từ server
+          }
+
+          // ✅ Nếu thành công
           set({ userRegistrationId: data.data.userId });
           setTimeout(() => {
             window.location.href = `/verify-otp`;
           }, 500);
-        } catch (error) {
-          set({ errorRegistering: "Registration failed" });
+        } catch (error: any) {
+          // ✅ Lấy message cụ thể nếu có
+          const message =
+            error.response?.data?.message ||
+            "Đăng ký không thành công. Vui lòng thử lại.";
+
+          set({ errorRegistering: message });
+          toast.error(message);
+          return; // 🛑 Ngăn việc chuyển hướng nếu có exception
         } finally {
           set({ isRegistering: false });
         }
@@ -150,13 +167,14 @@ export const useAuthStore = create<iAuthStore>()(
               get().connectSocket();
             }, 0);
             setTimeout(() => {
-              window.location.href = "/conversations";
+              window.location.href = "/";
             }, 1000);
             return true;
           }
           return false;
         } catch (error) {
           // set({ error: "OTP verification failed" });
+          toast.error("Xác thực OTP không thành công. Vui lòng thử lại.");
           return false;
         } finally {
           // set({ isLoading: false });
@@ -167,35 +185,46 @@ export const useAuthStore = create<iAuthStore>()(
         try {
           const { data } = await api.post(`/auth/provide-otp/${userId}`);
           set({ userRegistrationId: data.data.userId });
-          toast.success("Yêu cầu cấp OTP thành công!");
+          if (data.success) {
+            toast.success("Yêu cầu cấp OTP thành công!");
+          }
         } catch (error) {
           // set({ error: "Failed to send OTP" });
+          toast.error("Không thể gửi OTP. Vui lòng thử lại.");
         } finally {
           // set({ isLoading: false });
         }
       },
       forgotPassword: async (email: string, newPassword: string) => {
-        // set({ isLoading: true, error: null });
         try {
           const { data } = await api.post("/auth/forgot-password", {
             email,
             newPassword,
           });
+
+          // Kiểm tra rõ ràng: chỉ chuyển trang khi success
           if (data.success) {
             set({ emailForgotPassword: email });
             setTimeout(() => {
               window.location.href = `/verify-otp`;
             }, 500);
+          } else {
+            // Trả lỗi từ server (trong body)
+            const message =
+              Array.isArray(data.message) && data.message.length > 0
+                ? data.message[0]
+                : "Không thể đặt lại mật khẩu.";
+            toast.error(message);
           }
-        } catch (error) {
-          // set({ error: "Failed to reset password" });
-          toast.error("Không thể đặt lại mật khẩu. Vui lòng thử lại.");
-        } finally {
-          // set({ isLoading: false });
+        } catch (error: any) {
+          // Lỗi mạng hoặc HTTP status != 200
+          const message =
+            error.response?.data?.message ??
+            "Không thể đặt lại mật khẩu. Vui lòng thử lại.";
+          toast.error(Array.isArray(message) ? message[0] : message);
         }
       },
       verifyForgotPassword: async (email: string, otp: string) => {
-        // set({ isLoading: true, error: null });
         try {
           const { data } = await api.post(
             "/auth/forgot-password-verification",
@@ -204,21 +233,30 @@ export const useAuthStore = create<iAuthStore>()(
               otp,
             }
           );
+
           if (data.success) {
             set({ emailForgotPassword: email });
             toast.success("Đặt lại mật khẩu thành công!");
             setTimeout(() => {
-              window.location.href = "/auth/login";
+              window.location.href = "/login";
             }, 1000);
             return true;
+          } else {
+            // ✅ Hiển thị lỗi từ server
+            const message =
+              Array.isArray(data.message) && data.message.length > 0
+                ? data.message[0]
+                : "Xác minh OTP thất bại. Vui lòng thử lại.";
+            toast.error(message);
+            return false;
           }
+        } catch (error: any) {
+          // ✅ Bắt lỗi từ HTTP response hoặc mạng
+          const message =
+            error.response?.data?.message ??
+            "Xác minh OTP thất bại. Vui lòng thử lại.";
+          toast.error(Array.isArray(message) ? message[0] : message);
           return false;
-        } catch (error) {
-          // set({ error: "OTP verification failed" });
-          // toast.error("OTP verification failed. Please try again.");
-          return false;
-        } finally {
-          // set({ isLoading: false });
         }
       },
       setActiveUsers: (activeUsers: string[]) => {

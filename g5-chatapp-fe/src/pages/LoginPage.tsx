@@ -47,16 +47,16 @@ function LoginPage({}: Props) {
     try {
       const result = await login(values);
       if (result) {
-        toast.success("Login successful!");
+        toast.success("Đăng nhập thành công!");
         // setTimeout(() => {
         //   router.push("/conversations");
         // }, 1000);
       } else {
-        toast.error("Login failed. Please check your credentials.");
+        toast.error("Đăng nhập thất bại, vui lòng kiểm tra lại thông tin.");
         return;
       }
     } catch (err) {
-      toast.error("Something went wrong during login.");
+      toast.error("Đăng nhập thất bại, vui lòng thử lại sau.");
       return;
     }
   }
