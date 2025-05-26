@@ -8,6 +8,7 @@ import RegisterPage from "./pages/RegisterPage";
 import { useAuthStore } from "./store/useAuthStore";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
+import LoginQRCode from "./pages/LoginQRCode";
 
 function App() {
   const { isAuthenticated, hasHydrated } = useAuthStore();
@@ -39,6 +40,7 @@ function App() {
               !isAuthenticated ? <RegisterPage /> : <Navigate to={"/"} />
             }
           />
+          <Route path="/login-qr" element={<LoginQRCode />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
         </Routes>

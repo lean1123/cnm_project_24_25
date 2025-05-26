@@ -1,6 +1,6 @@
 import api from "@/api/api";
 import { disconnectSocket, getSocket } from "@/lib/socket";
-import type { DataLogin, DataRegister, User, UserUpdate } from "@/types";
+import type { DataLogin, DataRegister, GenerateQRCodeRes, User, UserUpdate } from "@/types";
 import Cookies from "js-cookie";
 import { Socket } from "socket.io-client";
 import { toast } from "sonner";
@@ -38,6 +38,8 @@ interface iAuthStore {
   setHasHydrated: (value: boolean) => void;
   selectedHomePage: string;
   setSelectedHomePage: (value: string) => void;
+
+  generateQRCode: () => Promise<GenerateQRCodeRes>;
 }
 
 export const useAuthStore = create<iAuthStore>()(
@@ -348,6 +350,16 @@ export const useAuthStore = create<iAuthStore>()(
           });
         }
       },
+      generateQRCode: async () => {
+        try {
+          const {data} = await api.get("/auth/gennerate-qr-code");
+          return data.data
+        } catch (error) {
+          toast.error('Không thể tạo mã qr code, vui lòng thử lại.')
+          return null;
+        } 
+      }
+      ,
       subscribeActiveUsers: () => {
         const socket = get().socket;
         if (socket) {

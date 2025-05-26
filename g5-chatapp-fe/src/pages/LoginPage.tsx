@@ -15,10 +15,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { getSocket } from "@/lib/socket";
 import { useAuthStore } from "@/store/useAuthStore";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { QrCodeIcon } from "lucide-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -60,6 +63,20 @@ function LoginPage({}: Props) {
       return;
     }
   }
+
+  const navigate = useNavigate();
+
+  const socket = getSocket();
+  useEffect(() => {
+    if (!socket) return;
+    console.log("Socket connected:", socket.id);
+
+    return () => {
+      socket.off("qrCodeData");
+      socket.off("loginSuccess");
+      socket.off("loginError");
+    };
+  }, [socket, navigate]);
 
   return (
     <div className="flex flex-col min-h-[50vh] h-full w-full items-center justify-center px-4">
@@ -129,6 +146,19 @@ function LoginPage({}: Props) {
               </div>
             </form>
           </Form>
+          <div className="mt-4 text-center text-sm">
+            <Button
+              type="button"
+              variant={"outline"}
+              className="w-full"
+              onClick={() => {
+                navigate("/login-qr");
+              }}
+            >
+              <QrCodeIcon className="mr-2 h-4 w-4" />
+              Đăng nhập bằng QR Code
+            </Button>
+          </div>
           <div className="mt-4 text-center text-sm">
             Bạn không có tài khoản?{" "}
             <Link to="/register" className="underline">
