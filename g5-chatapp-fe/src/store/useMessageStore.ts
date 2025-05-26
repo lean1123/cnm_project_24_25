@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useConversationStore } from "./useConversationStore";
+import { encryptMessage } from "@/lib/securityMessage";
 
 interface iMessageStore {
   isLoading: boolean;
@@ -92,7 +93,11 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
   sendMessage: async (message: MessageRequest) => {
     set({ isLoadingSendMessage: true, errorSendMessage: null });
     const formData = new FormData();
-    formData.append("content", message.content);
+    const encryptedContent = encryptMessage(
+      message.content,
+      useConversationStore.getState().selectedConversation?._id || "123123"
+    );
+    formData.append("content", encryptedContent);
     if (message.replyTo) {
       formData.append("replyTo", message.replyTo);
     }
@@ -215,11 +220,11 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
         originalMessageId,
         conversationIds,
       });
-      toast.success("Message forwarded successfully!");
+      toast.success("Chuyển tiếp tin nhắn thành công!");
       console.log("Forwarded message:", response.data);
     } catch (error) {
       console.error("Failed to forward message:", error);
-      toast.error("Failed to forward message");
+      toast.error("Không thể chuyển tiếp tin nhắn");
     }
   },
   deleteMessage: async (message: Message) => {
@@ -235,7 +240,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
       console.log("Deleted message:", response.data);
     } catch (error) {
       console.error("Failed to delete message:", error);
-      toast.error("Failed to delete message");
+      toast.error("Không thể xóa tin nhắn");
     }
   },
   revokeMessage: async (message: Message) => {
@@ -250,7 +255,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
       console.log("Revoked message:", response.data);
     } catch (error) {
       console.error("Failed to revoke message:", error);
-      toast.error("Failed to revoke message");
+      toast.error("Không thể thu hồi tin nhắn");
     }
   },
   reactionMessage: async (messageId: string, reaction: string) => {

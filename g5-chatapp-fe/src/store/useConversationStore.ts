@@ -28,6 +28,7 @@ interface iConversationStore {
     conversationId: string,
     memberId: string
   ) => Promise<void>;
+  resetMembersCreateGroup: () => void;
   changeRoleMember: (conversationId: string, memberId: string) => Promise<void>;
   changeAdminGroup: (conversationId: string, memberId: string) => Promise<void>;
   leaveGroup: (conversationId: string) => Promise<void>;
@@ -36,6 +37,7 @@ interface iConversationStore {
   unsubscribeNewGroup: () => void;
   subscribeUpdateGroup: () => void;
   unsubscribeUpdateGroup: () => void;
+  setSelectedUser: (user: User | null) => void;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -45,6 +47,12 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   error: null,
   userSelected: null,
   membersCreateGroup: [],
+  setSelectedUser: (user: User | null) => {
+    set({ userSelected: user });
+  },
+  resetMembersCreateGroup: () => {
+    set({ membersCreateGroup: [] });
+  },
   updateConversations: (conversations: Conversation[]) => {
     console.log("Update conversations:", conversations);
     set({ conversations });
@@ -108,7 +116,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     try {
       const { data } = await api.post("/conversation", group);
       console.log("Create group response:", data);
-      toast.success("Group created successfully!");
+      toast.success("Tạo nhóm thành công!");
       set({ membersCreateGroup: [] });
       get().getConversations(useAuthStore.getState().user?._id as string);
       const socket = getSocket();
@@ -132,7 +140,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
         { newMemberIds: userIds }
       );
       console.log("Add member to group response:", data);
-      toast.success("Member added successfully!");
+      toast.success("Thêm thành viên thành công!");
       get().getConversations(useAuthStore.getState().user?._id as string);
     } catch (error) {
       set({ error: "Failed to add member" });
@@ -150,7 +158,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
         }
       );
       console.log("Remove member from group response:", data);
-      toast.success("Member removed successfully!");
+      toast.success("Xóa thành viên thành công!");
       get().getConversations(useAuthStore.getState().user?._id as string);
     } catch (error) {
       set({ error: "Failed to remove member" });
@@ -163,7 +171,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     try {
       const { data } = await api.post(`/conversation/leave/${conversationId}`);
       console.log("Leave group response:", data);
-      toast.success("Left group successfully!");
+      toast.success("Rời nhóm thành công!");
       get().getConversations(useAuthStore.getState().user?._id as string);
       set({ selectedConversation: null });
     } catch (error) {
@@ -177,7 +185,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     try {
       const { data } = await api.delete(`/conversation/${conversationId}`);
       console.log("Dissolve group response:", data);
-      toast.success("Group dissolved successfully!");
+      toast.success("Nhóm đã được giải tán!");
       set({ selectedConversation: null });
       get().getConversations(useAuthStore.getState().user?._id as string);
     } catch (error) {
@@ -193,7 +201,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
         `/conversation/change-role/${conversationId}/${memberId}`
       );
       console.log("Change role response:", data);
-      toast.success("Role changed successfully!");
+      toast.success("Chuyển vai trò thành công!");
       get().getConversations(useAuthStore.getState().user?._id as string);
     } catch (error) {
       set({ error: "Failed to change role" });
@@ -211,7 +219,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
         }
       );
       console.log("Change admin response:", data);
-      toast.success("Admin changed successfully!");
+      toast.success("Đổi quản trị viên thành công!");
       get().getConversations(useAuthStore.getState().user?._id as string);
     } catch (error) {
       set({ error: "Failed to change admin" });
@@ -252,7 +260,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       socket.on("removedGroupByAdmin", (data) => {
         console.log("You have been removed from the group:", data);
         if (data.memberId === useAuthStore.getState().user?._id) {
-          toast.error("You have been removed from the group!");
+          toast.error("Bạn đã bị xóa khỏi nhóm!");
           if (get().selectedConversation?._id === data.conversationId) {
             set({ selectedConversation: null });
           }
@@ -265,7 +273,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
           data.conversation._id === get().selectedConversation?._id &&
           useAuthStore.getState().user?._id !== data.adminId
         ) {
-          toast.error("Group has been dissolved!");
+          toast.error("Nhóm đã bị giải tán!");
           set({ selectedConversation: null });
         }
         get().getConversations(useAuthStore.getState().user?._id as string);
