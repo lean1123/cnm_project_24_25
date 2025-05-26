@@ -30,7 +30,7 @@ export function UnfriendDialog({ contactId }: UnfriendDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <span className="text-red-500 font-medium">Hủy kết bạn</span>
+        <span className="text-red-500 font-medium text-sm leading-none">Hủy kết bạn</span>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

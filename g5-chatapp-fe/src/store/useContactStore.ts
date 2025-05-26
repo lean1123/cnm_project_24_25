@@ -63,11 +63,11 @@ export const useContactStore = create<iContactStore>((set, get) => ({
             contact: data.data,
           });
         }
-        toast.success(`Send contact request to ${name} successfully!`);
+        toast.success(`Gửi yêu cầu kết bạn đến ${name} thành công!`);
       }
     } catch (error) {
       set({ error: "Failed to create contact" });
-      toast.error("Failed to send contact request. Please try again.");
+      toast.error("Không thể gửi yêu cầu kết bạn. Vui lòng thử lại.");
     } finally {
       set({ isLoading: false });
     }
@@ -125,11 +125,11 @@ export const useContactStore = create<iContactStore>((set, get) => ({
         useConversationStore
           .getState()
           .getConversations(useAuthStore.getState().user?._id as string);
-        toast.success("Started chat with this contact now!");
+        toast.success("Kết bạn thành công!");
       }
     } catch (error) {
       set({ error: "Failed to accept contact" });
-      toast.error("Failed to accept contact request. Please try again.");
+      toast.error("Không thể chấp nhận yêu cầu kết bạn. Vui lòng thử lại.");
     } finally {
       set({ isLoading: false });
     }
@@ -157,11 +157,11 @@ export const useContactStore = create<iContactStore>((set, get) => ({
             contactId: contactId,
           });
         }
-        toast.success("Rejected contact request successfully!");
+        toast.success("Đã từ chối yêu cầu kết bạn thành công!");
       }
     } catch (error) {
       set({ error: "Failed to reject contact" });
-      toast.error("Failed to reject contact request. Please try again.");
+      toast.error("Không thể từ chối yêu cầu kết bạn. Vui lòng thử lại.");
     } finally {
       set({ isLoading: false });
     }
@@ -189,11 +189,11 @@ export const useContactStore = create<iContactStore>((set, get) => ({
             contactId: contactId,
           });
         }
-        toast.success("Cancelled contact request successfully!");
+        toast.success("Đã hủy yêu cầu kết bạn thành công!");
       }
     } catch (error) {
       set({ error: "Failed to cancel contact" });
-      toast.error("Failed to cancel contact request. Please try again.");
+      toast.error("Không thể hủy yêu cầu kết bạn. Vui lòng thử lại.");
     } finally {
       set({ isLoading: false });
     }
@@ -222,11 +222,11 @@ export const useContactStore = create<iContactStore>((set, get) => ({
             (contact) => contact._id !== contactId
           ),
         }));
-        toast.success("Unfriended successfully!");
+        toast.success("Hủy kết bạn thành công!");
       }
     } catch (error) {
       set({ error: "Failed to unfriend" });
-      toast.error("Failed to unfriend. Please try again.");
+      toast.error("Không thể hủy kết bạn. Vui lòng thử lại.");
     } finally {
       set({ isLoading: false });
     }
@@ -241,7 +241,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
           myRequestContact: [...state.myRequestContact, data],
         }));
         toast.success(
-          `You have a new contact request from ${data.user.firstName} ${data.user.lastName}!`
+          `Bạn có yêu cầu kết bạn mới từ ${data.user.firstName} ${data.user.lastName}!`
         );
       });
     }
@@ -287,7 +287,7 @@ export const useContactStore = create<iContactStore>((set, get) => ({
               (contact) => contact._id !== contactId
             ),
           }));
-          toast.success(`Your contact request to ${name} has been rejected!`);
+          toast.success(`Yêu cầu của bạn đã bị ${name} từ chối!`);
         }
       );
     }

@@ -11,6 +11,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import type { User } from "@/types";
 import { MoreHorizontal } from "lucide-react";
 import { UnfriendDialog } from "../common/dialog/UnfriendDialog";
+import ViewInfoDialog from "../common/dialog/ViewInfoDialog";
 
 type Props = {
   info: User;
@@ -59,17 +60,18 @@ const FriendItem = ({ info, contactId }: Props) => {
         </PopoverTrigger>
         <PopoverContent className="w-44 mr-6 p-0">
           <div className="grid gap-2 py-2">
-            <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer">
+            {/* <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer">
               <h4 className="font-medium text-sm leading-none">
                 Xem thông tin cá nhân
               </h4>
-            </div>
-            <Separator />
+            </div> */}
+            <ViewInfoDialog info={info}/>
+            {/* <Separator />
             <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer">
               <h4 className="font-medium text-sm leading-none">
                 Chặn người dùng
               </h4>
-            </div>
+            </div> */}
             <Separator />
             <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer">
               {/* <h4 className="font-medium text-sm leading-none text-red-500">
