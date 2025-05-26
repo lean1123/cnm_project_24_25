@@ -24,12 +24,13 @@ import { Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-export function CreateGroupDialog() {
+export function CreateGroupWithUserDialog() {
   const [inputValue, setInputValue] = useState("");
   // const { searchUsers, isSearching } = useUserStore();
   const { contacts, getMyContact } = useContactStore();
+
   const {
-    setSelectedUser,
+    userSelected,
     membersCreateGroup,
     addMemberCreateGroup,
     removeMemberCreateGroup,
@@ -44,6 +45,10 @@ export function CreateGroupDialog() {
 
   const [friends, setFriends] = useState<User[]>([]);
 
+  useEffect(() => {
+    if (!userSelected || membersCreateGroup.find((m) => m._id === userSelected._id)) return;
+    addMemberCreateGroup(userSelected);
+  }, [userSelected, membersCreateGroup]);
   const handleCreateGroup = async () => {
     if (!name || !membersCreateGroup || membersCreateGroup.length < 2) {
       toast.error("Please enter group name and select at least 2 members");
@@ -125,23 +130,21 @@ export function CreateGroupDialog() {
     });
   }, [friends, inputValue]);
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <Dialog
-      open={isDialogOpen}
+      open={isOpen}
       onOpenChange={(open) => {
-        setIsDialogOpen(open);
+        setIsOpen(open);
+
         // if (open) {
-        //   // Khi mở
-          resetMembersCreateGroup(); // Xóa toàn bộ state
-        //   getMyContact(); // load lại danh sách bạn bè
-        //   setInputValue("");
-        //   setName(null);
-        //   setFile(null);
-        //   setPreviewUrl(null);
+        resetMembersCreateGroup(); // reset khi mở dialog
+        // if (friend) addMemberCreateGroup(friend); // thêm đúng user
+        setName(null);
+        setFile(null);
+        setPreviewUrl(null);
         // }
-        setSelectedUser(null); // Reset selected user
       }}
     >
       <Tooltip>
@@ -150,7 +153,7 @@ export function CreateGroupDialog() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsDialogOpen(true)}
+              className="rounded-full size-8 flex justify-center items-center"
             >
               <Users className="h-5 w-5" />
             </Button>
@@ -288,7 +291,10 @@ export function CreateGroupDialog() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setIsDialogOpen(false);
+                  resetMembersCreateGroup(); // Clear danh sách
+                  setName(null); // Clear tên nhóm
+                  setFile(null); // Clear ảnh nhóm
+                  setPreviewUrl(null); // Reset preview
                 }}
               >
                 Hủy

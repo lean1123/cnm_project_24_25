@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useConversationStore } from "./useConversationStore";
+import { encryptMessage } from "@/lib/securityMessage";
 
 interface iMessageStore {
   isLoading: boolean;
@@ -92,7 +93,11 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
   sendMessage: async (message: MessageRequest) => {
     set({ isLoadingSendMessage: true, errorSendMessage: null });
     const formData = new FormData();
-    formData.append("content", message.content);
+    const encryptedContent = encryptMessage(
+      message.content,
+      useConversationStore.getState().selectedConversation?._id || "123123"
+    );
+    formData.append("content", encryptedContent);
     if (message.replyTo) {
       formData.append("replyTo", message.replyTo);
     }

@@ -1,5 +1,6 @@
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { decryptMessage } from "@/lib/securityMessage";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
 import { useMessageStore } from "@/store/useMessageStore";
@@ -89,7 +90,10 @@ const ConversationItem = ({
                   )} */}
                 {lastMessage.type === "TEXT" && (
                   <p className="text-sm text-muted-foreground truncate">
-                    {lastMessage.content}
+                    {decryptMessage(
+                      lastMessage.content,
+                      conversation?._id || "123123"
+                    )}
                   </p>
                 )}
                 {lastMessage.type === "AUDIO" &&

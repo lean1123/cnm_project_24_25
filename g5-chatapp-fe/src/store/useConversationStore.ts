@@ -28,6 +28,7 @@ interface iConversationStore {
     conversationId: string,
     memberId: string
   ) => Promise<void>;
+  resetMembersCreateGroup: () => void;
   changeRoleMember: (conversationId: string, memberId: string) => Promise<void>;
   changeAdminGroup: (conversationId: string, memberId: string) => Promise<void>;
   leaveGroup: (conversationId: string) => Promise<void>;
@@ -36,6 +37,7 @@ interface iConversationStore {
   unsubscribeNewGroup: () => void;
   subscribeUpdateGroup: () => void;
   unsubscribeUpdateGroup: () => void;
+  setSelectedUser: (user: User | null) => void;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -45,6 +47,12 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   error: null,
   userSelected: null,
   membersCreateGroup: [],
+  setSelectedUser: (user: User | null) => {
+    set({ userSelected: user });
+  },
+  resetMembersCreateGroup: () => {
+    set({ membersCreateGroup: [] });
+  },
   updateConversations: (conversations: Conversation[]) => {
     console.log("Update conversations:", conversations);
     set({ conversations });
