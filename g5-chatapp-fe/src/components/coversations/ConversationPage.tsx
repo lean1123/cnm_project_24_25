@@ -40,7 +40,7 @@ function ConversationPage(props: Props) {
   }, [selectedConversation]);
 
   const userSelected = selectedConversation?.members.find(
-    (member) => member.user._id !== user?.id
+    (member) => member.user._id !== user?._id
   );
 
   // setSelectedUser(userSelected?.user || null);
