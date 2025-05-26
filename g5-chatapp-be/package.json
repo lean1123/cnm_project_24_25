@@ -54,7 +54,8 @@
     "rxjs": "^7.8.1",
     "streamifier": "^0.1.1",
     "swagger-ui-express": "^5.0.1",
-    "tmp-promise": "^3.0.3"
+    "tmp-promise": "^3.0.3",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

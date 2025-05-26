@@ -7,6 +7,7 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
+import { decryptMessage, encryptMessage } from "@/lib/securityMessage";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
@@ -133,7 +134,11 @@ const ChatInput = (props: Props) => {
         email: user?.email || "",
       },
       conversation: selectedConversation?._id || "",
-      content: form.getValues("content") || "",
+      content:
+        encryptMessage(
+          form.getValues("content"),
+          selectedConversation?._id || "123123"
+        ) || "",
       createdAt: new Date().toISOString(),
       type: type,
       files: [
@@ -658,7 +663,10 @@ const ChatInput = (props: Props) => {
                   {replyMessage.sender.firstName} {replyMessage.sender.lastName}
                 </span>
                 <span className="text-sm text-gray-600">
-                  {replyMessage.content}
+                  {decryptMessage(
+                    replyMessage.content,
+                    selectedConversation?._id || "123123"
+                  )}
                 </span>
                 {replyMessage.type === "IMAGE" && (
                   <span className="text-sm">Hình ảnh</span>

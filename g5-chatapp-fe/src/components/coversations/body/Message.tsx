@@ -32,6 +32,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { decryptMessage } from "@/lib/securityMessage";
+import { useConversationStore } from "@/store/useConversationStore";
 
 type Props = {
   message: Message;
@@ -46,6 +48,7 @@ type Props = {
   isTemp?: boolean;
   isError?: boolean;
   isLastMessage?: boolean;
+  isFirstMessage?: boolean;
 };
 
 const MessageComponent = ({
@@ -61,7 +64,10 @@ const MessageComponent = ({
   isError,
   message,
   isLastMessage,
+  isFirstMessage,
 }: Props) => {
+  const { selectedConversation } = useConversationStore();
+
   const formatTime = (timeStamp: number) => {
     const date = new Date(timeStamp);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -144,8 +150,12 @@ const MessageComponent = ({
   const isLocationMessage = (message: Message | null) => {
     if (!message) return false;
     if (message.type === "TEXT") {
+      const decryptedContent = decryptMessage(
+        message.content,
+        selectedConversation?._id || "123123"
+      );
       return (
-        message.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(message.content)
+        decryptedContent && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(decryptedContent)
       );
     }
     return false;
@@ -154,7 +164,11 @@ const MessageComponent = ({
   const getLocationFromMessage = (message: Message | null) => {
     if (!message) return null;
     if (message.type === "TEXT") {
-      const coords = message.content.split(",");
+      const decryptedContent = decryptMessage(
+        message.content,
+        selectedConversation?._id || "123123"
+      );
+      const coords = decryptedContent.split(",");
       if (coords.length === 2) {
         return {
           latitude: parseFloat(coords[0]),
@@ -260,6 +274,11 @@ const MessageComponent = ({
               <Forward className="size-4" /> Được chuyển tiếp
             </div>
           )}
+          {!fromCurrentUser && isFirstMessage && (
+            <p className="text-xs text-muted-foreground mb-1">
+              {message.sender?.firstName + " " + message.sender?.lastName}
+            </p>
+          )}
 
           <div
             className={cn("relative px-4 py-2 rounded-lg ", {
@@ -283,9 +302,18 @@ const MessageComponent = ({
                   :
                 </span>
                 <span className="text-muted-foreground">
-                  {message.replyTo.content?.length > 40
-                    ? `${message.replyTo.content.slice(0, 40)}...`
-                    : message.replyTo.content}
+                  {decryptMessage(
+                    message.replyTo.content,
+                    selectedConversation?._id || "123123"
+                  )?.length > 40
+                    ? `${decryptMessage(
+                        message.replyTo.content,
+                        selectedConversation?._id || "123123"
+                      ).slice(0, 40)}...`
+                    : decryptMessage(
+                        message.replyTo.content,
+                        selectedConversation?._id || "123123"
+                      )}
                 </span>
                 {message.replyTo.type === "IMAGE" && (
                   <span className="text-muted-foreground">
@@ -313,7 +341,10 @@ const MessageComponent = ({
             type === "TEXT" &&
             !isLocationMessage(message) ? (
               <p className="text-wrap break-words whitespace-pre-wrap sm:max-w-[2200px] md:max-w-[550px] lg:max-w-[400px] xl:max-w-[600px]">
-                {content}
+                {decryptMessage(
+                  message.content,
+                  selectedConversation?._id || "123123"
+                )}
               </p>
             ) : null}
             {!message?.isRevoked && isLocationMessage(message) && (
@@ -345,7 +376,10 @@ const MessageComponent = ({
               <ImageGallery
                 images={file}
                 sizes={imageSizes}
-                content={content}
+                content={decryptMessage(
+                  message.content,
+                  selectedConversation?._id || "123123"
+                )}
               />
             )}
             {!message?.isRevoked && type === "AUDIO" && file && (
@@ -360,7 +394,10 @@ const MessageComponent = ({
                 ))}
                 {content && (
                   <p className="text-wrap break-words whitespace-pre-wrap mt-2">
-                    {content}
+                    {decryptMessage(
+                      message.content,
+                      selectedConversation?._id || "123123"
+                    )}
                   </p>
                 )}
               </div>
@@ -424,7 +461,10 @@ const MessageComponent = ({
                 ))}
                 {content && (
                   <p className="text-wrap break-words whitespace-pre-wrap mt-2">
-                    {content}
+                    {decryptMessage(
+                      message.content,
+                      selectedConversation?._id || "123123"
+                    )}
                   </p>
                 )}
               </div>
@@ -484,7 +524,10 @@ const MessageComponent = ({
                 ))}
                 {content && (
                   <p className="text-wrap break-words whitespace-pre-wrap mt-2">
-                    {content}
+                    {decryptMessage(
+                      message.content,
+                      selectedConversation?._id || "123123"
+                    )}
                   </p>
                 )}
               </div>

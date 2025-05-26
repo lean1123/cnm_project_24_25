@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   forwardRef,
   Inject,
   Injectable,
@@ -21,7 +22,13 @@ import type { AuthResponseDto } from './dtos/response/auth.response.dto';
 import { TempUser } from './dtos/response/tempUser.response';
 import { JwtPayload } from './interfaces/jwtPayload.interface';
 import { ChatGateway } from 'src/message/gateway/chat.gateway';
+import { v4 as uuidv4 } from 'uuid';
 
+interface JwtDecoded {
+  sub: string;
+  iat: number;
+  exp: number;
+}
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -42,7 +49,7 @@ export class AuthService {
     // Check if email already exists
     const existedUser = await this.userModel.findOne({ email });
     if (existedUser) {
-      throw new UnauthorizedException('Email already exists');
+      throw new BadRequestException('Email already exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -143,13 +150,13 @@ export class AuthService {
     const user = await this.userModel.findOne({ email });
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new BadRequestException('User not found');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid password');
+      throw new BadRequestException('Invalid password');
     }
 
     const token = this.jwtService.sign({ sub: user._id });
@@ -170,13 +177,13 @@ export class AuthService {
     const matchedUser = await this.userModel.findById(user._id);
 
     if (!matchedUser) {
-      throw new UnauthorizedException('User not found in refresh token');
+      throw new BadRequestException('User not found in refresh token');
     }
 
     const refreshToken = matchedUser.refreshToken;
 
     if (!refreshToken) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new BadRequestException('Invalid refresh token');
     }
 
     let verified: JwtPayload;
@@ -264,17 +271,17 @@ export class AuthService {
     );
 
     if (!otp) {
-      throw new UnauthorizedException('OTP expired or not found');
+      throw new BadRequestException('OTP expired or not found');
     }
     const newPasswordTemp = await this.redis.get(
       `new-password-temp:${verificationForgotPassword.email}`,
     );
     if (!newPasswordTemp) {
-      throw new UnauthorizedException('New password temp not found');
+      throw new BadRequestException('New password temp not found');
     }
 
     if (otp !== verificationForgotPassword.otp) {
-      throw new UnauthorizedException('Invalid OTP');
+      throw new BadRequestException('Invalid OTP');
     }
 
     const parsedUser = JSON.parse(newPasswordTemp) as ForgotPassword;
@@ -284,7 +291,7 @@ export class AuthService {
     });
 
     if (!existedUser) {
-      throw new UnauthorizedException('Email not found');
+      throw new BadRequestException('Email not found');
     }
 
     const hashedPassword = await bcrypt.hash(parsedUser.newPassword, 10);
@@ -307,14 +314,14 @@ export class AuthService {
     const user = await this.userModel.findById(userId);
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new BadRequestException('User not found');
     }
     const isPasswordValid = await bcrypt.compare(
       changePassword.oldPassword,
       user.password,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid password');
+      throw new BadRequestException('Invalid password');
     }
     const hashedPassword = await bcrypt.hash(changePassword.newPassword, 10);
     await this.userModel.findByIdAndUpdate(userId, {
@@ -340,5 +347,79 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
     return user;
+  }
+
+  async logout(req: JwtPayload): Promise<{ message: string }> {
+    const userId = req._id;
+
+    if (!userId) {
+      throw new UnauthorizedException('User not found in Jwt Payload');
+    }
+
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Clear refresh token
+    await this.userModel.findByIdAndUpdate(userId, { refreshToken: null });
+
+    return { message: 'Logged out successfully' };
+  }
+
+  async generateQRData() {
+    const sessionId = uuidv4();
+    await this.redis.set(
+      `qr:${sessionId}`,
+      JSON.stringify({ status: 'pending' }),
+      'EX',
+      300,
+    );
+    return { sessionId, qrData: `app://qr-login?sessionId=${sessionId}` };
+  }
+
+  async verifyQRLogin(sessionId: string, userToken: string) {
+    const qrKey = `qr:${sessionId}`;
+    const qrData = await this.redis.get(qrKey);
+
+    if (!qrData) {
+      throw new UnauthorizedException('QR session expired or not found');
+    }
+
+    const parsedQrData = JSON.parse(qrData) as {
+      status: string;
+      userId?: string;
+      verifiedAt?: Date;
+    };
+
+    if (parsedQrData.status !== 'pending') {
+      throw new UnauthorizedException('QR session already used or expired');
+    }
+
+    const decoded = this.jwtService.verify<JwtDecoded>(userToken, {
+      secret: process.env.JWT_SECRET,
+    });
+
+    console.log(`Decoded user token: ${JSON.stringify(decoded)}`);
+
+    if (!decoded) {
+      throw new UnauthorizedException('Invalid user token');
+    }
+
+    this.logger.log(`QR login verified for user: ${decoded.sub}`);
+
+    const newQrSession = {
+      status: 'used',
+      userId: decoded.sub,
+      verifiedAt: Date.now(),
+    };
+
+    await this.redis.set(qrKey, JSON.stringify(newQrSession), 'EX', 120);
+
+    return {
+      message: 'QR login verified successfully',
+      sessionId,
+      userId: decoded.sub,
+    };
   }
 }

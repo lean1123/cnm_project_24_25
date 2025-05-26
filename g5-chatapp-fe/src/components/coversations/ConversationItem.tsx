@@ -1,5 +1,6 @@
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { decryptMessage } from "@/lib/securityMessage";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useConversationStore } from "@/store/useConversationStore";
 import { useMessageStore } from "@/store/useMessageStore";
@@ -29,6 +30,19 @@ const ConversationItem = ({
     clearMessages();
   };
   const isActive = selectedConversation?._id === id;
+  const isLocationMessage = (message: LastMessage) => {
+    if (!message) return false;
+    if (message.type === "TEXT") {
+      const decryptedContent = decryptMessage(
+        message.content,
+        selectedConversation?._id || "123123"
+      );
+      return (
+        decryptedContent && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(decryptedContent)
+      );
+    }
+    return false;
+  };
   return (
     <div onClick={handleClick} className="w-full cursor-pointer" id={id}>
       <Card
@@ -87,11 +101,21 @@ const ConversationItem = ({
                       {`Send ${lastMessage.files.length} files`}
                     </p>
                   )} */}
-                {lastMessage.type === "TEXT" && (
-                  <p className="text-sm text-muted-foreground truncate">
-                    {lastMessage.content}
-                  </p>
-                )}
+                {lastMessage.type === "TEXT" &&
+                  !isLocationMessage(lastMessage) && (
+                    <p className="text-sm text-muted-foreground truncate">
+                      {decryptMessage(
+                        lastMessage.content,
+                        conversation?._id || "123123"
+                      )}
+                    </p>
+                  )}
+                {lastMessage.type === "TEXT" &&
+                  isLocationMessage(lastMessage) && (
+                    <p className="text-sm text-muted-foreground truncate">
+                      {`Đã gửi một vị trí`}
+                    </p>
+                  )}
                 {lastMessage.type === "AUDIO" &&
                   lastMessage.files &&
                   lastMessage.files.length > 0 && (

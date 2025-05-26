@@ -12,7 +12,8 @@ import ChatInput from "./input/ChatInput";
 type Props = {};
 
 function ConversationPage(props: Props) {
-  const { selectedConversation, getConversation } = useConversationStore();
+  const { selectedConversation, getConversation, setSelectedUser } =
+    useConversationStore();
 
   const [conversationId, setConversationId] = useState<string | null>(
     selectedConversation?._id || null
@@ -39,8 +40,15 @@ function ConversationPage(props: Props) {
   }, [selectedConversation]);
 
   const userSelected = selectedConversation?.members.find(
-    (member) => member.user._id !== user?.id
+    (member) => member.user._id !== user?._id
   );
+
+  // setSelectedUser(userSelected?.user || null);
+  useEffect(() => {
+    if (userSelected) {
+      setSelectedUser(userSelected.user);
+    }
+  }, [selectedConversation]);
 
   const [removeFriendDialogOpen, setRemoveFriendDialogOpen] = useState(false);
   const [deleteGroupDialogOpen, setDeleteGroupDialogOpen] = useState(false);
@@ -143,7 +151,6 @@ function ConversationPage(props: Props) {
         <ConversationInfo
           isOpen={isOpenRightBar}
           setOpen={setIsOpenRightBar}
-          userSelected={userSelected?.user || null}
           isGroup={false}
         />
       )}

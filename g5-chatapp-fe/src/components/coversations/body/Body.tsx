@@ -39,6 +39,13 @@ const Body = (props: Props) => {
     );
   };
 
+  const checkFirstMessage = (message: Message | null, index: number) => {
+    if (!message || !messages || messages.length === 0) return false;
+
+    const nextMessage = messages[index + 1];
+    return !nextMessage || nextMessage.sender._id !== message.sender._id;
+  };
+
   return (
     <div className="h-[calc(100vh-13rem)] w-full flex flex-col">
       <div className="flex-1 w-full flex overflow-y-scroll flex-col-reverse gap-2 p-3 no-scrollbar">
@@ -56,13 +63,15 @@ const Body = (props: Props) => {
             )}
           </div>
         )}
-        {!isLoadingMessages && messages &&
+        {!isLoadingMessages &&
+          messages &&
           messages?.map((message, index) => {
             const lastByUser =
               messages[index - 1]?.sender._id === message.sender._id;
             const isCurrentUser = message.sender._id === user?.id;
             const isDeleted = checkDeletedMessage(message);
             const isLastMessage = checkLastMessage(message);
+            const isFirstMessage = checkFirstMessage(message, index);
             if (isDeleted) return null; // Bỏ qua tin nhắn đã bị xóa
             return (
               <MessageComponent
@@ -79,6 +88,7 @@ const Body = (props: Props) => {
                 isTemp={message.isTemp || false}
                 isError={message.isError || false}
                 isLastMessage={isLastMessage}
+                isFirstMessage={isFirstMessage}
               />
             );
           })}
