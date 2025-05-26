@@ -2,6 +2,7 @@ import ItemList from "@/components/common/item-list/ItemList";
 import { ContactRound, Loader2, UserRoundPlus } from "lucide-react";
 import React from "react";
 import NavItem from "../contacts/NavItem";
+import SearchNav from "../common/search/SearchNav";
 
 type Props = React.PropsWithChildren<{}>;
 
@@ -37,6 +38,11 @@ const ContactsLayout = ({ children }: Props) => {
   return (
     <>
       <ItemList title="Contacts">
+        <SearchNav
+            isOpenSearchResult={false}
+            setIsOpenSearchResult={() => {}}
+            isContact={true}
+          />
         {nav && nav.length > 0 ? (
           nav.map((item) => (
             <NavItem

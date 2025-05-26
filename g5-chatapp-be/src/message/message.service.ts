@@ -16,6 +16,7 @@ import { MessageType } from './schema/messageType.enum';
 import { Message } from './schema/messege.chema';
 import { MessageReactionRequest } from './dtos/requests/messageReaction.request';
 import { User } from 'src/user/schema/user.schema';
+import { repl } from '@nestjs/core';
 
 @Injectable()
 export class MessageService {
@@ -82,11 +83,25 @@ export class MessageService {
       content: dto.content,
       files: fileUrls || [],
       type,
+      replyTo: dto.replyTo ? new Types.ObjectId(dto.replyTo) : null,
     };
 
-    const messageSaved = await (
-      await this.messageModel.create(messageSchema)
-    ).populate('sender', 'firstName lastName email avatar');
+    const messageSaved = await (await this.messageModel.create(messageSchema))
+      .populate('sender', 'firstName lastName email avatar')
+      .then((message) => {
+        // Nếu có replyTo, populate trường replyTo
+        if (dto.replyTo) {
+          return message.populate({
+            path: 'replyTo',
+            select: 'content type',
+            populate: {
+              path: 'sender',
+              select: 'firstName lastName',
+            },
+          });
+        }
+        return message;
+      });
 
     await this.conversationService.updateLastMessageField(
       convensationId,
@@ -109,6 +124,14 @@ export class MessageService {
       this.messageModel
         .find({ conversation: new Types.ObjectId(conversationId) })
         .populate('sender', 'firstName lastName email avatar')
+        .populate({
+          path: 'replyTo',
+          select: 'content type',
+          populate: {
+            path: 'sender',
+            select: 'firstName lastName',
+          },
+        })
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -507,5 +530,4 @@ export class MessageService {
     }
     return message.populate('sender', 'firstName lastName email avatar');
   }
-
 }

@@ -5,12 +5,15 @@ import { useConversationStore } from "@/store/useConversationStore";
 import { useMessageStore } from "@/store/useMessageStore";
 import type { Message } from "@/types";
 import MessageComponent from "./Message";
+import MessageSkeleton from "@/components/common/skeletons/MessageSkeleton";
+import { Loader2 } from "lucide-react";
 
 type Props = {};
 
 const Body = (props: Props) => {
   const { selectedConversation } = useConversationStore();
-  const { messages, fetchMessages, isTyping } = useMessageStore();
+  const { messages, fetchMessages, isTyping, isLoadingMessages } =
+    useMessageStore();
   const { user } = useAuthStore();
   useEffect(() => {
     if (selectedConversation) {
@@ -39,7 +42,21 @@ const Body = (props: Props) => {
   return (
     <div className="h-[calc(100vh-13rem)] w-full flex flex-col">
       <div className="flex-1 w-full flex overflow-y-scroll flex-col-reverse gap-2 p-3 no-scrollbar">
-        {messages &&
+        {/* {isLoadingMessages && <MessageSkeleton />} */}
+        {isLoadingMessages && (
+          <MessageSkeleton />
+          // <div className="flex h-full justify-center items-center w-full">
+          //   <Loader2 className="animate-spin h-6 w-6 text-gray-500" />
+          // </div>
+        )}
+        {!isLoadingMessages && messages && messages.length === 0 && (
+          <div className="flex h-full justify-center items-center w-full">
+            {messages && messages.length === 0 && (
+              <p className="text-gray-500">Hãy bắt đầu cuộc trò chuyện nào!</p>
+            )}
+          </div>
+        )}
+        {!isLoadingMessages && messages &&
           messages?.map((message, index) => {
             const lastByUser =
               messages[index - 1]?.sender._id === message.sender._id;

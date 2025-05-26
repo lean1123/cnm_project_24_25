@@ -10,12 +10,14 @@ import { getNameFallBack } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { User } from "@/types";
 import { MoreHorizontal } from "lucide-react";
+import { UnfriendDialog } from "../common/dialog/UnfriendDialog";
 
 type Props = {
   info: User;
+  contactId: string;
 };
 
-const FriendItem = ({ info }: Props) => {
+const FriendItem = ({ info, contactId }: Props) => {
   const { activeUsers } = useAuthStore();
   const isOnline = activeUsers.find((user) => user === info._id) ? true : false;
 
@@ -70,9 +72,10 @@ const FriendItem = ({ info }: Props) => {
             </div>
             <Separator />
             <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer">
-              <h4 className="font-medium text-sm leading-none text-red-500">
+              {/* <h4 className="font-medium text-sm leading-none text-red-500">
                 Xóa bạn bè
-              </h4>
+              </h4> */}
+              <UnfriendDialog contactId={contactId} />
             </div>
           </div>
         </PopoverContent>

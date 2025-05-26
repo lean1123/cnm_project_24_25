@@ -358,6 +358,34 @@ export class ConversationService {
     return await this.convenstationModel.findByIdAndDelete(conversationId);
   }
 
+  async deleteConversationForDeleteContact(conversationId: string) {
+    // 1. Tìm cuộc trò chuyện
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    // 3. Xoá tất cả tin nhắn trong cuộc trò chuyện
+    await this.messageService.deleteMessageByConversationId(conversationId);
+
+    // optional (Gợi ý thêm) Xoá các file media trong Cloudinary nếu có
+
+    // 4. Xoá cuộc trò chuyện
+    return await this.convenstationModel.findByIdAndDelete(conversationId);
+  }
+
+  async findConversationForDeleteContact(userId: string, contactId: string): Promise<Convensation> {
+    const conversation = await this.convenstationModel
+      .findOne({
+        isGroup: false,
+        'members.user': {
+          $all: [new Types.ObjectId(userId), new Types.ObjectId(contactId)],
+        },
+        $expr: { $eq: [{ $size: '$members' }, 2] }, // Đảm bảo đúng 2 thành viên
+      })
+    return conversation;
+  }
+
   /**
    * * kiểm tra người yêu cầu có phải là người tạo ra cuộc trò chuyện hay không
    * * @param userPayload

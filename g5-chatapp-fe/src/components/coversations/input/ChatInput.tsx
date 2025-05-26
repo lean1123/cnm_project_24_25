@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -19,11 +18,12 @@ import {
   FileUp,
   FileVideo,
   Image,
+  MessageSquareText,
   Mic,
   SendHorizonal,
   Smile,
   ThumbsUp,
-  X
+  X,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -35,6 +35,7 @@ type Props = {};
 
 const chatMessageSchema = z.object({
   content: z.string(),
+  replyTo: z.string().nullable().optional(),
   files: z
     .array(z.instanceof(File))
     .max(5) // Giới hạn số lượng file
@@ -46,6 +47,7 @@ const ChatInput = (props: Props) => {
     resolver: zodResolver(chatMessageSchema),
     defaultValues: {
       content: "",
+      replyTo: null,
     },
   });
 
@@ -115,7 +117,8 @@ const ChatInput = (props: Props) => {
 
   const { user } = useAuthStore();
   const { selectedConversation } = useConversationStore();
-  const { addTempMessage, sendMessage, typing } = useMessageStore();
+  const { addTempMessage, sendMessage, typing, replyMessage, setReplyMessage } =
+    useMessageStore();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const generateMessageTemp = (type: string, url: string, fileName: string) => {
@@ -147,6 +150,10 @@ const ChatInput = (props: Props) => {
     };
   };
 
+  useEffect(() => {
+    form.setValue("replyTo", replyMessage?._id || null);
+  }, [replyMessage, form]);
+
   const handleSubmit = (data: z.infer<typeof chatMessageSchema>) => {
     const files = data.files || []; // Lấy files từ form
     const hasText = data.content.trim() !== "";
@@ -174,12 +181,13 @@ const ChatInput = (props: Props) => {
       addTempMessage(tempVoice);
       setRecordingUrl(null);
       setRecordedFile(null);
+      setReplyMessage?.(null);
       setRecordingTime(0);
       return;
     }
 
     if (hasText || mediaFiles.length > 0 || otherFiles.length <= 1) {
-      sendMessage({ ...data, files });
+      sendMessage({ ...data, files, replyTo: data.replyTo || null });
 
       let preview = "";
       let fileName = "";
@@ -211,8 +219,9 @@ const ChatInput = (props: Props) => {
       });
     }
 
-    form.reset({ content: "", files: [] });
+    form.reset({ content: "", replyTo: null, files: [] });
     setFilePreviews([]);
+    setReplyMessage?.(null);
   };
 
   const handleInputChange = (event: any) => {
@@ -632,6 +641,49 @@ const ChatInput = (props: Props) => {
               }}
             >
               <X className="size-4" />
+            </Button>
+          </div>
+        )}
+        {replyMessage && (
+          <div className="flex flex-wrap gap-2 w-full absolute -top-16 left-0 p-2 bg-white rounded-lg shadow-lg justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquareText className="size-8 text-blue-500" />
+              <img
+                src={replyMessage.sender.avatar || "/avatar.png"}
+                alt="Reply Avatar"
+                className="w-8 h-8 rounded-full"
+              />
+              <div className="flex flex-col">
+                <span className="font-semibold">
+                  {replyMessage.sender.firstName} {replyMessage.sender.lastName}
+                </span>
+                <span className="text-sm text-gray-600">
+                  {replyMessage.content}
+                </span>
+                {replyMessage.type === "IMAGE" && (
+                  <span className="text-sm">Hình ảnh</span>
+                )}
+                {replyMessage.type === "VIDEO" && (
+                  <span className="text-sm">Video</span>
+                )}
+                {replyMessage.type === "FILE" && (
+                  <span className="text-sm">Tệp đính kèm</span>
+                )}
+                {replyMessage.type === "AUDIO" && (
+                  <span className="text-sm">Tin nhắn thoại</span>
+                )}
+              </div>
+            </div>
+            <Button
+              size={"icon"}
+              variant={"ghost"}
+              className="ml-auto"
+              onClick={() => {
+                // Xử lý hủy reply
+                setReplyMessage?.(null);
+              }}
+            >
+              <X className="size-6 text-red-500" />
             </Button>
           </div>
         )}
