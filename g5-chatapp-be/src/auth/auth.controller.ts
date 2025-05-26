@@ -73,4 +73,19 @@ export class AuthController {
   async getMyProfile(@UserDecorator() req: JwtPayload) {
     return await this.authService.getMyProfile(req);
   }
+
+  @Get('gennerate-qr-code')
+  async generateQrCode() {
+    return await this.authService.generateQRData();
+  }
+
+  @Post('verify-qr-code')
+  async verifyQRCode(
+    @Body() verifitionBody: { sessionId: string; userToken: string },
+  ) {
+    return await this.authService.verifyQRLogin(
+      verifitionBody.sessionId,
+      verifitionBody.userToken,
+    );
+  }
 }

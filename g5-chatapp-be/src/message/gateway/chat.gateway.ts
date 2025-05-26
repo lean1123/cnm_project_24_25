@@ -255,13 +255,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDeleteContact(
     @MessageBody()
     contact: Contact,
-    conversation: string
+    conversation: string,
   ) {
-    this.handleContact.handleDeleteContact(
-      contact,
-      this.server,
-      conversation
-    )
+    this.handleContact.handleDeleteContact(contact, this.server, conversation);
   }
 
   // call

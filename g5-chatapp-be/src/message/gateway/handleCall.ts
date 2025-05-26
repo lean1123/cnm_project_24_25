@@ -10,7 +10,7 @@ export class HandleCall {
       sender,
       conversationId,
       type,
-      isGroup
+      isGroup,
     }: {
       sender: User;
       conversationId: string;
