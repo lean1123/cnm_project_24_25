@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   Logger,
@@ -39,7 +40,7 @@ export class AuthService {
     // Check if email already exists
     const existedUser = await this.userModel.findOne({ email });
     if (existedUser) {
-      throw new UnauthorizedException('Email already exists');
+      throw new BadRequestException('Email already exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -140,13 +141,13 @@ export class AuthService {
     const user = await this.userModel.findOne({ email });
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new BadRequestException('User not found');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid password');
+      throw new BadRequestException('Invalid password');
     }
 
     const token = this.jwtService.sign({ sub: user._id });
@@ -167,13 +168,13 @@ export class AuthService {
     const matchedUser = await this.userModel.findById(user._id);
 
     if (!matchedUser) {
-      throw new UnauthorizedException('User not found in refresh token');
+      throw new BadRequestException('User not found in refresh token');
     }
 
     const refreshToken = matchedUser.refreshToken;
 
     if (!refreshToken) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new BadRequestException('Invalid refresh token');
     }
 
     let verified: JwtPayload;
@@ -261,17 +262,17 @@ export class AuthService {
     );
 
     if (!otp) {
-      throw new UnauthorizedException('OTP expired or not found');
+      throw new BadRequestException('OTP expired or not found');
     }
     const newPasswordTemp = await this.redis.get(
       `new-password-temp:${verificationForgotPassword.email}`,
     );
     if (!newPasswordTemp) {
-      throw new UnauthorizedException('New password temp not found');
+      throw new BadRequestException('New password temp not found');
     }
 
     if (otp !== verificationForgotPassword.otp) {
-      throw new UnauthorizedException('Invalid OTP');
+      throw new BadRequestException('Invalid OTP');
     }
 
     const parsedUser = JSON.parse(newPasswordTemp) as ForgotPassword;
@@ -281,7 +282,7 @@ export class AuthService {
     });
 
     if (!existedUser) {
-      throw new UnauthorizedException('Email not found');
+      throw new BadRequestException('Email not found');
     }
 
     const hashedPassword = await bcrypt.hash(parsedUser.newPassword, 10);
@@ -304,14 +305,14 @@ export class AuthService {
     const user = await this.userModel.findById(userId);
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new BadRequestException('User not found');
     }
     const isPasswordValid = await bcrypt.compare(
       changePassword.oldPassword,
       user.password,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid password');
+      throw new BadRequestException('Invalid password');
     }
     const hashedPassword = await bcrypt.hash(changePassword.newPassword, 10);
     await this.userModel.findByIdAndUpdate(userId, {

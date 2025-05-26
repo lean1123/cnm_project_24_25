@@ -21,7 +21,7 @@ const ChatOptions = ({
     },
     {
       icon: "image-outline",
-      label: "Gallery",
+      label: "Hình ảnh",
       onPress: onGallery,
       color: "#4ECDC4"
     },
@@ -39,13 +39,13 @@ const ChatOptions = ({
     },
     {
       icon: "location-outline",
-      label: "Location",
+      label: "Vị trí",
       onPress: onLocation,
       color: "#FF9F1C"
     },
     {
       icon: "document-outline",
-      label: "Document",
+      label: "Tài liệu",
       onPress: onDocument,
       color: "#7868E6"
     }
@@ -67,7 +67,7 @@ const ChatOptions = ({
           <View style={styles.optionsBox}>
             <View style={styles.grabber} />
             <View style={styles.header}>
-              <Text style={styles.headerText}>Chat Options</Text>
+              <Text style={styles.headerText}>Tùy chọn chức năng</Text>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <Ionicons name="close" size={26} color="#0099ff" />
               </TouchableOpacity>

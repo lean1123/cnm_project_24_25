@@ -129,11 +129,17 @@ const useChatStore = create(
       isOnline: false,
       currentConversationId: null,
       currentUserId: null,
+      replyMessage: null,
 
       // Actions
       setCurrentConversation: (conversationId) =>
         set({ currentConversationId: conversationId }),
       setCurrentUser: (userId) => set({ currentUserId: userId }),
+      setReplyMessage: (message) => {
+        console.log("[useChatStore] setReplyMessage called with:", message);
+        set({ replyMessage: message });
+        console.log("[useChatStore] replyMessage state after set:", get().replyMessage);
+      },
 
       addTempMessage: (message) => {
         set((state) => ({ tempMessages: [...state.tempMessages, message] }));
@@ -198,7 +204,7 @@ const useChatStore = create(
       },
 
       sendMessage: async (conversationId, messageData) => {
-        const { currentUserId } = get();
+        const { currentUserId, replyMessage } = get();
         set({ isSendingMessage: true });
 
         try {
@@ -213,17 +219,21 @@ const useChatStore = create(
             createdAt: new Date().toISOString(),
             isTemp: true,
             status: "sending",
+            replyTo: replyMessage ? replyMessage._id : null,
           };
 
           // Add temp message immediately
           get().addTempMessage(tempMessage);
 
           // Send to server
-          const response = await chatService.sendMessage(conversationId, {
+          const messagePayload = {
             content: messageData.content,
             type: messageData.type,
             sender: currentUserId,
-          });
+            replyTo: replyMessage ? replyMessage._id : null,
+          };
+
+          const response = await chatService.sendMessage(conversationId, messagePayload);
 
           if (response?.success) {
             // Remove temp message and add real message

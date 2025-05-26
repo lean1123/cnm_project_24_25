@@ -30,6 +30,7 @@ const SignInScreen = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const { login } = useAuthStore();
+  const [language, setLanguage] = useState("vi"); // Default to Vietnamese
   
   // Add validation error states
   const [errors, setErrors] = useState({
@@ -37,13 +38,48 @@ const SignInScreen = ({ navigation }) => {
     password: "",
   });
 
+  const languageData = {
+    en: {
+      welcomeBack: "Welcome Back!",
+      signInContinue: "Sign in to continue",
+      emailLabel: "Email",
+      passwordLabel: "Password",
+      forgotPasswordLink: "Forgot Password?",
+      signInButton: "Sign In",
+      noAccount: "Don't have an account?",
+      createAccountButton: "Create Account",
+      validEmailError: "Please enter a valid email",
+      loginSuccess: "Login successful!",
+      loginFailed: "Login failed. Please try again.",
+      failedStoreUserData: "Failed to store user data",
+      errorOccurred: "An error occurred. Please try again later."
+    },
+    vi: {
+      welcomeBack: "Chào mừng trở lại!",
+      signInContinue: "Đăng nhập để tiếp tục",
+      emailLabel: "Email",
+      passwordLabel: "Mật khẩu",
+      forgotPasswordLink: "Quên mật khẩu?",
+      signInButton: "Đăng nhập",
+      noAccount: "Chưa có tài khoản?",
+      createAccountButton: "Tạo tài khoản",
+      validEmailError: "Vui lòng nhập một email hợp lệ",
+      loginSuccess: "Đăng nhập thành công!",
+      loginFailed: "Đăng nhập thất bại. Vui lòng thử lại.",
+      failedStoreUserData: "Không thể lưu trữ dữ liệu người dùng",
+      errorOccurred: "Đã xảy ra lỗi. Vui lòng thử lại sau."
+    },
+  };
+
+  const getText = (key) => languageData[language][key] || languageData['en'][key];
+
   // Validate individual field
   const validateField = (field, value) => {
     let error = "";
     switch (field) {
       case "email":
         if (value.trim() !== "" && !isValidEmail(value)) {
-          error = "Please enter a valid email";
+          error = getText("validEmailError");
         }
         break;
       case "password":
@@ -114,11 +150,11 @@ const SignInScreen = ({ navigation }) => {
         const storedUserId = await AsyncStorage.getItem("userId");
 
         if (!storedUserData || !storedToken || !storedUserId) {
-          throw new Error("Failed to store user data");
+          throw new Error(getText("failedStoreUserData"));
         }
 
         console.log("User data stored successfully");
-        setModalMessage("Login successful!");
+        setModalMessage(getText("loginSuccess"));
         setModalVisible(true);
 
         // Initialize socket connection
@@ -142,13 +178,13 @@ const SignInScreen = ({ navigation }) => {
         }, 1500);
       } else {
         console.log("Login failed:", result.message);
-        setModalMessage(result.message || "Login failed. Please try again.");
+        setModalMessage(result.message || getText("loginFailed"));
         setModalVisible(true);
       }
     } catch (error) {
       console.error("Sign-in error:", error);
       setModalMessage(
-        error.message || "An error occurred. Please try again later."
+        error.message || getText("errorOccurred")
       );
       setModalVisible(true);
     }
@@ -171,14 +207,14 @@ const SignInScreen = ({ navigation }) => {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.welcomeText}>Welcome Back!</Text>
-            <Text style={styles.subText}>Sign in to continue</Text>
+            <Text style={styles.welcomeText}>{getText("welcomeBack")}</Text>
+            <Text style={styles.subText}>{getText("signInContinue")}</Text>
           </View>
 
           <View style={styles.formContainer}>
             <InputField
               icon="email"
-              placeholder="Email"
+              placeholder={getText("emailLabel")}
               value={email}
               onChangeText={updateEmail}
               keyboardType="email-address"
@@ -190,7 +226,7 @@ const SignInScreen = ({ navigation }) => {
             ) : null}
 
             <PasswordField
-              placeholder="Password"
+              placeholder={getText("passwordLabel")}
               value={password}
               onChangeText={updatePassword}
               error={errors.password}
@@ -203,7 +239,7 @@ const SignInScreen = ({ navigation }) => {
               style={styles.forgotPasswordButton}
               onPress={() => navigation.navigate("ForgotPasswordScreen")}
             >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <Text style={styles.forgotPasswordText}>{getText("forgotPasswordLink")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -211,16 +247,16 @@ const SignInScreen = ({ navigation }) => {
               onPress={handleSignIn}
               activeOpacity={0.8}
             >
-              <Text style={styles.loginButtonText}>Sign In</Text>
+              <Text style={styles.loginButtonText}>{getText("signInButton")}</Text>
             </TouchableOpacity>
 
             <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>Don't have an account?</Text>
+              <Text style={styles.registerText}>{getText("noAccount")}</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate("SignUpScreen")}
                 style={styles.registerButton}
               >
-                <Text style={styles.registerButtonText}>Create Account</Text>
+                <Text style={styles.registerButtonText}>{getText("createAccountButton")}</Text>
               </TouchableOpacity>
             </View>
           </View>

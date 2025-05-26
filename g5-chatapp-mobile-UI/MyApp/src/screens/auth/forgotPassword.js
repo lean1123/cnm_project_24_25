@@ -26,29 +26,81 @@ const ForgotPasswordScreen = ({ navigation }) => {
   const [modalMessage, setModalMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [language, setLanguage] = useState("vi"); // Default to Vietnamese
+
+  const languageData = {
+    en: {
+      resetPassword: "Reset Password",
+      enterOtpEmail: "Enter the OTP sent to your email",
+      enterEmailNewPass: "Enter your email and new password",
+      emailLabel: "Email",
+      newPasswordLabel: "New Password",
+      confirmPasswordLabel: "Confirm Password",
+      enterOtpLabel: "Enter OTP",
+      sendOtpButton: "Send OTP",
+      verifyOtpButton: "Verify OTP",
+      processingButton: "Processing...",
+      backToLoginButton: "Back to Login",
+      fillAllFields: "Please fill in all fields",
+      validEmail: "Please enter a valid email address",
+      passwordMinLength: "Password must be at least 6 characters long",
+      passwordsNoMatch: "Passwords do not match",
+      otpSent: "OTP has been sent to your email",
+      failedToSendOtp: "Failed to send OTP",
+      enterOtpPrompt: "Please enter the OTP",
+      passwordResetSuccess: "Password has been reset successfully",
+      invalidOtp: "Invalid OTP",
+      errorOccurred: "An error occurred. Please try again later.",
+    },
+    vi: {
+      resetPassword: "Đặt lại mật khẩu",
+      enterOtpEmail: "Nhập mã OTP đã được gửi đến email của bạn",
+      enterEmailNewPass: "Nhập email và mật khẩu mới của bạn",
+      emailLabel: "Email",
+      newPasswordLabel: "Mật khẩu mới",
+      confirmPasswordLabel: "Xác nhận mật khẩu",
+      enterOtpLabel: "Nhập OTP",
+      sendOtpButton: "Gửi OTP",
+      verifyOtpButton: "Xác minh OTP",
+      processingButton: "Đang xử lý...",
+      backToLoginButton: "Quay lại Đăng nhập",
+      fillAllFields: "Vui lòng điền vào tất cả các trường",
+      validEmail: "Vui lòng nhập một địa chỉ email hợp lệ",
+      passwordMinLength: "Mật khẩu phải dài ít nhất 6 ký tự",
+      passwordsNoMatch: "Mật khẩu không khớp",
+      otpSent: "Mã OTP đã được gửi đến email của bạn",
+      failedToSendOtp: "Gửi OTP thất bại",
+      enterOtpPrompt: "Vui lòng nhập mã OTP",
+      passwordResetSuccess: "Mật khẩu đã được đặt lại thành công",
+      invalidOtp: "OTP không hợp lệ",
+      errorOccurred: "Đã xảy ra lỗi. Vui lòng thử lại sau.",
+    },
+  };
+
+  const getText = (key) => languageData[language][key] || languageData['en'][key];
 
   const handleSendOTP = async () => {
     // Validate email and password
     if (!email || !newPassword || !confirmPassword) {
-      setModalMessage("Please fill in all fields");
+      setModalMessage(getText("fillAllFields"));
       setModalVisible(true);
       return;
     }
 
     if (!isValidEmail(email)) {
-      setModalMessage("Please enter a valid email address");
+      setModalMessage(getText("validEmail"));
       setModalVisible(true);
       return;
     }
 
     if (!isValidPassword(newPassword)) {
-      setModalMessage("Password must be at least 6 characters long");
+      setModalMessage(getText("passwordMinLength"));
       setModalVisible(true);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setModalMessage("Passwords do not match");
+      setModalMessage(getText("passwordsNoMatch"));
       setModalVisible(true);
       return;
     }
@@ -58,15 +110,15 @@ const ForgotPasswordScreen = ({ navigation }) => {
       const result = await forgotPassword(email, newPassword);
       
       if (result.ok) {
-        setModalMessage("OTP has been sent to your email");
+        setModalMessage(getText("otpSent"));
         setModalVisible(true);
         setShowOtpInput(true);
       } else {
-        setModalMessage(result.message || "Failed to send OTP");
+        setModalMessage(result.message || getText("failedToSendOtp"));
         setModalVisible(true);
       }
     } catch (error) {
-      setModalMessage(error.message || "An error occurred. Please try again later.");
+      setModalMessage(error.message || getText("errorOccurred"));
       setModalVisible(true);
     } finally {
       setIsLoading(false);
@@ -75,7 +127,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
   const handleVerifyOtp = async () => {
     if (!otp) {
-      setModalMessage("Please enter the OTP");
+      setModalMessage(getText("enterOtpPrompt"));
       setModalVisible(true);
       return;
     }
@@ -85,17 +137,17 @@ const ForgotPasswordScreen = ({ navigation }) => {
       const result = await verifyForgotPasswordOtp(email, otp);
       
       if (result.ok) {
-        setModalMessage("Password has been reset successfully");
+        setModalMessage(getText("passwordResetSuccess"));
         setModalVisible(true);
         setTimeout(() => {
           navigation.navigate("SignInScreen");
         }, 1500);
       } else {
-        setModalMessage(result.message || "Invalid OTP");
+        setModalMessage(result.message || getText("invalidOtp"));
         setModalVisible(true);
       }
     } catch (error) {
-      setModalMessage(error.message || "An error occurred. Please try again later.");
+      setModalMessage(error.message || getText("errorOccurred"));
       setModalVisible(true);
     } finally {
       setIsLoading(false);
@@ -119,18 +171,18 @@ const ForgotPasswordScreen = ({ navigation }) => {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.welcomeText}>Reset Password</Text>
+            <Text style={styles.welcomeText}>{getText("resetPassword")}</Text>
             <Text style={styles.subText}>
               {showOtpInput
-                ? "Enter the OTP sent to your email"
-                : "Enter your email and new password"}
+                ? getText("enterOtpEmail")
+                : getText("enterEmailNewPass")}
             </Text>
           </View>
 
           <View style={styles.formContainer}>
             <InputField
               icon="email"
-              placeholder="Email"
+              placeholder={getText("emailLabel")}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -141,12 +193,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
             {!showOtpInput && (
               <>
                 <PasswordField
-                  placeholder="New Password"
+                  placeholder={getText("newPasswordLabel")}
                   value={newPassword}
                   onChangeText={setNewPassword}
                 />
                 <PasswordField
-                  placeholder="Confirm Password"
+                  placeholder={getText("confirmPasswordLabel")}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                 />
@@ -156,7 +208,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             {showOtpInput && (
               <InputField
                 icon="key"
-                placeholder="Enter OTP"
+                placeholder={getText("enterOtpLabel")}
                 value={otp}
                 onChangeText={setOtp}
                 keyboardType="numeric"
@@ -171,7 +223,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               activeOpacity={0.8}
             >
               <Text style={styles.resetButtonText}>
-                {isLoading ? "Processing..." : (showOtpInput ? "Verify OTP" : "Send OTP")}
+                {isLoading ? getText("processingButton") : (showOtpInput ? getText("verifyOtpButton") : getText("sendOtpButton"))}
               </Text>
             </TouchableOpacity>
 
@@ -180,7 +232,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
             >
-              <Text style={styles.backButtonText}>Back to Login</Text>
+              <Text style={styles.backButtonText}>{getText("backToLoginButton")}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

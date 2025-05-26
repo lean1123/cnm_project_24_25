@@ -86,7 +86,7 @@ const ConversationsLayout = ({ children }: Props) => {
   }, [searchTerm, conversations]);
 
   const getMemberName = (conversation: Conversation) => {
-    if (conversation.members[0].user._id !== user?.id) {
+    if (conversation.members[0].user._id !== user?._id) {
       return (
         conversation.members[0].user.firstName +
         " " +
@@ -101,7 +101,7 @@ const ConversationsLayout = ({ children }: Props) => {
   };
 
   const getAvatarUrl = (conversation: Conversation) => {
-    if (conversation.members[0].user._id !== user?.id) {
+    if (conversation.members[0].user._id !== user?._id) {
       return conversation.members[0].user.avatar;
     }
     return conversation.members[1].user.avatar;
@@ -134,7 +134,7 @@ const ConversationsLayout = ({ children }: Props) => {
 
         {filteredConversations ? (
           filteredConversations.length === 0 ? (
-            <p>No conversations found</p>
+            <p>Không tìm thấy cuộc trò chuyện</p>
           ) : (
             filteredConversations &&
             filteredConversations.map((conversation) => {

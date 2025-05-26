@@ -36,6 +36,70 @@ const AddGroupScreen = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [socket, setSocket] = useState(null);
   const [groupImage, setGroupImage] = useState(null);
+  const [language, setLanguage] = useState("vi"); // Default to Vietnamese
+
+  const languageData = {
+    en: {
+      createGroupTitle: "Create Group",
+      enterGroupNamePlaceholder: "Enter Group Name",
+      addMembersButton: "Add Members", // Count will be appended dynamically
+      noMembersSelectedYet: "No members selected yet",
+      selectMinTwoFriends: "Select at least 2 friends to create a group",
+      createGroupButton: "Create Group",
+      selectMembersModalTitle: "Select Members",
+      searchFriendsPlaceholder: "Search friends...",
+      noMatchingFriends: "No matching friends found",
+      noFriendsAvailable: "No friends available",
+      refreshButton: "Refresh",
+      doneButton: "Done",
+      errorTitle: "Error",
+      userDataNotFound: "User data not found",
+      failedToLoadFriends: "Failed to load friends",
+      failedToLoadFriendsRetry: "Failed to load friends. Please try again.",
+      permissionRequiredTitle: "Permission Required",
+      allowPhotoAccessMsg: "Please allow access to your photos to set a group image.",
+      failedToPickImage: "Failed to pick image",
+      pleaseEnterGroupName: "Please enter a group name",
+      selectAtLeastTwoMembers: "Please select at least 2 members for the group",
+      successTitle: "Success",
+      groupCreatedSuccessfully: "Group created successfully",
+      failedToCreateGroup: "Failed to create group",
+      failedToCreateGroupRetry: "Failed to create group. Please try again.",
+      noEmail: "No email",
+      okButton: "OK",
+    },
+    vi: {
+      createGroupTitle: "Tạo nhóm mới",
+      enterGroupNamePlaceholder: "Nhập tên nhóm",
+      addMembersButton: "Thêm thành viên",
+      noMembersSelectedYet: "Chưa chọn thành viên nào",
+      selectMinTwoFriends: "Chọn ít nhất 2 bạn bè để tạo nhóm",
+      createGroupButton: "Tạo nhóm",
+      selectMembersModalTitle: "Chọn thành viên",
+      searchFriendsPlaceholder: "Tìm kiếm bạn bè...",
+      noMatchingFriends: "Không tìm thấy bạn bè phù hợp",
+      noFriendsAvailable: "Không có bạn bè nào",
+      refreshButton: "Tải lại",
+      doneButton: "Xong",
+      errorTitle: "Lỗi",
+      userDataNotFound: "Không tìm thấy dữ liệu người dùng",
+      failedToLoadFriends: "Không thể tải danh sách bạn bè",
+      failedToLoadFriendsRetry: "Không thể tải danh sách bạn bè. Vui lòng thử lại.",
+      permissionRequiredTitle: "Yêu cầu quyền truy cập",
+      allowPhotoAccessMsg: "Vui lòng cho phép truy cập ảnh để đặt ảnh đại diện cho nhóm.",
+      failedToPickImage: "Không thể chọn ảnh",
+      pleaseEnterGroupName: "Vui lòng nhập tên nhóm",
+      selectAtLeastTwoMembers: "Vui lòng chọn ít nhất 2 thành viên cho nhóm",
+      successTitle: "Thành công",
+      groupCreatedSuccessfully: "Tạo nhóm thành công",
+      failedToCreateGroup: "Không thể tạo nhóm",
+      failedToCreateGroupRetry: "Không thể tạo nhóm. Vui lòng thử lại.",
+      noEmail: "Chưa có email",
+      okButton: "OK",
+    },
+  };
+
+  const getText = (key) => languageData[language][key] || languageData['en'][key];
 
   useEffect(() => {
     // Initialize socket and load user data
@@ -81,7 +145,7 @@ const AddGroupScreen = ({ navigation }) => {
           const user = JSON.parse(userData);
           setCurrentUser(user);
         } else {
-          throw new Error("User data not found");
+          throw new Error(getText("userDataNotFound"));
         }
       }
       
@@ -147,11 +211,11 @@ const AddGroupScreen = ({ navigation }) => {
         setFilteredFriends(friendsList);
       } else {
         console.error("Failed to load friends:", response.error || "Unknown error");
-        Alert.alert("Error", "Failed to load friends");
+        Alert.alert(getText("errorTitle"), getText("failedToLoadFriends"));
       }
     } catch (error) {
       console.error("Error loading friends:", error);
-      Alert.alert("Error", "Failed to load friends. Please try again.");
+      Alert.alert(getText("errorTitle"), getText("failedToLoadFriendsRetry"));
     } finally {
       setIsLoading(false);
     }
@@ -193,7 +257,7 @@ const AddGroupScreen = ({ navigation }) => {
       // Request permission
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert("Permission Required", "Please allow access to your photos to set a group image.");
+        Alert.alert(getText("permissionRequiredTitle"), getText("allowPhotoAccessMsg"));
         return;
       }
 
@@ -217,18 +281,18 @@ const AddGroupScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image");
+      Alert.alert(getText("errorTitle"), getText("failedToPickImage"));
     }
   };
 
   const handleCreateGroup = async () => {
     if (!groupName.trim()) {
-      Alert.alert("Error", "Please enter a group name");
+      Alert.alert(getText("errorTitle"), getText("pleaseEnterGroupName"));
       return;
     }
 
     if (selectedFriends.length < 2) {
-      Alert.alert("Error", "Please select at least 2 members for the group");
+      Alert.alert(getText("errorTitle"), getText("selectAtLeastTwoMembers"));
       return;
     }
 
@@ -249,16 +313,16 @@ const AddGroupScreen = ({ navigation }) => {
         emitCreateGroupConversation(response.data);
         
         Alert.alert(
-          "Success", 
-          "Group created successfully",
-          [{ text: "OK", onPress: () => navigation.goBack() }]
+          getText("successTitle"), 
+          getText("groupCreatedSuccessfully"),
+          [{ text: getText("okButton"), onPress: () => navigation.goBack() }]
         );
       } else {
-        Alert.alert("Error", response.error || "Failed to create group");
+        Alert.alert(getText("errorTitle"), response.error || getText("failedToCreateGroup"));
       }
     } catch (error) {
       console.error("Error creating group:", error);
-      Alert.alert("Error", "Failed to create group. Please try again.");
+      Alert.alert(getText("errorTitle"), getText("failedToCreateGroupRetry"));
     } finally {
       setIsCreating(false);
     }
@@ -303,7 +367,7 @@ const AddGroupScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="chevron-left" size={30} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Create Group</Text>
+        <Text style={styles.title}>{getText("createGroupTitle")}</Text>
       </View>
 
       <View style={styles.groupInfoContainer}>
@@ -326,7 +390,7 @@ const AddGroupScreen = ({ navigation }) => {
         
         <TextInput
           style={styles.input}
-          placeholder="Enter Group Name"
+          placeholder={getText("enterGroupNamePlaceholder")}
           placeholderTextColor="#666"
           value={groupName}
           onChangeText={setGroupName}
@@ -338,7 +402,7 @@ const AddGroupScreen = ({ navigation }) => {
         onPress={handleOpenModal}
       >
         <Icon name="account-multiple-plus" size={22} color="#333" style={styles.buttonIcon} />
-        <Text style={styles.addButtonText}>Add Members ({selectedFriends.length})</Text>
+        <Text style={styles.addButtonText}>{getText("addMembersButton")} ({selectedFriends.length})</Text>
       </TouchableOpacity>
 
       {selectedFriends.length > 0 ? (
@@ -350,8 +414,8 @@ const AddGroupScreen = ({ navigation }) => {
         />
       ) : (
         <View style={styles.emptySelection}>
-          <Text style={styles.emptyText}>No members selected yet</Text>
-          <Text style={styles.emptySubText}>Select at least 2 friends to create a group</Text>
+          <Text style={styles.emptyText}>{getText("noMembersSelectedYet")}</Text>
+          <Text style={styles.emptySubText}>{getText("selectMinTwoFriends")}</Text>
         </View>
       )}
 
@@ -366,7 +430,7 @@ const AddGroupScreen = ({ navigation }) => {
         {isCreating ? (
           <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Text style={styles.buttonText}>Create Group</Text>
+          <Text style={styles.buttonText}>{getText("createGroupButton")}</Text>
         )}
       </TouchableOpacity>
 
@@ -375,7 +439,7 @@ const AddGroupScreen = ({ navigation }) => {
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Members</Text>
+                <Text style={styles.modalTitle}>{getText("selectMembersModalTitle")}</Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Icon name="close" size={24} color="#333" />
                 </TouchableOpacity>
@@ -383,7 +447,7 @@ const AddGroupScreen = ({ navigation }) => {
               
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search friends..."
+                placeholder={getText("searchFriendsPlaceholder")}
                 placeholderTextColor="#666"
                 value={searchText}
                 onChangeText={setSearchText}
@@ -413,7 +477,7 @@ const AddGroupScreen = ({ navigation }) => {
                           />
                           <View>
                             <Text style={styles.friendName}>{item.name}</Text>
-                            <Text style={styles.friendEmail}>{item.email || 'No email'}</Text>
+                            <Text style={styles.friendEmail}>{item.email || getText("noEmail")}</Text>
                           </View>
                         </View>
                         <Icon
@@ -431,13 +495,13 @@ const AddGroupScreen = ({ navigation }) => {
                   ListEmptyComponent={
                     <View style={styles.emptyList}>
                       <Text style={styles.emptyListText}>
-                        {searchText ? "No matching friends found" : "No friends available"}
+                        {searchText ? getText("noMatchingFriends") : getText("noFriendsAvailable")}
                       </Text>
                       <TouchableOpacity 
                         style={styles.retryButton}
                         onPress={loadFriends}
                       >
-                        <Text style={styles.retryText}>Refresh</Text>
+                        <Text style={styles.retryText}>{getText("refreshButton")}</Text>
                       </TouchableOpacity>
                     </View>
                   }
@@ -448,7 +512,7 @@ const AddGroupScreen = ({ navigation }) => {
                 style={styles.closeButton}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Done</Text>
+                <Text style={styles.buttonText}>{getText("doneButton")}</Text>
               </TouchableOpacity>
             </View>
           </View>
