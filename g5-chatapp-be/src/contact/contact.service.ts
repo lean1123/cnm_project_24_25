@@ -258,7 +258,7 @@ export class ContactService {
   async deleteContact(
     userPayload: JwtPayload,
     contactId: string,
-  ): Promise<{contact: Contact, conversation: string}> {
+  ): Promise<{ contact: Contact; conversation: string }> {
     const deletedByUser = await this.userService.findById(userPayload._id);
     if (!deletedByUser) {
       throw new NotFoundException('User not found in deleted contact');
@@ -279,8 +279,8 @@ export class ContactService {
         "You don't have permission to delete this contact",
       );
     }
-    const conversation = await
-      this.conversationService.findConversationForDeleteContact(
+    const conversation =
+      await this.conversationService.findConversationForDeleteContact(
         contact.user._id.toString(),
         contact.contact._id.toString(),
       );
@@ -291,7 +291,7 @@ export class ContactService {
       throw new InternalServerErrorException('Failed to delete contact');
     }
     await this.conversationService.deleteConversationForDeleteContact(
-      conversation._id.toString()
+      conversation._id.toString(),
     );
     return {
       contact: deleted,
