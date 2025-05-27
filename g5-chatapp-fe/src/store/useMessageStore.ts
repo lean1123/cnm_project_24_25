@@ -171,6 +171,7 @@ export const useMessageStore = create<iMessageStore>((set, get) => ({
                   content: message.content,
                   type: message.type,
                   files: message.files,
+                  forwardFromConversation: message.forwardFromConversation,
                 },
                 updatedAt: new Date().toISOString(),
               };
