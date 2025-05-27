@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn, getInitials } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useMessageStore } from "@/store/useMessageStore";
-import type { Message, MessageFile } from "@/types";
+import type { Message, MessageFile, ReplyTo } from "@/types";
 import axios from "axios";
 import {
   CheckCheck,
@@ -161,6 +161,20 @@ const MessageComponent = ({
     return false;
   };
 
+  const isLocationMessageReply = (message: ReplyTo | null) => {
+    if (!message) return false;
+    if (message.type === "TEXT") {
+      const decryptedContent = decryptMessage(
+        message.content,
+        selectedConversation?._id || "123123"
+      );
+      return (
+        decryptedContent && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(decryptedContent)
+      );
+    }
+    return false;
+  };
+
   const getLocationFromMessage = (message: Message | null) => {
     if (!message) return null;
     if (message.type === "TEXT") {
@@ -291,7 +305,7 @@ const MessageComponent = ({
             {message.replyTo && (
               <div
                 className={cn(
-                  "flex gap-2 z-10 text-foreground text-xs mb-1 bg-primary/50 p-2 rounded-lg",
+                  "flex gap-2 z-10 text-foreground text-xs mb-1 bg-primary/30 p-2 rounded-md",
                   fromCurrentUser ? "-top-8 right-1" : "-top-8 left-1"
                 )}
               >
@@ -301,20 +315,24 @@ const MessageComponent = ({
                     message.replyTo.sender?.lastName}
                   :
                 </span>
-                <span className="text-muted-foreground">
-                  {decryptMessage(
-                    message.replyTo.content,
-                    selectedConversation?._id || "123123"
-                  )?.length > 40
-                    ? `${decryptMessage(
-                        message.replyTo.content,
-                        selectedConversation?._id || "123123"
-                      ).slice(0, 40)}...`
-                    : decryptMessage(
-                        message.replyTo.content,
-                        selectedConversation?._id || "123123"
-                      )}
-                </span>
+                {isLocationMessageReply(message.replyTo) ? (
+                  <span className="text-muted-foreground">Vị trí bản đồ</span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {decryptMessage(
+                      message.replyTo.content,
+                      selectedConversation?._id || "123123"
+                    )?.length > 40
+                      ? `${decryptMessage(
+                          message.replyTo.content,
+                          selectedConversation?._id || "123123"
+                        ).slice(0, 40)}...`
+                      : decryptMessage(
+                          message.replyTo.content,
+                          selectedConversation?._id || "123123"
+                        )}
+                  </span>
+                )}
                 {message.replyTo.type === "IMAGE" && (
                   <span className="text-muted-foreground">
                     <FileImage className="size-4 inline" /> Hình ảnh

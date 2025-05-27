@@ -32,6 +32,7 @@
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.511.0",
     "mammoth": "^1.9.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-day-picker": "^8.10.1",
     "react-dom": "^19.1.0",
