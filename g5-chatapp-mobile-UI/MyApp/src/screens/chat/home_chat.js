@@ -20,6 +20,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { getSocket, initSocket, reconnectSocket, subscribeToChatEvents, unsubscribeFromChatEvents, subscribeToNewConversations, unsubscribeFromNewConversations } from "../../services/socket";
 import { Ionicons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { decryptMessage } from "../../utils/securityMessage";
 
 const HomeScreen = () => {
   const [conversations, setConversations] = useState([]);

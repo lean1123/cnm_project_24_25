@@ -4,12 +4,11 @@ import { WebView } from 'react-native-webview';
 import * as Location from "expo-location";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-const LocationScreen = ({ navigation, route }) => {
-  const [location, setLocation] = useState(null);
+const LocationScreen = ({ navigation, route }) => {  const [location, setLocation] = useState(null);
   const [address, setAddress] = useState("đang lấy địa chỉ...");
   const initialLocation = route.params?.initialLocation;
   const [isLoading, setIsLoading] = useState(true);
-
+  const [hasLocationError, setHasLocationError] = useState(false);
   useEffect(() => {
     const getLocation = async () => {
       try {
@@ -21,23 +20,49 @@ const LocationScreen = ({ navigation, route }) => {
               longitude: initialLocation.longitude
             }
           });
-          getAddress(initialLocation.latitude, initialLocation.longitude);
+          await getAddress(initialLocation.latitude, initialLocation.longitude);
+          setIsLoading(false);
           return;
         }
 
         // Otherwise get current location (for sending new location)
+        console.log("Requesting location permissions...");
         let { status } = await Location.requestForegroundPermissionsAsync();
+        
         if (status !== 'granted') {
-          alert('Permission to access location was denied');
+          console.log("Location permission denied");
+          alert('Cần quyền truy cập vị trí để gửi vị trí. Vui lòng cấp quyền trong cài đặt.');
+          setIsLoading(false);
           return;
         }
 
-        let loc = await Location.getCurrentPositionAsync({});
+        console.log("Getting current location...");
+          // For Android emulator, use a more relaxed accuracy setting
+        let loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 10000, // Reduced timeout
+          maximumAge: 60000, // Allow cached location up to 1 minute old
+        });
+        
+        console.log("Location obtained:", loc);
         setLocation(loc);
-        getAddress(loc.coords.latitude, loc.coords.longitude);
+        await getAddress(loc.coords.latitude, loc.coords.longitude);
       } catch (error) {
         console.error("Error getting location:", error);
-        alert("Không thể lấy vị trí. Vui lòng thử lại.");
+          // Provide fallback location for emulators (Hanoi, Vietnam)
+        console.log("Using fallback location for emulator...");
+        setHasLocationError(true);
+        const fallbackLocation = {
+          coords: {
+            latitude: 21.0285,
+            longitude: 105.8542
+          }
+        };
+        setLocation(fallbackLocation);
+        await getAddress(fallbackLocation.coords.latitude, fallbackLocation.coords.longitude);
+        
+        // Show a more user-friendly message
+        alert("Không thể lấy vị trí chính xác, đang sử dụng vị trí mẫu (Hà Nội). Bạn có thể gửi vị trí này hoặc thử lại.");
       } finally {
         setIsLoading(false);
       }
@@ -99,7 +124,58 @@ const LocationScreen = ({ navigation, route }) => {
         alert("Không thể gửi vị trí. Vui lòng thử lại.");
       }
     } else {
-      alert("Không thể lấy vị trí. Vui lòng thử lại.");
+      alert("Không thể lấy vị trí. Vui lòng thử lại.");    }
+  };
+
+  const useSampleLocation = async () => {
+    try {
+      setIsLoading(true);
+      const sampleLocation = {
+        coords: {
+          latitude: 21.0285,
+          longitude: 105.8542
+        }
+      };
+      setLocation(sampleLocation);
+      await getAddress(sampleLocation.coords.latitude, sampleLocation.coords.longitude);
+      setHasLocationError(false);
+    } catch (error) {
+      console.error("Error setting sample location:", error);
+      alert("Không thể thiết lập vị trí mẫu. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const retryLocation = async () => {
+    setIsLoading(true);
+    setHasLocationError(false);
+    setLocation(null);
+    
+    try {
+      console.log("Retrying location...");
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        setHasLocationError(true);
+        alert('Cần quyền truy cập vị trí để gửi vị trí. Vui lòng cấp quyền trong cài đặt.');
+        return;
+      }
+
+      let loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 10000,
+        maximumAge: 60000,
+      });
+      
+      setLocation(loc);
+      await getAddress(loc.coords.latitude, loc.coords.longitude);
+    } catch (error) {
+      console.error("Retry location error:", error);
+      setHasLocationError(true);
+      alert("Vẫn không thể lấy vị trí chính xác. Bạn có thể sử dụng vị trí mẫu bên dưới.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -217,15 +293,43 @@ const LocationScreen = ({ navigation, route }) => {
             </View>
           )}
         />
-      </View>
-
-      {!initialLocation && (
-        <TouchableOpacity 
-          style={styles.sendButton}
-          onPress={handleSendLocation}
-        >
-          <Text style={styles.sendButtonText}>Gửi vị trí</Text>
-        </TouchableOpacity>
+      </View>      {!initialLocation && (
+        <View style={styles.bottomContainer}>
+          {hasLocationError && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>
+                ⚠️ Đang sử dụng vị trí mẫu (Hà Nội)
+              </Text>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.retryButton]}
+                  onPress={retryLocation}
+                >
+                  <Icon name="refresh" size={20} color="#135CAF" />
+                  <Text style={styles.retryButtonText}>Thử lại</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.sampleButton]}
+                  onPress={useSampleLocation}
+                >
+                  <Icon name="map-marker" size={20} color="#ff6b35" />
+                  <Text style={styles.sampleButtonText}>Dùng vị trí mẫu</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          
+          <TouchableOpacity 
+            style={styles.sendButton}
+            onPress={handleSendLocation}
+          >
+            <Icon name="send" size={20} color="white" />
+            <Text style={styles.sendButtonText}>
+              {hasLocationError ? "Gửi vị trí mẫu" : "Gửi vị trí hiện tại"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -285,16 +389,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
-  },
-  sendButton: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
+  },  sendButton: {
     backgroundColor: '#135CAF',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: {
@@ -308,6 +409,63 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  errorContainer: {
+    backgroundColor: '#fff3cd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffc107',
+  },
+  errorText: {
+    color: '#856404',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+  },
+  retryButton: {
+    backgroundColor: '#e3f2fd',
+    borderWidth: 1,
+    borderColor: '#135CAF',
+  },
+  retryButtonText: {
+    color: '#135CAF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  sampleButton: {
+    backgroundColor: '#fff3e0',
+    borderWidth: 1,
+    borderColor: '#ff6b35',
+  },
+  sampleButtonText: {
+    color: '#ff6b35',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   }
 });
 

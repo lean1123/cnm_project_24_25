@@ -11,21 +11,21 @@
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
-    },
-    "ios": {
+    },    "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to change your avatar.",
-        "NSCameraUsageDescription": "This app needs access to your camera to take photos for your avatar.",
-        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to send photos and change your avatar.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take photos and send them in chat.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for voice messages and calls.",
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to share your current location in chat.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to share your current location in chat.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMapsApiKey": "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus"
       },
       "bundleIdentifier": "com.anonymous.MyApp"
-    },
-    "android": {
+    },"android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -34,15 +34,14 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
       ],
       "config": {
         "googleMaps": {
@@ -53,9 +52,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-video"
+    },    "plugins": [
+      "expo-video",
+      "expo-location",
+      "expo-image-picker"
     ],
     "extra": {
       "eas": {

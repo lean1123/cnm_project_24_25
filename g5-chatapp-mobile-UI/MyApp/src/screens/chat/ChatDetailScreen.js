@@ -1,3 +1,4 @@
+import 'react-native-get-random-values'; // Must be first import
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
@@ -19,6 +20,7 @@ import {
   ScrollView,
 } from "react-native";
 import WebView from "react-native-webview";
+import { encryptMessage, decryptMessage } from "../../utils/securityMessage";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -950,8 +952,12 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
     try {
       let response;
+      
+      // Encrypt the content before sending (skip location messages)
+      const encryptedContent = isLocationMessage ? content : encryptMessage(content, conversation._id);
+      
       const messagePayload = {
-        content,
+        content: encryptedContent,
         type: messageData?.type || (isLocationMessage ? "LOCATION" : "TEXT"),
         sender: currentUser._id,
         // Revert to use message's ID for replyTo
@@ -1053,6 +1059,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
 
   const handleCamera = async () => {
     try {
+      // Request camera permissions
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
         alert(
@@ -1061,11 +1068,19 @@ const ChatDetailScreen = ({ navigation, route }) => {
         return;
       }
 
+      // Check if camera is available (especially important for emulators)
+      const cameraAvailable = await ImagePicker.getCameraPermissionsAsync();
+      if (!cameraAvailable.granted) {
+        alert("Camera không khả dụng trên thiết bị này.");
+        return;
+      }
+
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 1,
+        mediaTypes: [ImagePicker.MediaType.Images],
+        quality: 0.8, // Reduce quality for better performance on emulator
         allowsEditing: true,
-        base64: true,
+        base64: false, // Disable base64 for better performance
+        exif: false, // Disable EXIF data
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -1082,7 +1097,13 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
     } catch (err) {
       console.error("Error using camera:", err);
-      alert("Không thể mở camera. Vui lòng thử lại.");
+      
+      // Provide more specific error messages
+      if (err.message?.includes('activity')) {
+        alert("Camera không khả dụng trên thiết bị này. Vui lòng thử chọn từ thư viện ảnh.");
+      } else {
+        alert("Không thể mở camera. Vui lòng thử lại hoặc chọn từ thư viện ảnh.");
+      }
     }
   };
 
@@ -1098,7 +1119,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: [ImagePicker.MediaType.Images],
         quality: 1,
         allowsMultipleSelection: true,
         selectionLimit: 10,
@@ -1171,7 +1192,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        mediaTypes: [ImagePicker.MediaType.Videos],
         allowsEditing: true,
         quality: 1,
       });
@@ -1736,12 +1757,16 @@ const ChatDetailScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         );
       default:
+        // Decrypt the content for display (skip location messages)
+        const isLocationContent = item.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.content);
+        const displayContent = isLocationContent ? item.content : decryptMessage(item.content, conversation._id);
+        
         return wrapForwardedContent(
           <Text
             variant="bodyMedium"
             style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 16 }}
           >
-            {item.content || ""}
+            {displayContent || ""}
           </Text>
         );
     }
@@ -1882,7 +1907,11 @@ const ChatDetailScreen = ({ navigation, route }) => {
                   <Text style={styles.repliedSenderName}>{item.replyTo.sender?.firstName} {item.replyTo.sender?.lastName}</Text>
                   {item.replyTo.content && item.replyTo.content.length > 0 && (
                     <Text style={styles.repliedContentPreview}>
-                      {item.replyTo.content.length > 40 ? `${item.replyTo.content.slice(0, 40)}...` : item.replyTo.content}
+                      {(() => {
+                        const isLocationReply = item.replyTo.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.replyTo.content);
+                        const decryptedContent = isLocationReply ? item.replyTo.content : decryptMessage(item.replyTo.content, conversation._id);
+                        return decryptedContent.length > 40 ? `${decryptedContent.slice(0, 40)}...` : decryptedContent;
+                      })()}
                     </Text>
                   )}
                   {/* Add previews for other types like IMAGE, FILE etc. similar to ChatMessage.js */}
