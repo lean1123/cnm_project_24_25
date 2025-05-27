@@ -49,6 +49,7 @@ import ContactRequestsScreen from "../screens/chat/ContactRequests";
 import ImageViewerScreen from "../components/ImageViewerScreen";
 import VideoPlayer from "../screens/chat/components/VideoPlayer";
 import FileViewer from "../screens/chat/components/FileViewer";
+import QRCodeScannerScreen from "../screens/QRCodeScannerScreen";
 // call
 import CallScreen from "../screens/chat/call/call";
 import CallingScreen from "../screens/chat/call/calling";
@@ -80,17 +81,17 @@ const MainNavigator = () => {
     const setupSocket = async () => {
       try {
         console.log("[Navigator] Setting up socket connection");
-        
+
         await initSocket();
-        
+
         const userData = await AsyncStorage.getItem('userData');
         if (userData) {
           const user = JSON.parse(userData);
           if (user && user._id) {
             console.log(`[Navigator] Found user ${user._id}, emitting login event`);
-            
+
             emitLogin(user._id);
-            
+
             const intervalId = setInterval(async () => {
               const socket = getSocket();
               if (socket && !socket.connected) {
@@ -99,7 +100,7 @@ const MainNavigator = () => {
                 emitLogin(user._id);
               }
             }, 10000);
-            
+
             return () => {
               clearInterval(intervalId);
             };
@@ -109,7 +110,7 @@ const MainNavigator = () => {
         console.error('[Navigator] Error setting up socket:', error);
       }
     };
-    
+
     setupSocket();
   }, []);
 
@@ -124,7 +125,7 @@ const MainNavigator = () => {
   const initialRoute = user ? "Home_Chat" : "SignInScreen";
 
   return (
-    <Stack.Navigator 
+    <Stack.Navigator
       initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
@@ -237,7 +238,7 @@ const MainNavigator = () => {
       <Stack.Screen
         name="ImageViewer"
         component={ImageViewerScreen}
-      />
+      /> 
       <Stack.Screen
         name="VideoPlayer"
         component={VideoPlayer}
@@ -245,6 +246,10 @@ const MainNavigator = () => {
       <Stack.Screen
         name="FileViewer"
         component={FileViewer}
+      />
+      <Stack.Screen
+        name="QRCodeScannerScreen"
+        component={QRCodeScannerScreen}
       />
     </Stack.Navigator>
   );
