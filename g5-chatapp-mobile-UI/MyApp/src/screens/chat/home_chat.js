@@ -79,7 +79,7 @@ const HomeScreen = () => {
         // Decrypt the message content before displaying
         // Use the passed conversationId as the primary key, fallback to lastMessage.conversation
         const isLocationContent = lastMessage.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(lastMessage.content);
-        const decryptionKey = conversationId || lastMessage.conversation || "default_key";
+        const decryptionKey =  lastMessage.forwardFromConversation || conversationId || lastMessage.conversation || "default_key";
         const decryptedContent = isLocationContent ? lastMessage.content : decryptMessage(lastMessage.content, decryptionKey);
         
         console.log('[HomeChat] Decrypted content with key:', decryptionKey, '→', decryptedContent);

@@ -1739,8 +1739,7 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     size={14}
                     color={isMyMessage ? "#fff" : "#333"}
                     style={{ marginRight: 4 }}
-                  />
-                  <Text
+                  />                  <Text
                     style={{ color: isMyMessage ? "#fff" : "#333", fontSize: 12 }}
                   >
                     Tải xuống
@@ -1753,7 +1752,10 @@ const ChatDetailScreen = ({ navigation, route }) => {
       default:
         // Decrypt the content for display (skip location messages)
         const isLocationContent = item.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(item.content);
-        const displayContent = isLocationContent ? item.content : decryptMessage(item.content, conversation._id);
+        // For forwarded messages, use the original conversation ID for decryption
+        const isForwarded = item.forwardFrom !== undefined && item.forwardFrom !== null;
+        const conversationIdForDecryption = isForwarded ? item.forwardFromConversation : conversation._id;
+        const displayContent = isLocationContent ? item.content : decryptMessage(item.content, conversationIdForDecryption);
         
         return wrapForwardedContent(
           <Text
