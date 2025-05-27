@@ -398,17 +398,10 @@ export class AuthService {
       status: 'used',
       userId: userId,
       verifiedAt: Date.now(),
-    };
-
-    await this.redis.set(qrKey, JSON.stringify(newQrSession), 'EX', 120);
-
-    const tokenForUser = this.jwtService.sign(
-      { sub: userId },
-      {
-        expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES,
-        secret: process.env.JWT_SECRET,
-      },
-    );
+    };    await this.redis.set(qrKey, JSON.stringify(newQrSession), 'EX', 120);
+    
+    // Sử dụng cấu hình mặc định từ JwtModule
+    const tokenForUser = this.jwtService.sign({ sub: userId });
 
     return {
       message: 'QR login verified successfully',
