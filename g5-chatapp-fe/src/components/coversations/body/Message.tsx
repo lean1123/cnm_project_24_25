@@ -359,10 +359,15 @@ const MessageComponent = ({
             type === "TEXT" &&
             !isLocationMessage(message) ? (
               <p className="text-wrap break-words whitespace-pre-wrap sm:max-w-[2200px] md:max-w-[550px] lg:max-w-[400px] xl:max-w-[600px]">
-                {decryptMessage(
-                  message.content,
-                  selectedConversation?._id || "123123"
-                )}
+                {message.forwardFromConversation
+                  ? decryptMessage(
+                      message.content,
+                      message.forwardFromConversation || "123123"
+                    )
+                  : decryptMessage(
+                      message.content,
+                      selectedConversation?._id || "123123"
+                    )}
               </p>
             ) : null}
             {!message?.isRevoked && isLocationMessage(message) && (

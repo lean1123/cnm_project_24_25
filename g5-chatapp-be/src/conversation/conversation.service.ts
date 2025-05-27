@@ -160,7 +160,7 @@ export class ConversationService {
       .populate('members.user', 'firstName lastName email avatar')
       .populate({
         path: 'lastMessage',
-        select: 'sender content type files',
+        select: 'sender content type files forwardFromConversation',
         populate: {
           path: 'sender',
           select: 'firstName lastName',
