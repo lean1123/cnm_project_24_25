@@ -92,12 +92,11 @@ export class AuthController {
   async generateQrCode() {
     return await this.authService.generateQRData();
   }
-
   @Post('verify-qr-code')
   @UseGuards(AuthGuard('jwt'))
   async verifyQRCode(
     @Body() verifitionBody: { sessionId: string },
-    req: JwtPayload,
+    @UserDecorator() req: JwtPayload,
   ) {
     const loginQRResult = await this.authService.verifyQRLogin(
       verifitionBody.sessionId,
