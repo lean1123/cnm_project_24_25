@@ -11,13 +11,25 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem("userToken");
+    // Try both token keys to ensure compatibility
+    let token = await AsyncStorage.getItem("userToken");
+    if (!token) {
+      token = await AsyncStorage.getItem("accessToken");
+    }
+    console.log('Axios Interceptor - Token retrieved:', token ? token.substring(0, 30) + '...' : 'NO TOKEN');
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Axios Interceptor - Authorization header set:', config.headers.Authorization.substring(0, 40) + '...');
+    } else {
+      console.log('Axios Interceptor - No token found, no Authorization header set');
     }
+    
+    console.log('Axios Interceptor - Final headers:', JSON.stringify(config.headers, null, 2));
     return config;
   },
   (error) => {
+    console.error('Axios Interceptor - Request error:', error);
     return Promise.reject(error);
   }
 );

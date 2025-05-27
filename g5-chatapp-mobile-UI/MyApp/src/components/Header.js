@@ -83,10 +83,16 @@ const Header = ({ onSearch }) => {
             <Image
               source={require("../../assets/chat/logochat.png")}
               style={styles.logo}
-            />
+            />            
             <Text style={styles.headerTitle}>E-Chat</Text>
           </View>
           <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('QRCodeScannerScreen')}
+            >
+              <Icon name="qrcode-scan" size={24} color="#fff" />
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.iconButton}
               onPress={() => setIsSearching(true)}

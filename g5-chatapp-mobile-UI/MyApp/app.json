@@ -11,7 +11,8 @@
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
-    },    "ios": {
+    },
+    "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to send photos and change your avatar.",
@@ -25,7 +26,8 @@
         "googleMapsApiKey": "AIzaSyD8RmSmPFzoNdvjkdMSpnBoxFRIQWGhcus"
       },
       "bundleIdentifier": "com.anonymous.MyApp"
-    },"android": {
+    },
+    "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -52,10 +54,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },    "plugins": [
+    },
+    "plugins": [
       "expo-video",
       "expo-location",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-barcode-scanner"
     ],
     "extra": {
       "eas": {
