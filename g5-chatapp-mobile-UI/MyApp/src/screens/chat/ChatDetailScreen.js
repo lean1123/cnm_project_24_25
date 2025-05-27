@@ -1073,10 +1073,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
       if (!cameraAvailable.granted) {
         alert("Camera không khả dụng trên thiết bị này.");
         return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: [ImagePicker.MediaType.Images],
+      }      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8, // Reduce quality for better performance on emulator
         allowsEditing: true,
         base64: false, // Disable base64 for better performance
@@ -1116,10 +1114,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
           "Xin lỗi, chúng tôi cần quyền truy cập thư viện ảnh để thực hiện điều này!"
         );
         return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [ImagePicker.MediaType.Images],
+      }      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 1,
         allowsMultipleSelection: true,
         selectionLimit: 10,
@@ -1189,10 +1185,8 @@ const ChatDetailScreen = ({ navigation, route }) => {
       if (status !== "granted") {
         alert("Sorry, we need camera roll permissions to make this work!");
         return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [ImagePicker.MediaType.Videos],
+      }      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
         quality: 1,
       });
