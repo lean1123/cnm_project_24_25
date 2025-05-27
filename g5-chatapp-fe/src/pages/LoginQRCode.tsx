@@ -10,6 +10,7 @@ const LoginQRCode = () => {
   const { generateQRCode, setUser, setIsAuthenticated } = useAuthStore();
   const [sessionId, setSessionId] = useState("");
   const [qrData, setQrData] = useState("");
+  const [waitingTime, setWaitingTime] = useState(0);
   const socket = getSocket();
   const navigate = useNavigate();
   useEffect(() => {
@@ -45,11 +46,42 @@ const LoginQRCode = () => {
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(() => {
+      setWaitingTime((prev) => prev + 1);
+    }, 1000);
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
+
+  const handleFormatWaitingTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    return `${minutes} phút ${seconds} giây`;
+  };
 
   return (
     <div className="flex flex-col items-center gap-2 justify-center min-h-screen">
       <h1 className="text-2xl font-bold mb-4">Quét QR để đăng nhập</h1>
+      {300 - waitingTime <= 0 ? (
+        <>
+          <p className="text-red-500 mb-4">
+            Thời gian chờ đã hết. Vui lòng làm mới trang để tạo mã QR mới.
+          </p>
+          <Button
+            onClick={() => {
+              window.location.reload();
+            }}
+          >
+            Làm mới trang
+          </Button>
+        </>
+      ) : (
+        <p className="text-gray-600 mb-4">
+          Vui lòng quét mã QR bằng ứng dụng để đăng nhập. Thời gian chờ:{" "}
+          {handleFormatWaitingTime(300 - waitingTime)}
+        </p>
+      )}
       {qrData && (
         <QRCodeCanvas
           value={qrData}

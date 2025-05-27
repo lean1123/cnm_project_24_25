@@ -203,4 +203,24 @@ export class ConvensationController {
     this.chatGateWay.handleUpdateConversation(updatedConversation);
     return updatedConversation;
   }
+
+  @Post('change-avatar/:conversationId')
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(FileInterceptor('file'))
+  async changeAvatar(
+    @UserDecorator() userPayload: JwtPayload,
+    @Param('conversationId') conversationId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const updatedConversation =
+      await this.convensationService.changeAvatar(
+        userPayload,
+        conversationId,
+        file,
+      );
+
+    this.chatGateWay.handleUpdateConversation(updatedConversation);
+
+    return updatedConversation;
+  }
 }
