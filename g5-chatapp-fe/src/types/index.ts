@@ -49,6 +49,7 @@ export type LastMessage = {
     content: string;
     type: string;
     files: MessageFile[] | null;
+    forwardFromConversation?: string | null;
 }
 
 export type Member = {
@@ -72,6 +73,7 @@ export type Message = {
     isError?: boolean;
     reactions?: Reactions[];
     replyTo?: ReplyTo | null;
+    forwardFromConversation?: string | null;
 }
 
 export type ReplyTo = {

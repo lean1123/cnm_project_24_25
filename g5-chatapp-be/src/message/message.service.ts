@@ -285,6 +285,7 @@ export class MessageService {
         files: originalMessage.files,
         type: originalMessage.type,
         forwardFrom: originalMessage._id, // Đánh dấu tin nhắn gốc
+        forwardFromConversation: originalMessage.conversation,
       });
 
       // Lưu tin nhắn đã forward vào mảng để trả về sau
