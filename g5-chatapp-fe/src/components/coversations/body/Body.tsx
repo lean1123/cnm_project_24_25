@@ -19,7 +19,7 @@ const Body = (props: Props) => {
     if (selectedConversation) {
       fetchMessages(selectedConversation._id);
     }
-  }, [selectedConversation, fetchMessages]);
+  }, [selectedConversation]);
 
   const checkDeletedMessage = (message: Message | null) => {
     if (!message) return false;

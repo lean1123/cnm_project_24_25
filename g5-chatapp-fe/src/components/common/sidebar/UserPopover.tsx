@@ -38,10 +38,10 @@ const UserPopover = (props: Props) => {
       <PopoverContent className="w-52 ml-6 p-0">
         <div className="grid gap-2 py-2">
           <AccountInformationDialog />
-          <Separator />
+          {/* <Separator />
           <div className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer">
             <h4 className="font-medium text-sm leading-none">Cài đặt</h4>
-          </div>
+          </div> */}
           <Separator />
           <div
             className="space-y-1 hover:bg-gray-100 p-2 cursor-pointer"

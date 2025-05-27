@@ -12,6 +12,7 @@ interface iConversationStore {
   userSelected: User | null;
   fetchingUser: (userId: string) => Promise<void>;
   isLoading: boolean;
+  isCreatingGroup: boolean;
   error: string | null;
   getConversations: (userId: string) => Promise<void>;
   getConversation: (conversationId: string) => Promise<Conversation | null>;
@@ -38,6 +39,7 @@ interface iConversationStore {
   subscribeUpdateGroup: () => void;
   unsubscribeUpdateGroup: () => void;
   setSelectedUser: (user: User | null) => void;
+  updateAvatar: (file: File, conversationId: string) => Promise<void>;
 }
 
 export const useConversationStore = create<iConversationStore>((set, get) => ({
@@ -47,6 +49,7 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   error: null,
   userSelected: null,
   membersCreateGroup: [],
+  isCreatingGroup: false,
   setSelectedUser: (user: User | null) => {
     set({ userSelected: user });
   },
@@ -112,13 +115,31 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
     }
   },
   createGroup: async (group: CreateGroupRequest) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, isCreatingGroup: true });
     try {
-      const { data } = await api.post("/conversation", group);
+      toast.loading("Đang tạo nhóm...", {
+        id: "create-group",
+      });
+      const form = new FormData();
+      form.append("name", group.name);
+      form.append("isGroup", "true");
+      group.members.forEach((member) => {
+        form.append("members", member);
+      });
+      if (group.file) {
+        form.append("file", group.file);
+      }
+      const { data } = await api.post("/conversation", form, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
       console.log("Create group response:", data);
-      toast.success("Tạo nhóm thành công!");
       set({ membersCreateGroup: [] });
       get().getConversations(useAuthStore.getState().user?._id as string);
+      toast.success("Tạo nhóm thành công!", {
+        id: "create-group",
+      });
       const socket = getSocket();
       if (socket) {
         socket.emit("joinNewConversation", {
@@ -128,8 +149,11 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       }
     } catch (error) {
       set({ error: "Failed to create group" });
+      toast.error("Tạo nhóm thất bại!", {
+        id: "create-group",
+      });
     } finally {
-      set({ isLoading: false });
+      set({ isLoading: false, isCreatingGroup: false });
     }
   },
   addMemberToGroup: async (conversationId: string, userIds: string[]) => {
@@ -183,13 +207,26 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
   dissolveGroup: async (conversationId: string) => {
     set({ isLoading: true, error: null });
     try {
+      toast.loading("Đang giải tán nhóm...", {
+        id: "dissolve-group",
+      });
       const { data } = await api.delete(`/conversation/${conversationId}`);
       console.log("Dissolve group response:", data);
-      toast.success("Nhóm đã được giải tán!");
       set({ selectedConversation: null });
+      // Remove the conversation from the list
+      const updatedConversations = get().conversations.filter(
+        (conv) => conv._id !== conversationId
+      );
+      set({ conversations: updatedConversations });
       get().getConversations(useAuthStore.getState().user?._id as string);
+      toast.success("Nhóm đã được giải tán!", {
+        id: "dissolve-group",
+      });
     } catch (error) {
       set({ error: "Failed to dissolve group" });
+      toast.error("Giải tán nhóm thất bại!", {
+        id: "dissolve-group",
+      });
     } finally {
       set({ isLoading: false });
     }
@@ -223,6 +260,39 @@ export const useConversationStore = create<iConversationStore>((set, get) => ({
       get().getConversations(useAuthStore.getState().user?._id as string);
     } catch (error) {
       set({ error: "Failed to change admin" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  updateAvatar: async (file: File, conversationId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      toast.loading("Đang cập nhật ảnh đại diện nhóm...", {
+        id: "update-avatar-group",
+      });
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post(
+        `/conversation/change-avatar/${conversationId}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      console.log("Update avatar response:", data);
+      get().getConversations(useAuthStore.getState().user?._id as string);
+      toast.success("Cập nhật ảnh đại diện thành công!", 
+        {
+          id: "update-avatar-group",
+        }
+      );
+    } catch (error) {
+      set({ error: "Failed to update avatar" });
+      toast.error("Cập nhật ảnh đại diện thất bại!", {
+        id: "update-avatar-group",
+      });
     } finally {
       set({ isLoading: false });
     }

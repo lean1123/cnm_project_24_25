@@ -10,6 +10,7 @@ import {
   Download,
   FileText,
   LogOutIcon,
+  Pencil,
   Search,
   Trash,
   Trash2,
@@ -39,8 +40,13 @@ type Props = {
 };
 
 function ConversationInfo({ isOpen, setOpen, isGroup }: Props) {
-  const { selectedConversation, leaveGroup, dissolveGroup, userSelected } =
-    useConversationStore();
+  const {
+    selectedConversation,
+    leaveGroup,
+    dissolveGroup,
+    userSelected,
+    updateAvatar,
+  } = useConversationStore();
   const [showGroupMember, setShowGroupMember] = React.useState(false);
   const { user } = useAuthStore();
   const { messages } = useMessageStore();
@@ -79,6 +85,14 @@ function ConversationInfo({ isOpen, setOpen, isGroup }: Props) {
     await dissolveGroup(selectedConversation._id!);
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && selectedConversation) {
+      // changeAvatar(file);
+      updateAvatar(file, selectedConversation._id!);
+    }
+  };
+
   return (
     <Card
       className={cn(
@@ -88,25 +102,62 @@ function ConversationInfo({ isOpen, setOpen, isGroup }: Props) {
     >
       {/* info */}
       <div className="flex flex-col gap-2 justify-center items-center mt-6">
-        <Avatar className="h-16 w-16">
-          {isGroup ? (
-            <AvatarImage
-              src={selectedConversation?.profilePicture || "/group.jpg"}
-              alt="Group"
-            />
-          ) : (
+        {isGroup ? (
+          <>
+            {isAdmin ? (
+              <div className="relative">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage
+                    src={selectedConversation?.profilePicture || "/group.jpg"}
+                    alt="User"
+                  />
+                </Avatar>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+                <Button
+                  variant={"outline"}
+                  className="rounded-full border bg-background text-black absolute -bottom-3 right-0"
+                  onClick={() =>
+                    document.getElementById("avatar-upload")?.click()
+                  }
+                >
+                  <Pencil className="size-3" />
+                </Button>
+              </div>
+            ) : (
+              <Avatar className="h-16 w-16">
+                <AvatarImage
+                  src={selectedConversation?.profilePicture || "/group.jpg"}
+                  alt="Group"
+                />
+                <AvatarFallback>
+                  {getNameFallBack(
+                    userSelected?.firstName || "",
+                    userSelected?.lastName || ""
+                  )}
+                </AvatarFallback>
+              </Avatar>
+            )}
+          </>
+        ) : (
+          <Avatar className="h-16 w-16">
             <AvatarImage
               src={userSelected?.avatar || "/avatar.png"}
               alt="User"
             />
-          )}
-          <AvatarFallback>
-            {getNameFallBack(
-              userSelected?.firstName || "",
-              userSelected?.lastName || ""
-            )}
-          </AvatarFallback>
-        </Avatar>
+            <AvatarFallback>
+              {getNameFallBack(
+                userSelected?.firstName || "",
+                userSelected?.lastName || ""
+              )}
+            </AvatarFallback>
+          </Avatar>
+        )}
         {/* <div> */}
         {isGroup ? (
           <h2 className="font-semibold">{selectedConversation?.name}</h2>
