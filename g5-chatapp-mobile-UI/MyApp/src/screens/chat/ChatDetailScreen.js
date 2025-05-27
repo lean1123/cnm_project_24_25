@@ -2204,7 +2204,17 @@ const ChatDetailScreen = ({ navigation, route }) => {
               style={{ color: "#666", fontSize: 14 }}
               numberOfLines={1}
             >
-              {pinnedMessage.content}
+              {(() => {
+                if (!pinnedMessage.content) return "";
+                // Check if it's a location message
+                const isLocationMessage = /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(pinnedMessage.content);
+                if (isLocationMessage) {
+                  return "Đã chia sẻ vị trí";
+                }
+                // Decrypt the message content
+                const decryptedContent = decryptMessage(pinnedMessage.content, conversation._id);
+                return decryptedContent || pinnedMessage.content;
+              })()}
             </Text>
           );
       }
@@ -3520,7 +3530,22 @@ const ChatDetailScreen = ({ navigation, route }) => {
                     Replying to {replyMessage.sender?.firstName || 'User'} {replyMessage.sender?.lastName || ''}
                   </Text>
                   <Text numberOfLines={1} style={styles.replyPreviewContent}>
-                    {replyMessage.content || (replyMessage.files && replyMessage.files.length > 0 ? `File: ${replyMessage.files[0].fileName || 'Attachment'}` : 'Message')}
+                    {(() => {
+                      if (replyMessage.files && replyMessage.files.length > 0) {
+                        return `File: ${replyMessage.files[0].fileName || 'Attachment'}`;
+                      }
+                      if (replyMessage.content) {
+                        // Check if it's a location message
+                        const isLocationMessage = /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(replyMessage.content);
+                        if (isLocationMessage) {
+                          return "Đã chia sẻ vị trí";
+                        }
+                        // Decrypt the message content
+                        const decryptedContent = decryptMessage(replyMessage.content, conversation._id);
+                        return decryptedContent || replyMessage.content;
+                      }
+                      return 'Message';
+                    })()}
                   </Text>
                 </TouchableOpacity>
               </View>
