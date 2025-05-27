@@ -32,6 +32,8 @@ export class ConversationService {
       throw new Error('Admin user not found');
     }
 
+    console.log('data:', conversation);
+
     let memberIds = conversation.members;
 
     const isExistedAdmin = memberIds.some((id) =>
@@ -374,15 +376,17 @@ export class ConversationService {
     return await this.convenstationModel.findByIdAndDelete(conversationId);
   }
 
-  async findConversationForDeleteContact(userId: string, contactId: string): Promise<Convensation> {
-    const conversation = await this.convenstationModel
-      .findOne({
-        isGroup: false,
-        'members.user': {
-          $all: [new Types.ObjectId(userId), new Types.ObjectId(contactId)],
-        },
-        $expr: { $eq: [{ $size: '$members' }, 2] }, // Đảm bảo đúng 2 thành viên
-      })
+  async findConversationForDeleteContact(
+    userId: string,
+    contactId: string,
+  ): Promise<Convensation> {
+    const conversation = await this.convenstationModel.findOne({
+      isGroup: false,
+      'members.user': {
+        $all: [new Types.ObjectId(userId), new Types.ObjectId(contactId)],
+      },
+      $expr: { $eq: [{ $size: '$members' }, 2] }, // Đảm bảo đúng 2 thành viên
+    });
     return conversation;
   }
 
@@ -495,6 +499,32 @@ export class ConversationService {
     if (currentMember.role === ConversationRole.ADMIN) {
       currentMember.role = ConversationRole.MEMBER;
     }
+
+    await conversation.save();
+
+    return this.getConvensationById(conversation._id as string);
+  }
+
+  async changeAvatar(
+    userPayload: JwtPayload,
+    conversationId: string,
+    file: Express.Multer.File,
+  ): Promise<Convensation> {
+    const conversation = await this.convenstationModel.findById(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    const isAdmin = conversation.members.some((member) =>
+      member.user.equals(new Types.ObjectId(userPayload._id)),
+    );
+
+    if (!isAdmin) {
+      throw new Error('Only admin can change avatar');
+    }
+
+    const uploadedResult = await this.cloudinaryService.uploadFile(file);
+    conversation.profilePicture = uploadedResult.url;
 
     await conversation.save();
 

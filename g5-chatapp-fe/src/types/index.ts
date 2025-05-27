@@ -135,7 +135,7 @@ export type Reactions = {
 export type CreateGroupRequest = {
     name: string;
     members: string[];
-    profilePicture?: string | null;
+    file?: File | null;
 }
 
 export type GenerateQRCodeRes = {

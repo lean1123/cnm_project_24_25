@@ -64,10 +64,12 @@ export function CreateGroupWithUserDialog() {
     const groupData = {
       name,
       members: groupMembers,
+      file: file || null,
     };
     await createGroup(groupData);
     setName(null);
     setFile(null);
+    setPreviewUrl(null);
   };
 
   const getFriends = () => {

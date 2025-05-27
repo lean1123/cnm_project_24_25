@@ -46,7 +46,7 @@ export function CreateGroupDialog() {
 
   const handleCreateGroup = async () => {
     if (!name || !membersCreateGroup || membersCreateGroup.length < 2) {
-      toast.error("Please enter group name and select at least 2 members");
+      toast.error("Vui lòng nhập tên nhóm và chọn ít nhất 2 thành viên.");
       return;
     }
     const groupMembers = membersCreateGroup
@@ -55,10 +55,12 @@ export function CreateGroupDialog() {
     const groupData = {
       name,
       members: groupMembers,
+      file: file || null,
     };
     await createGroup(groupData);
     setName(null);
     setFile(null);
+    setPreviewUrl(null);
   };
 
   const getFriends = () => {
@@ -134,7 +136,7 @@ export function CreateGroupDialog() {
         setIsDialogOpen(open);
         // if (open) {
         //   // Khi mở
-          resetMembersCreateGroup(); // Xóa toàn bộ state
+        resetMembersCreateGroup(); // Xóa toàn bộ state
         //   getMyContact(); // load lại danh sách bạn bè
         //   setInputValue("");
         //   setName(null);
