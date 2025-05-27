@@ -20,6 +20,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { getSocket, initSocket, reconnectSocket, subscribeToChatEvents, unsubscribeFromChatEvents, subscribeToNewConversations, unsubscribeFromNewConversations } from "../../services/socket";
 import { Ionicons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { decryptMessage } from "../../utils/securityMessage";
 
 const HomeScreen = () => {
   const [conversations, setConversations] = useState([]);
@@ -29,9 +30,7 @@ const HomeScreen = () => {
   const [socketConnected, setSocketConnected] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const navigation = useNavigation();
-
-
-  const renderLastMessage = (lastMessage) => {
+  const renderLastMessage = (lastMessage, conversationId) => {
     if (!lastMessage) return "Bắt đầu cuộc trò chuyện!";
 
     const isMyMessage = lastMessage.sender?._id === userId;
@@ -69,10 +68,25 @@ const HomeScreen = () => {
       case "CALL":
         return `Cuộc gọi ${lastMessage.content}`;
       default:
-        return `${prefix}${lastMessage.content}`;
+        // Debug logging
+        console.log('[HomeChat] Processing TEXT message:', {
+          content: lastMessage.content,
+          conversationId: conversationId,
+          lastMessageConversation: lastMessage.conversation,
+          isLocationContent: lastMessage.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(lastMessage.content)
+        });
+        
+        // Decrypt the message content before displaying
+        // Use the passed conversationId as the primary key, fallback to lastMessage.conversation
+        const isLocationContent = lastMessage.content && /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(lastMessage.content);
+        const decryptionKey = conversationId || lastMessage.conversation || "default_key";
+        const decryptedContent = isLocationContent ? lastMessage.content : decryptMessage(lastMessage.content, decryptionKey);
+        
+        console.log('[HomeChat] Decrypted content with key:', decryptionKey, '→', decryptedContent);
+        
+        return `${prefix}${decryptedContent || lastMessage.content}`;
     }
   };
-
   const updateConversationWithNewMessage = (message) => {
     const conversationId = message.conversation?.toString();
     if (!conversationId) return;
@@ -87,7 +101,7 @@ const HomeScreen = () => {
       // Remove the conversation from the list
       const otherConversations = prevConversations.filter(c => c._id !== conversationId);
 
-      // Create updated conversation
+      // Create updated conversation with the new message
       const updatedConversation = {
         ...conversationToUpdate,
         lastMessage: message,
@@ -114,6 +128,17 @@ const HomeScreen = () => {
       const currentUserId = currentUser?._id || currentUser?.id;
   
       const processedConversations = response.data.data.map((conv) => {
+        // Debug logging for lastMessage from API
+        if (conv.lastMessage) {
+          console.log('[HomeChat] API lastMessage debug:', {
+            conversationId: conv._id,
+            lastMessageContent: conv.lastMessage.content,
+            lastMessageType: conv.lastMessage.type,
+            lastMessageConversationField: conv.lastMessage.conversation,
+            lastMessageSender: conv.lastMessage.sender
+          });
+        }
+        
         // Tìm người dùng khác trong mảng members
         const otherUser = conv.members.find(member => member.user._id !== currentUserId)?.user;
   
@@ -215,10 +240,11 @@ const HomeScreen = () => {
   useEffect(() => {
     if (userId) {
       // Setup chat event listeners
-      const chatCallbacks = {
-        // Message events
+      const chatCallbacks = {        // Message events
         onNewMessage: (message) => {
           console.log('[HomeChat] New message received:', message);
+          console.log('[HomeChat] Message content:', message.content);
+          console.log('[HomeChat] Message type:', message.type);
           updateConversationWithNewMessage(message);
         },
         
@@ -395,7 +421,7 @@ const HomeScreen = () => {
             ]} 
             numberOfLines={1}
           >
-            {renderLastMessage(item.lastMessage)}
+            {renderLastMessage(item.lastMessage, item._id)}
           </Text>
           {item.unreadCount > 0 && (
             <View style={[

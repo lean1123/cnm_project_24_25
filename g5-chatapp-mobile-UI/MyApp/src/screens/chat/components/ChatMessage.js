@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, Image, Linking, Alert } from 'react-nativ
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from '../styles/ChatDetailStyles';
 import { MessageType } from '../constants';
+import { decryptMessage } from '../../../utils/securityMessage';
 
-const ChatMessage = ({ message, userId, onOpenDocument, onReply }) => {
+const ChatMessage = ({ message, userId, conversationId, onOpenDocument, onReply }) => {
   if (!message) return null;
 
   const getSenderId = (sender) => {
@@ -47,6 +48,13 @@ const ChatMessage = ({ message, userId, onOpenDocument, onReply }) => {
 
     const repliedSenderName = getSenderName(message.replyTo.sender);
     let repliedContentPreview = message.replyTo.content;
+    
+    // Decrypt the replied message content if it exists and is not a location message
+    if (repliedContentPreview && conversationId) {
+      const isLocationReply = /^-?\d+\.?\d*,-?\d+\.?\d*$/.test(repliedContentPreview);
+      repliedContentPreview = isLocationReply ? repliedContentPreview : decryptMessage(repliedContentPreview, conversationId);
+    }
+    
     if (repliedContentPreview && repliedContentPreview.length > 40) {
       repliedContentPreview = `${repliedContentPreview.slice(0, 40)}...`;
     }
