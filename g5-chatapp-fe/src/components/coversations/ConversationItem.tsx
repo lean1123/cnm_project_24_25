@@ -104,17 +104,18 @@ const ConversationItem = ({
                 {lastMessage.type === "TEXT" &&
                   !isLocationMessage(lastMessage) && (
                     <p className="text-sm text-muted-foreground truncate">
-                      {lastMessage.forwardFromConversation != null 
+                      {lastMessage.forwardFromConversation != null
                         ? decryptMessage(
                             lastMessage.content,
                             lastMessage.forwardFromConversation || "123123"
                           )
                         : decryptMessage(
                             lastMessage.content,
-                            selectedConversation?._id || "123123"
+                            conversation?._id || "123123"
                           )}
                     </p>
                   )}
+
                 {lastMessage.type === "TEXT" &&
                   isLocationMessage(lastMessage) && (
                     <p className="text-sm text-muted-foreground truncate">
